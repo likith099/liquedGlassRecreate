@@ -1,0 +1,42 @@
+{
+  "name": "react-native-adaptive-liquid-glass",
+  "version": "0.1.0",
+  "description": "Native iOS Liquid Glass surfaces and controls with standard Android counterparts.",
+  "license": "UNLICENSED",
+  "main": "src/index.ts",
+  "react-native": "src/index.ts",
+  "types": "src/index.ts",
+  "files": [
+    "src",
+    "ios",
+    "android",
+    "!android/build",
+    "!android/.gradle",
+    "AdaptiveLiquidGlass.podspec",
+    "react-native.config.js",
+    "README.md"
+  ],
+  "peerDependencies": {
+    "react": ">=19.0.0",
+    "react-native": ">=0.86.0 <0.87.0"
+  },
+  "codegenConfig": {
+    "name": "AdaptiveLiquidGlassSpec",
+    "type": "components",
+    "jsSrcsDir": "src/specs",
+    "android": {
+      "javaPackageName": "com.adaptiveglass"
+    },
+    "ios": {
+      "componentProvider": {
+        "ALGSurface": "ALGSurfaceComponentView",
+        "ALGButton": "ALGButtonComponentView",
+        "ALGSegmented": "ALGSegmentedComponentView",
+        "ALGSlider": "ALGSliderComponentView",
+        "ALGActionCluster": "ALGActionClusterComponentView",
+        "ALGMenu": "ALGMenuComponentView",
+        "ALGTabs": "ALGTabsComponentView"
+      }
+    }
+  }
+}

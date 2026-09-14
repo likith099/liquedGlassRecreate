@@ -1,0 +1,12 @@
+node_modules/
+Pods/
+build/
+.DS_Store
+*.xcuserstate
+xcuserdata/
+.bundle/
+.gradle/
+local.properties
+*.tgz
+artifacts/
+example/ios/.xcode.env.local

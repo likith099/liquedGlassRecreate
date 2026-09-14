@@ -1,0 +1,21 @@
+apply plugin: 'com.android.library'
+// AGP 9 provides Kotlin itself; RN 0.86's default AGP 8 needs the plugin.
+if (com.android.Version.ANDROID_GRADLE_PLUGIN_VERSION.tokenize('.')[0].toInteger() < 9) {
+    apply plugin: 'org.jetbrains.kotlin.android'
+}
+apply plugin: 'com.facebook.react'
+
+android {
+    namespace 'com.adaptiveglass'
+    compileSdk rootProject.ext.compileSdkVersion
+    defaultConfig { minSdk rootProject.ext.minSdkVersion }
+}
+react {
+    jsRootDir = file('../src')
+    libraryName = 'AdaptiveLiquidGlassSpec'
+    codegenJavaPackageName = 'com.adaptiveglass'
+}
+dependencies {
+    implementation 'com.facebook.react:react-android'
+    implementation 'com.google.android.material:material:1.13.0'
+}

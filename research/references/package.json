@@ -1,0 +1,6 @@
+{
+  "dependencies": {
+    "@callstack/liquid-glass": "^0.8.1",
+    "expo-glass-effect": "^57.0.3"
+  }
+}
