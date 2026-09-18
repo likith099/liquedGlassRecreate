@@ -10,7 +10,7 @@ export default function GlassActionCluster({actions, expanded, onExpandedChange,
   validateActions(actions);
   const dark = useColorScheme() === 'dark';
   const textStyle = {color: dark ? '#F5F5FA' : '#242630', fontWeight: '600' as const};
-  return <View {...props} style={[{minHeight: 80, flexDirection: 'row', flexWrap: 'wrap', gap: 12,
+  return <View {...props} accessible={false} style={[{minHeight: 80, flexDirection: 'row', flexWrap: 'wrap', gap: 12,
     alignItems: 'center', justifyContent: 'flex-end', padding: 12}, style]}>
     {expanded && actions.map(action => <GlassButton key={action.id} forceFallback
       testID={`glass-action-${action.id}`} accessibilityLabel={action.title} disabled={action.disabled}

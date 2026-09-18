@@ -1,4 +1,6 @@
 import React from 'react';
+import {useWindowDimensions} from 'react-native';
+import adaptiveHeight from './adaptiveHeight';
 import NativeMenu from './specs/ALGMenuNativeComponent';
 import type {GlassMenuButtonProps, GlassMenuElement} from './types';
 import {enabledMenuAction, validateMenuItems} from './menuTree';
@@ -11,8 +13,9 @@ export function validateMenu(title: string, items: readonly GlassMenuElement[]) 
 export default function GlassMenuButton({title, items, onAction, systemImage, disabled = false,
   tintColor, forceFallback = false, accessibilityLabel, accessibilityHint,
   accessibilityState: _state, testID, style, ...props}: GlassMenuButtonProps) {
+  const {fontScale} = useWindowDimensions();
   validateMenu(title, items);
-  return <NativeMenu {...props} accessible={false} style={[{height: 64, minWidth: 120}, style]}
+  return <NativeMenu {...props} accessible={false} style={[{height: adaptiveHeight(64, 20, fontScale), minWidth: 120}, style]}
     title={title} systemImage={systemImage} itemsJSON={JSON.stringify(items)}
     disabled={disabled || items.length === 0} glassTint={tintColor} forceFallback={forceFallback}
     controlLabel={accessibilityLabel ?? title} controlHint={accessibilityHint} controlTestID={testID}

@@ -2,6 +2,7 @@ import React, {useEffect, useRef, useState} from 'react';
 import {AccessibilityInfo, Animated, Platform, PlatformColor, Pressable, ScrollView, StatusBar,
   StyleSheet, Switch, Text, View, useColorScheme} from 'react-native';
 import {SafeAreaProvider, SafeAreaView} from 'react-native-safe-area-context';
+import AccessibilityDemo from './AccessibilityDemo';
 import ToolbarDemo from './ToolbarDemo';
 import TabNavigationDemo from './TabNavigationDemo';
 import {GlassActionCluster, GlassButton, GlassContainer, GlassView, GlassSegmentedControl, GlassSlider, GlassMenuButton, isLiquidGlassSupported} from 'react-native-adaptive-liquid-glass';
@@ -13,7 +14,7 @@ const actions = [
 ];
 const segments = [{value: 'all', label: 'All'}, {value: 'saved', label: 'Saved'}, {value: 'shared', label: 'Shared', disabled: true}];
 
-function Lab({onOpenTabs}: {onOpenTabs: () => void}) {
+function Lab({onOpenTabs, onOpenAccessibility}: {onOpenTabs: () => void; onOpenAccessibility: () => void}) {
   const [expanded, setExpanded] = useState(false);
   const [interactive, setInteractive] = useState(true);
   const [clear, setClear] = useState(false);
@@ -62,6 +63,9 @@ function Lab({onOpenTabs}: {onOpenTabs: () => void}) {
     <ScrollView contentContainerStyle={styles.page}>
       <Pressable testID="open-tabs-demo" accessibilityRole="button" onPress={onOpenTabs} style={{paddingVertical: 12}}>
         <Text style={{color: foreground, fontWeight: '600'}}>Open tab navigation →</Text>
+      </Pressable>
+      <Pressable testID="open-accessibility-demo" accessibilityRole="button" onPress={onOpenAccessibility} style={{paddingVertical: 12}}>
+        <Text style={{color: foreground, fontWeight: '600'}}>Open adaptive controls →</Text>
       </Pressable>
       <View style={styles.topline}><View style={styles.dot} /><Text style={[styles.eyebrow, {color: secondary}]}>NATIVE MATERIALS / 01</Text></View>
       <Text style={[styles.title, {color: foreground}]}>Liquid, by nature.</Text>
@@ -181,7 +185,8 @@ function Setting({title, detail, value, onChange, color, muted, id}: {title: str
 }
 export default function App() {
   const [tabsOpen, setTabsOpen] = useState(false);
-  return <SafeAreaProvider>{tabsOpen ? <TabNavigationDemo onClose={() => setTabsOpen(false)} /> : <Lab onOpenTabs={() => setTabsOpen(true)} />}</SafeAreaProvider>;
+  const [accessibilityOpen, setAccessibilityOpen] = useState(false);
+  return <SafeAreaProvider>{accessibilityOpen ? <AccessibilityDemo onClose={() => setAccessibilityOpen(false)} /> : tabsOpen ? <TabNavigationDemo onClose={() => setTabsOpen(false)} /> : <Lab onOpenTabs={() => setTabsOpen(true)} onOpenAccessibility={() => setAccessibilityOpen(true)} />}</SafeAreaProvider>;
 }
 const styles = StyleSheet.create({
   safe: {flex: 1}, page: {padding: 24, paddingBottom: 40, maxWidth: 620, width: '100%', alignSelf: 'center'},

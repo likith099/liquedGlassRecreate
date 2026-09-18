@@ -48,6 +48,9 @@ class ALGTabsView(private val reactContext: ThemedReactContext) : FrameLayout(re
       else ContextThemeWrapper(context, com.google.android.material.R.style.Theme_Material3_DayNight_NoActionBar)
     return BottomNavigationView(themed).apply {
       labelVisibilityMode = NavigationBarView.LABEL_VISIBILITY_LABELED
+      // Labels scale with the system text size.
+      setLabelFontScalingEnabled(true)
+      setLabelMaxLines(2)
       isItemHorizontalTranslationEnabled = false
       // The React screen owns safe-area padding, including the bottom system inset.
       ViewCompat.setOnApplyWindowInsetsListener(this) { _, insets -> insets }
@@ -129,12 +132,23 @@ class ALGTabsView(private val reactContext: ThemedReactContext) : FrameLayout(re
       requestLayout()
       post {
         if (isAttachedToWindow) {
-          forceLayout(); bar.forceLayout()
-          measure(MeasureSpec.makeMeasureSpec(width, MeasureSpec.EXACTLY), MeasureSpec.makeMeasureSpec(height, MeasureSpec.EXACTLY))
-          layout(left, top, right, bottom)
+          forceNativeLayout()
+          // Material derives each active indicator's layout params from its item view's width
+          // at the moment the item is checked. The first selection happens while the bar is
+          // still unmeasured, so that width is 0, the indicator clamps to 0x0 and stays a stub
+          // beside the icon until a later tap re-checks the item. Re-assigning the desired
+          // width makes every item recompute against its real width. React Native swallows the
+          // requestLayout that changing those params triggers, so lay the bar out again.
+          bar.itemActiveIndicatorWidth = bar.itemActiveIndicatorWidth
+          forceNativeLayout()
         }
       }
     } finally { applying = false }
+  }
+  private fun forceNativeLayout() {
+    forceLayout(); bar.forceLayout()
+    measure(MeasureSpec.makeMeasureSpec(width, MeasureSpec.EXACTLY), MeasureSpec.makeMeasureSpec(height, MeasureSpec.EXACTLY))
+    layout(left, top, right, bottom)
   }
   override fun onConfigurationChanged(newConfig: Configuration) {
     super.onConfigurationChanged(newConfig)

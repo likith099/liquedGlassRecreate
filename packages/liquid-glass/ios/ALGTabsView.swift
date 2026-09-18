@@ -103,7 +103,11 @@ public final class ALGTabsView: UIView, UITabBarControllerDelegate {
         destination.tabBarItem.selectedImage = item.selectedSystemImage.flatMap { UIImage(systemName: $0) }
         destination.tabBarItem.badgeValue = item.badge?.text
       }
-      destination.tabBarItem.isEnabled = !disabled && item.disabled != true
+      // UIKit derives the tab button, its label and its selected trait from the tab itself.
+      // Neither UITab nor UITabBarItem declares a public accessibilityTraits property, so
+      // isEnabled is the only public control over the disabled state; see docs/accessibility.md.
+      let enabled = !disabled && item.disabled != true
+      destination.tabBarItem.isEnabled = enabled
       destination.tabBarItem.accessibilityLabel = item.accessibilityLabel ?? item.title
       destination.tabBarItem.accessibilityIdentifier = identifier.isEmpty ? item.id : "\(identifier)-\(item.id)"
       if #available(iOS 18.4, *), let tab = controller.tab(forIdentifier: item.id) {
@@ -112,7 +116,7 @@ public final class ALGTabsView: UIView, UITabBarControllerDelegate {
           ? (destination.tabBarItem.selectedImage ?? destination.tabBarItem.image)
           : destination.tabBarItem.image
         tab.badgeValue = item.badge?.text
-        tab.isEnabled = !disabled && item.disabled != true
+        tab.isEnabled = enabled
         tab.preferredPlacement = .fixed
         tab.accessibilityLabel = item.accessibilityLabel ?? item.title
         tab.accessibilityIdentifier = destination.tabBarItem.accessibilityIdentifier

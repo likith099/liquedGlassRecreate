@@ -59,3 +59,7 @@ Shared API/event tests and adapter tests live under `example/__tests__`. Native 
 ## Platform references
 
 Apple documents the system-owned tab design in its [UIKit design session](https://developer.apple.com/videos/play/wwdc2025/284/) and [UITabBarController API](https://developer.apple.com/documentation/uikit/uitabbarcontroller). Android uses the public [Material Components 1.13.0 release](https://github.com/material-components/material-components-android/releases/tag/1.13.0). The adapter follows React Navigation's [custom bottom-tab bar contract](https://reactnavigation.org/docs/bottom-tab-navigator/).
+
+## Adaptive layout and accessibility
+
+The default 80-point host grows with the system font scale; an explicit style height wins. Android enables Material label scaling and permits two lines. Keep titles short and provide enough width for all items; native tab bars do not become scrollable lists. Screen-owned safe-area padding still applies. Each native tab is exposed by the platform as a labelled button that reports its own selected state, and Android also reports the disabled state. `UITab.isEnabled` dims a disabled iOS tab and blocks its selection, but UIKit exposes no public API for a tab's accessibility traits, so a disabled iOS tab still reports itself as enabled to the accessibility client. Accessibility-tree checks and actual spoken VoiceOver behavior are separate evidence; see [accessibility](accessibility.md).

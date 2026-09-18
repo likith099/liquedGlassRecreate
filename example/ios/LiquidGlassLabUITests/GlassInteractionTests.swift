@@ -251,6 +251,95 @@ final class GlassInteractionTests: XCTestCase {
     XCTAssertTrue(tab("Home").isSelected)
   }
 
+  func testAdaptiveControlAccessibility() throws {
+    continueAfterFailure = false
+    let app = XCUIApplication(); app.launch()
+    let open = app.buttons["open-accessibility-demo"]
+    XCTAssertTrue(open.waitForExistence(timeout: 45)); open.tap()
+    // The demo screen must finish mounting before scrolling; an early probe followed by
+    // one-directional swipes scrolls past controls near the top of the scroll view.
+    XCTAssertTrue(app.staticTexts["Added: 0"].waitForExistence(timeout: 30))
+    // isHittable is false for a disabled control, so this checks the frame instead; the
+    // test deliberately scrolls to controls that report a disabled accessibility state.
+    func onScreen(_ element: XCUIElement) -> Bool {
+      guard element.exists else { return false }
+      let frame = element.frame
+      return frame.height > 0 && app.frame.contains(frame)
+    }
+    func reveal(_ element: XCUIElement, up: Bool = true) {
+      for attempt in 0..<20 {
+        if onScreen(element) { return }
+        // Reverse after the first half so an overshoot can scroll back to the element.
+        if (attempt < 10) == up { app.swipeUp() } else { app.swipeDown() }
+      }
+      let hierarchy = XCTAttachment(string: app.debugDescription)
+      hierarchy.name = "Hierarchy when an element could not be revealed"
+      hierarchy.lifetime = .keepAlways; add(hierarchy)
+      XCTAssertTrue(onScreen(element))
+    }
+    let button = app.buttons["adaptive-button"]
+    reveal(button); button.tap()
+    XCTAssertTrue(app.staticTexts["Added: 1"].exists)
+    let loading = app.switches["adaptive-loading"]
+    reveal(loading, up: false); loading.tap(); reveal(button)
+    XCTAssertFalse(button.isEnabled); XCTAssertEqual(button.value as? String, "Loading")
+    reveal(loading, up: false); loading.tap()
+    let segments = app.segmentedControls["adaptive-segments"]
+    reveal(segments); XCTAssertFalse(segments.buttons["Shared"].isEnabled)
+    segments.buttons["Saved"].tap()
+    XCTAssertTrue(app.staticTexts["Selected: saved"].exists)
+    let toggle = app.buttons["glass-cluster-toggle"]
+    reveal(toggle); toggle.tap()
+    let locked = app.buttons["glass-action-locked"]
+    XCTAssertFalse(locked.isEnabled)
+    app.buttons["glass-action-save"].tap()
+    XCTAssertTrue(app.staticTexts["Action: save"].exists)
+    toggle.tap(); XCTAssertTrue(locked.waitForNonExistence(timeout: 5))
+    let lockedTab = app.buttons["adaptive-tabs-locked"]
+    let home = app.buttons["adaptive-tabs-home"]
+    let inbox = app.buttons["adaptive-tabs-inbox"]
+    reveal(lockedTab)
+    let tabTree = XCTAttachment(string: app.debugDescription)
+    tabTree.name = "Native tab bar accessibility hierarchy"
+    tabTree.lifetime = .keepAlways; add(tabTree)
+    // UIKit exposes each tab as a labelled button and reports the selected trait itself.
+    // UITab.isEnabled dims a disabled tab and blocks its selection, but neither UITab nor
+    // UITabBarItem declares a public accessibilityTraits property, so a disabled tab still
+    // reports isEnabled here. Assert the observable guarantee and keep the trait reporting
+    // as a recorded platform gap rather than asserting behaviour UIKit does not provide.
+    XCTAssertEqual(lockedTab.label, "Locked")
+    XCTAssertTrue(home.isSelected)
+    lockedTab.tap()
+    XCTAssertFalse(lockedTab.isSelected, "A disabled tab must not become selected")
+    XCTAssertTrue(home.isSelected, "Selection must stay on the previous tab")
+    inbox.tap(); XCTAssertTrue(inbox.isSelected)
+    let capture = XCTAttachment(screenshot: app.screenshot())
+    capture.name = "B3 native adaptive controls"; capture.lifetime = .keepAlways; add(capture)
+  }
+
+  func testAdaptiveLargeText() throws {
+    continueAfterFailure = false
+    let app = XCUIApplication()
+    app.launchArguments += ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"]
+    app.launch()
+    let open = app.buttons["open-accessibility-demo"]
+    XCTAssertTrue(open.waitForExistence(timeout: 45)); open.tap()
+    let all = app.descendants(matching: .any)["adaptive-segments-all"].firstMatch
+    let saved = app.descendants(matching: .any)["adaptive-segments-saved"].firstMatch
+    XCTAssertTrue(app.staticTexts["Selected: all"].waitForExistence(timeout: 30))
+    for _ in 0..<12 { if saved.isHittable { break }; app.swipeUp() }
+    XCTAssertTrue(saved.isHittable)
+    // Options stay side by side at the largest text size. Compare with a tolerance because
+    // UIKit reports subpixel frame origins that make exact edge comparisons unreliable.
+    XCTAssertEqual(saved.frame.minY, all.frame.minY, accuracy: 1)
+    XCTAssertGreaterThanOrEqual(saved.frame.minX, all.frame.maxX - 1)
+    XCTAssertEqual(saved.frame.width, all.frame.width, accuracy: 1)
+    saved.tap()
+    XCTAssertTrue(app.staticTexts["Selected: saved"].waitForExistence(timeout: 5))
+    let capture = XCTAttachment(screenshot: app.screenshot())
+    capture.name = "B3 largest accessibility text selector"; capture.lifetime = .keepAlways; add(capture)
+  }
+
   func testNativeTabsBadgeRemovalSnapshot() throws {
     continueAfterFailure = false
     let app = XCUIApplication(); app.launch()
