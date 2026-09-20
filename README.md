@@ -13,8 +13,10 @@ is a real native view — `UIGlassEffect`, `UIMenu` and `UIToolbar` — not a
 JavaScript approximation.
 
 <p align="center">
-  <img src="docs/images/hero-glass-surface.png" width="300" alt="A native glass surface over a colourful backdrop, with a glass button and a four-icon action cluster whose icons sit inside the glass">
+  <img src="docs/images/demo.gif" width="280" alt="Screen recording of the demo: tapping a glass button increments a counter, then the action cluster expands into four icons that sit inside the stretching glass, and the live property toggles change the material">
 </p>
+
+<p align="center"><sub>Tapping the glass button, expanding the action cluster, and changing the material live — recorded on iOS 26.5.</sub></p>
 
 Glass merging is opt-in. Two nearby surfaces stay separate until you allow them
 to join, then the material bridges between them:
