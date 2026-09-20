@@ -2,7 +2,10 @@
   "name": "liquid-glass-workspace",
   "private": true,
   "version": "0.1.0",
-  "workspaces": ["packages/*", "example"],
+  "workspaces": [
+    "packages/*",
+    "example"
+  ],
   "scripts": {
     "start": "npm run start --workspace example",
     "ios": "npm run ios --workspace example --",
@@ -10,5 +13,8 @@
     "android": "npm run android --workspace example --",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "npm run test --workspace example -- --runInBand"
+  },
+  "devDependencies": {
+    "@react-native/metro-config": "0.87.1"
   }
 }
