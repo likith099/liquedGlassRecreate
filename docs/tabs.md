@@ -4,7 +4,7 @@
 
 ```tsx
 import {useState} from 'react';
-import {GlassTabBar} from 'react-native-adaptive-liquid-glass';
+import {GlassTabBar} from '@likith99/react-native-adaptive-liquid-glass';
 
 export function Tabs() {
   const [tab, setTab] = useState('home');

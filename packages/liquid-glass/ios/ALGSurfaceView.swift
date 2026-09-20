@@ -86,9 +86,20 @@ public final class ALGSurfaceView: UIView {
         effect = glass
       } else { effect = UIVisualEffect() }
       effectView.backgroundColor = .clear
+    } else if !UIAccessibility.isReduceTransparencyEnabled && !isContainer && material != "none" {
+      // Standard system material on pre-glass iOS. Keep the same contentView and
+      // dirty-prop gate, so layout/React updates do not allocate another blur.
+      effect = UIBlurEffect(style: material == "clear" ? .systemUltraThinMaterial : .systemMaterial)
+      effectView.backgroundColor = .clear
+      effectView.contentView.backgroundColor = glassTint ?? .clear
     } else {
       effect = UIVisualEffect()
       effectView.backgroundColor = isContainer || material == "none" ? .clear : .secondarySystemBackground
+    }
+    if #available(iOS 26.0, *) {
+      effectView.contentView.backgroundColor = .clear
+    } else if UIAccessibility.isReduceTransparencyEnabled || isContainer || material == "none" {
+      effectView.contentView.backgroundColor = .clear
     }
     let apply = { self.effectView.effect = effect }
     if animate { UIView.animate(withDuration: duration, animations: apply) } else { apply() }

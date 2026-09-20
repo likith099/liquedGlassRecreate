@@ -18,7 +18,7 @@ npm run ios -- --simulator 'iPhone 17 Pro'
 npm run android
 ```
 
-Metro uses **8093**, because 8081 was already occupied on this machine. The example's iOS debug delegate points to `localhost:8093`; set it to your Mac's LAN address for a physical device. Android's CLI and direct Gradle builds use the same port, configured by `reactNativeDevServerPort` in `example/android/gradle.properties`.
+Metro uses **8093**, because 8081 was already occupied on this machine. The iOS debug delegate uses localhost in the simulator and the build-generated Mac address on a device; the Mac and phone must share a network. Android's CLI and direct Gradle builds use the same port, configured by `reactNativeDevServerPort` in `example/android/gradle.properties`.
 
 ### Build from Xcode
 
@@ -26,25 +26,25 @@ Run `npm run xcode` from the repository root to open **`example/ios/LiquidGlassL
 
 Opening `LiquidGlassLab.xcodeproj` directly omits those dependency targets and can produce `AdaptiveLiquidGlass.modulemap not found` or `No such module React`. Close that project window and open the workspace. If dependencies have not been installed, run `npm install` and then `pod install` in `example/ios` first.
 
-Requires Node 22.11+, Xcode 26+, CocoaPods, and a native development build. iOS deployment minimum is 16.4; glass APIs are guarded at iOS 26. Android uses React Native views and ripple feedback for surfaces/buttons, plus Kotlin bridges to SeekBar, popup menus, Toolbar, and Material BottomNavigationView. The package autolinks on both platforms; rebuild both native apps after installation. New Architecture only. React Native 0.86 is the initial supported/tested version range.
+Requires Node 22.11+, Xcode 26+, CocoaPods, and a native development build. iOS deployment minimum is 15.1; glass APIs are guarded at iOS 26. Android uses React Native views and ripple feedback for surfaces/buttons, plus Kotlin bridges to SeekBar, popup menus, Toolbar, and Material BottomNavigationView. The package autolinks on both platforms; rebuild both native apps after installation. New Architecture only. The declared React Native range is 0.81–0.86; builds have been checked on 0.81.5 and 0.86.3.
 
 ## Use the package
 
 From another React Native app:
 
 ```sh
-npm install /absolute/path/to/liquedGlassRecreate/artifacts/react-native-adaptive-liquid-glass-0.1.0.tgz
+npm install /absolute/path/to/liquedGlassRecreate/artifacts/likith99-react-native-adaptive-liquid-glass-0.1.0.tgz
 cd ios && pod install
 ```
 
-Then rebuild the native app. Create that local archive with `npm pack --workspace react-native-adaptive-liquid-glass --pack-destination artifacts` from this repository (create `artifacts` first if absent). Using the archive installs a complete copy without workspace symlinks. This package has not been published to npm. Before publishing, choose a license and replace the podspec's placeholder source and package metadata.
+Then rebuild the native app. Create that local archive with `npm pack --workspace @likith99/react-native-adaptive-liquid-glass --pack-destination artifacts` from this repository (create `artifacts` first if absent). Using the archive installs a complete copy without workspace symlinks. This package has not been published to npm. MIT license and repository metadata are present. See [release gates](docs/releasing.md) before publication.
 
 ```tsx
 import {useState} from 'react';
 import {Text, Platform, PlatformColor} from 'react-native';
 import {
   GlassView, GlassButton, GlassContainer, GlassActionCluster,
-} from 'react-native-adaptive-liquid-glass';
+} from '@likith99/react-native-adaptive-liquid-glass';
 
 const actions = [
   {id: 'save', title: 'Save', systemImage: 'bookmark'},
@@ -73,7 +73,7 @@ export function Controls() {
 
 | Component | iOS 26+ | Android / older iOS |
 | --- | --- | --- |
-| `GlassView` | `UIGlassEffect` surface containing real React children; native adaptive material and optional touch response | Opaque themed `View` |
+| `GlassView` | `UIGlassEffect` surface containing real React children; native adaptive material and optional touch response | UIKit system blur on older iOS; opaque themed `View` on Android |
 | `GlassContainer` | `UIGlassContainerEffect`; nearby descendant glass surfaces share rendering and merge | Ordinary layout `View` |
 | `GlassButton` (title API) | SwiftUI `Button` with `.glass` / `.glassProminent`, loading and disabled states | Standard button with Android ripple |
 | `GlassPressable` | Custom React children and press semantics over interactive glass | Ordinary pressable surface, Android ripple |
@@ -144,7 +144,7 @@ Existing `<GlassButton><Text>...</Text></GlassButton>` calls continue to use the
 ## Native slider
 
 ```tsx
-import {GlassSlider} from 'react-native-adaptive-liquid-glass';
+import {GlassSlider} from '@likith99/react-native-adaptive-liquid-glass';
 
 const [level, setLevel] = useState(40);
 
@@ -190,7 +190,7 @@ Metro must be running for the Debug UI tests. They exercise glass/action callbac
 
 `python3 scripts/verify-android-tabs.py` exercises the native tab navigation demo. The corresponding iOS test is `GlassInteractionTests/testNativeTabNavigationBatch`. These checks cover rejected selection, reselection, retained screen state, disabled tabs, programmatic navigation, reordering, replacement, badges, and remounting; Android also checks back history.
 
-`python3 scripts/verify-android-accessibility.py` exercises button/loading/disabled states, controlled selectors, action groups, large text, themes, and RTL in the adaptive lab. It restores emulator settings in a `finally` block. iOS counterparts are `testAdaptiveControlAccessibility` and `testAdaptiveLargeText`. These inspect semantics and layout; they do not verify spoken screen-reader output.
+`python3 scripts/verify-android-accessibility.py` exercises button/loading/disabled states, controlled selectors, action groups, large text, themes, in the adaptive lab (RTL remains manual). It restores emulator settings in a `finally` block. iOS counterparts are `testAdaptiveControlAccessibility` and `testAdaptiveLargeText`. These inspect semantics and layout; they do not verify spoken screen-reader output.
 
 `node scripts/verify-package.mjs` packs the library, installs it in a separate temporary app with its own dependencies, checks TypeScript and autolinking, produces both JS bundles, and compiles both native apps. It requires network access, CocoaPods/Xcode, and configured `ANDROID_HOME`/`JAVA_HOME`. Set `ALG_CONSUMER_DIR` to an existing `/private/tmp/alg-consumer-*` directory to reuse its native build caches; the archive uses a content-specific install path. The standalone sample intentionally omits React Navigation and react-native-screens. It leaves the temporary consumer and artifacts for inspection and does not publish anything.
 

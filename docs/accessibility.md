@@ -19,8 +19,8 @@ Material tabs enable label font scaling and up to two lines. Keep native tab tit
 
 ## Verification boundary
 
-B3 adds JS regressions, iOS accessibility-tree/large-text checks, and Android runtime checks for action groups, title buttons, selectors, dark large text and light RTL. Current executed evidence and remaining gaps live in the [development tracker](development.md). Test implementations alone do not establish a pass.
+B3 adds JS regressions, iOS accessibility-tree/large-text checks, and Android runtime checks for action groups, title buttons, selectors, dark large text and standard light appearance. Current executed evidence and remaining gaps live in the [development tracker](development.md). Test implementations alone do not establish a pass.
 
-Manual acceptance still needs real VoiceOver/TalkBack navigation, spoken disabled/selected/loading states and badges, Switch Control or keyboard navigation, settings changes during interactions, and physical-device layout/perception. Older-iOS device coverage remains deferred. Do not claim comprehensive accessibility conformance from automation.
+Manual acceptance still needs real VoiceOver/TalkBack navigation, spoken disabled/selected/loading states and badges, Switch Control or keyboard navigation, settings changes during interactions, and physical-device layout/perception. Older-iOS physical coverage remains deferred; iOS 18.6 simulator checks are tracked in B4. Do not claim comprehensive accessibility conformance from automation.
 
 Platform references: [Apple notEnabled trait](https://developer.apple.com/documentation/uikit/uiaccessibilitytraits/notenabled), [UISegmentedControl](https://developer.apple.com/documentation/uikit/uisegmentedcontrol), and [Material 1.13.0 NavigationBarView public scaling API](https://github.com/material-components/material-components-android/blob/1.13.0/lib/java/com/google/android/material/navigation/NavigationBarView.java).

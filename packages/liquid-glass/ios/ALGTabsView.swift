@@ -76,12 +76,15 @@ public final class ALGTabsView: UIView, UITabBarControllerDelegate {
         if controller.tabs.map(\.identifier) != tabs.map(\.identifier) {
           controller.setTabs(tabs, animated: false)
         }
-      } else {
-        let oldIDs = controller.viewControllers?.compactMap { ($0 as? TabDestination)?.tabID } ?? []
-        if oldIDs != ordered.map(\.tabID) {
-          controller.setViewControllers(ordered, animated: false)
-          controller.customizableViewControllers = []
-        }
+      }
+      // UIKit adopts the UITab API from the app's deployment target, not just the running
+      // OS, so #available alone can leave an app built for an older target with tabs that
+      // UIKit ignores and no view controllers at all. Drive the legacy array whenever the
+      // controller's own contents do not match, which is a no-op once UITab took effect.
+      let currentIDs = controller.viewControllers?.compactMap { ($0 as? TabDestination)?.tabID } ?? []
+      if currentIDs != ordered.map(\.tabID) {
+        controller.setViewControllers(ordered, animated: false)
+        controller.customizableViewControllers = []
       }
     }
     for item in items {
@@ -122,10 +125,10 @@ public final class ALGTabsView: UIView, UITabBarControllerDelegate {
         tab.accessibilityIdentifier = destination.tabBarItem.accessibilityIdentifier
       }
     }
-    if #available(iOS 18.4, *) {
-      if let selected = controller.tab(forIdentifier: selectedValue), controller.selectedTab !== selected {
-        controller.selectedTab = selected
-      }
+    // Fall through to the view-controller path when UITab is not in effect, rather than
+    // silently skipping selection on an app whose deployment target predates it.
+    if #available(iOS 18.4, *), let selected = controller.tab(forIdentifier: selectedValue) {
+      if controller.selectedTab !== selected { controller.selectedTab = selected }
     } else if let selected = destinations[selectedValue], controller.selectedViewController !== selected {
       controller.selectedViewController = selected
     }

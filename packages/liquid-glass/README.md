@@ -1,11 +1,26 @@
-# react-native-adaptive-liquid-glass
+# @likith99/react-native-adaptive-liquid-glass
 
-Native iOS Liquid Glass surfaces and UIKit action controls, with ordinary Android counterparts. No Expo dependency. Initial prototype for React Native 0.86 / React 19 / Fabric; requires Xcode 26+, and iOS 16.4+ (glass on iOS 26+).
+Native iOS Liquid Glass surfaces and UIKit action controls, with ordinary Android counterparts. No Expo dependency. React Native 0.81–0.86 / React 19 / Fabric; requires Xcode 26+, and iOS 15.1+ (glass on iOS 26+).
 
-Install the locally packed `.tgz` in your app, run `pod install` in its iOS folder, and rebuild both native apps. Android autolinks Kotlin SeekBar, PopupMenu, Toolbar, and Material BottomNavigationView bridges; surfaces and the other Android controls use React Native views and pressables. The package is not yet published.
+## Install
+
+Install the public package from npm. To test local changes instead, create an archive with `npm pack --workspace @likith99/react-native-adaptive-liquid-glass` and install the resulting `.tgz` file.
+
+```sh
+npm install @likith99/react-native-adaptive-liquid-glass
+cd ios && pod install
+```
+
+Then rebuild both native apps; a JS-only reload is not enough the first time. Autolinking wires the iOS pod and the Android Gradle module, so there is nothing to register by hand. Android autolinks Kotlin SeekBar, PopupMenu, Toolbar, and Material BottomNavigationView bridges; surfaces and the other Android controls use React Native views and pressables.
+
+### Requirements
+
+The host app must run **React Native 0.81 to 0.86 with the New Architecture (Fabric)** and React 19; these are Fabric codegen components and will not build on the old architecture. Builds are verified on 0.81.5 and 0.86.3. iOS needs Xcode 26+ and a **deployment target of iOS 15.1 or higher** — below that CocoaPods refuses to resolve the pod — with native glass on iOS 26+ and standard controls below it.
+
+On React Native 0.81 specifically, the app must consume React Native's **prebuilt** iOS dependencies, which is the default (`RCT_USE_RN_DEP=1`) and what Expo SDK 54 does. Building React Native from source on 0.81 fails under Xcode 26 inside `Pods/fmt`, independently of this package. On **iOS 27 the host app must adopt the UIScene lifecycle**, otherwise iOS traps during scene creation before any UI appears; add a `UIApplicationSceneManifest` and a scene delegate that owns the window. Android needs no extra setup. Expo Modules are not used and no router is required.
 
 ```tsx
-import {GlassView, GlassButton, GlassContainer, GlassActionCluster} from 'react-native-adaptive-liquid-glass';
+import {GlassView, GlassButton, GlassContainer, GlassActionCluster} from '@likith99/react-native-adaptive-liquid-glass';
 
 <GlassView interactive cornerRadius={24} style={{padding: 20}}>
   <Text>React content inside native glass</Text>
@@ -25,7 +40,7 @@ The UIKit action cluster retains controls by stable IDs and uses the same UIGlas
 
 Reduce Transparency replaces our glass surface/cluster materials with opaque backgrounds. Reduce Motion suppresses our native property/morph transitions. Use semantic text colors for your children; the package does not recolor arbitrary content. `forceFallback` previews the standard implementation on surfaces, buttons, selectors, and action clusters. The native slider has no `forceFallback` prop.
 
-See `src/types.ts` for the complete typed API. The repository root README contains the demo commands, architecture, reference study, and verification results. Custom drag/stretch physics, a full native control suite, arbitrary React-tree morphing, physical-device profiling, and broader React Native compatibility remain future work. Before publishing, choose a license and replace the placeholder podspec source/metadata.
+See `src/types.ts` for the complete typed API. The repository root README contains the demo commands, architecture, reference study, and verification results. Custom drag/stretch physics, a full native control suite, arbitrary React-tree morphing, physical-device profiling, and broader React Native compatibility remain future work. MIT licensed.
 
 ## Native controls
 
@@ -37,7 +52,7 @@ See `src/types.ts` for the complete typed API. The repository root README contai
 
 ```tsx
 import {useState} from 'react';
-import {GlassSlider} from 'react-native-adaptive-liquid-glass';
+import {GlassSlider} from '@likith99/react-native-adaptive-liquid-glass';
 
 export function LevelControl() {
   const [level, setLevel] = useState(40);
@@ -56,7 +71,7 @@ Native cancellation, disabling, range/step changes, or detachment cancel an acti
 ## Native menus
 
 ```tsx
-import {GlassMenuButton} from 'react-native-adaptive-liquid-glass';
+import {GlassMenuButton} from '@likith99/react-native-adaptive-liquid-glass';
 
 <GlassMenuButton title="Actions" systemImage="ellipsis.circle"
   items={[{id: 'save', title: 'Save', systemImage: 'bookmark'},
@@ -71,7 +86,7 @@ iOS uses UIKit's native menu and glass button; older iOS, Reduce Transparency, o
 ## Native toolbars
 
 ```tsx
-import {GlassToolbar} from 'react-native-adaptive-liquid-glass';
+import {GlassToolbar} from '@likith99/react-native-adaptive-liquid-glass';
 
 <GlassToolbar items={[
   {id: 'save', title: 'Save', systemImage: 'square.and.arrow.down'},
@@ -104,3 +119,9 @@ Supply 1–5 items with unique nonempty IDs/titles and a `value` present in the 
 Selection is controlled: update `value` in `onValueChange` to accept a tap. Rejected changes restore the supplied value after the React transaction; tapping the current tab calls only `onTabReselect`. Programmatic values emit no callbacks and may select disabled tabs. Global `disabled` blocks user taps. On the iOS 26.5 simulator, XCTest still reports disabled tabs as enabled despite native dimming and blocked activation; VoiceOver announcements need the planned accessibility audit. `tintColor` changes the selected foreground accent. Stable IDs preserve tab identity across reorder/replacement; native controls own press and selection animations.
 
 Default host height is 80 points, minimum width 180. Supply sufficient width/height for your labels. The screen owns safe-area spacing outside the host and the content above it. This primitive does not own a navigation stack, React screens, automatic scroll minimization, or an iPad sidebar. It does not accept React children or `forceFallback`; the native system determines its appearance. The repository demo shows a React Navigation 7 custom tab-bar adapter using route keys, preventable `tabPress`, reselection, retained screen state, and back history.
+
+## Older iOS surfaces and performance
+
+The deployment floor is iOS 15.1. Below iOS 26, GlassView and GlassPressable use UIKit system blur (`regular`: system material; `clear`: ultra-thin material). `material="none"` is transparent. Reduce Transparency uses an opaque semantic background; `forceFallback` explicitly selects the opaque React surface. `fallbackStyle` still applies below iOS 26 and can cover the blur if it supplies an opaque background. A translucent tint overlays the older-iOS blur. GlassContainer remains ordinary layout with no merging below iOS 26. Other controls retain standard UIKit or React implementations. iOS 18.6 is the installed fallback test runtime; iOS 15–17 and physical older devices remain unverified.
+
+Keep blurred areas bounded, avoid nested material surfaces, and use the opaque opt-out for dense lists where appropriate. The native host retains its effect across unchanged props and layout. These safeguards are not measured frame-rate guarantees; profile Release builds on representative physical devices before making performance claims.

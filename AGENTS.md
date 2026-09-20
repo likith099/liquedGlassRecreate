@@ -8,7 +8,7 @@ Read `docs/development.md` first when resuming work. It is the current feature t
 - Public native iOS APIs and standard Android counterparts; merging is opt-in and defaults to false.
 - Preserve the user-accepted action-cluster material tint, native touch response, and icons inside stretching glass. Do not reintroduce custom highlight or movement systems during unrelated work.
 - Older-iOS device testing is deferred by the user; retain availability guards and fallbacks.
-- No publishing or license choice has been authorized.
+- MIT licensing and metadata are already present from the recorded September 18 decision. Do not change the license or publish without explicit authorization.
 
 ## Keep work efficient
 

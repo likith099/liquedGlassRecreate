@@ -9,7 +9,8 @@ flowchart TD
   UIKit --> Children[React children inside effect contentView]
   Host --> SwiftUI[Native SwiftUI title button]
   UIKit --> Cluster[Stable UIKit action controls and glass container]
-  Platform -->|Android or older iOS| RN[React Native View and Pressable]
+  Platform -->|Older iOS surfaces| Blur[UIKit system blur]
+  Platform -->|Android and remaining fallback controls| RN[React Native View and Pressable]
   Platform -->|iOS slider, all supported versions| Slider[Fabric and Swift UISlider]
   Platform -->|Android slider| SeekBar[Fabric and Kotlin SeekBar]
 ```
@@ -18,7 +19,7 @@ The Objective-C++ files implement Fabric component descriptors and convert gener
 
 ## Material host
 
-`ALGSurfaceView` owns one `UIVisualEffectView`. React children mount into its `contentView`, preserving UIKit's material compositing. Initial material creation is deferred until nonempty layout in a window. Reattachment resets that state; interactivity changes tear down the old effect before recreating it. A notification observer handles Reduce Transparency changes, and native transitions consult Reduce Motion.
+`ALGSurfaceView` owns one `UIVisualEffectView`. React children mount into its `contentView`, preserving UIKit's material compositing. Initial material creation is deferred until nonempty layout in a window. Reattachment resets that state; interactivity changes tear down the old effect before recreating it. Below iOS 26 the same host renders UIBlurEffect system materials; explicit forceFallback selects the opaque React implementation. A notification observer handles Reduce Transparency changes, and native transitions consult Reduce Motion.
 
 The Fabric wrapper restores the full bounds for the material after Fabric's default content layout. Yoga already supplies padding offsets to children; using Fabric's inset content frame would shrink the material and count padding twice. Native view recycling is disabled in this initial version to avoid retaining stale host state across different React nodes.
 

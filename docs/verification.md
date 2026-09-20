@@ -198,7 +198,7 @@ Build lesson: after `build-for-testing` against an iOS 26.5 destination, `test-w
 
 The Android pass completed on a Pixel_10_Pro_XL emulator: the controls phase, a dark 2.0 font-scale phase and a standard light phase all passed, and the captures were inspected on both platforms. RTL could not be produced at all: the developer force-RTL setting changed neither `I18nManager.isRTL` nor the native layout, a Play Store image cannot set `persist.sys.locale` without root, and a per-app Arabic locale left both React and native layout unmirrored, so the scripted RTL phase was replaced with a light-theme phase and RTL moved to manual acceptance.
 
-Executed results, findings and remaining gaps are in [B3 verification](../artifacts/b3-verification.json). Remaining B3 work is the refreshed tarball and standalone consumer. Spoken screen-reader output, RTL, Reduce Motion and Reduce Transparency paths, and physical-device acceptance are unverified.
+Executed results, findings and remaining gaps are in [B3 verification](../artifacts/b3-verification.json). Spoken screen-reader output, RTL, Reduce Motion and Reduce Transparency paths, and physical-device acceptance are unverified.
 
 ## B3 Android tab active indicator — September 18, 2026
 
@@ -207,3 +207,97 @@ The user reported that on first landing on a tab screen the selected tab's activ
 Two hypotheses were tested and rejected before instrumenting: driving selection through `NavigationBarView.selectedItemId` instead of `MenuItem.isChecked` changed nothing, because Material already auto-selects the first item when the menu is built, and removing the forced measure/layout changed nothing either. Logging the bar's view tree then showed the cause directly: the selected item's active indicator view had `lp=0x0`. Material derives those params from the item view's width at the moment the item becomes checked, the first selection happens while the bar is still unmeasured, and the resulting clamp to zero is never revisited.
 
 `applyConfiguration` now re-assigns `itemActiveIndicatorWidth` after the forced layout, which makes every item recompute against its real width, and lays the bar out again because React Native swallows the `requestLayout` that changing those params triggers. The indicator view goes from `lp=0x0, size=0x0` to `lp=192x96, size=192x96` with full scale and alpha, and the pill renders correctly on first landing at font scale 1.0 and 2.0. The B3 Android phases and the B2 Android tabs regression both passed afterwards.
+
+## B3 standalone packaged consumer — September 18, 2026
+
+The refreshed 76-file archive, sha256 `a8188f14…b4abf6e5`, was installed into a fresh `/private/tmp/alg-consumer-*` app with its own dependency tree. Consumer typecheck, both production JS bundles, autolinking including the tab component descriptor and the packaged native sources, and both native builds passed. The consumer resolved no Expo and no React Navigation dependency. The consumer was rebuilt from scratch because its previous directory and `ConsumerDerivedData` cache had been deleted to free disk. Record in [package smoke](../artifacts/package-smoke.json); the file count rose from 75 to 76 with `src/adaptiveHeight.ts`.
+
+## iOS 27 scene lifecycle adoption — September 18, 2026
+
+The demo crashed on a physical iPhone running iOS 27.0, launching to a frozen splash screen with `EXC_BREAKPOINT`. The crash report's faulting frame was `__UIApplicationEvaluateRuntimeIssueForNoSceneLifecycleAdoption`, raised during scene creation: iOS 27 traps an app that has not adopted the UIScene lifecycle, where iOS 26 only reported a runtime issue. Every earlier check ran on the iOS 26.5 simulator, so nothing caught it.
+
+Two earlier hypotheses were wrong and are recorded so they are not retried. The demo did hardcode `jsLocation = "localhost:8093"`, which cannot reach Metro from a device; that is a real bug, now fixed by reading the address React Native writes into `ip.txt`, but it was not this crash. A code-signing denial seen while launching through `devicectl` was a trust prompt on the device, not a build fault; profiles were valid and included the device.
+
+The iOS 27.0 simulator reproduced the crash exactly, which made it debuggable after the device produced no synced crash report. `example/ios/LiquidGlassLab/Info.plist` now declares a `UIApplicationSceneManifest` and `AppDelegate.swift` adds a `SceneDelegate` that owns the window and starts React Native into it. The app then launched and rendered on the iOS 27 simulator and on the physical iPhone, staying alive past the splash. The three iOS checks passed again on iOS 26.5 afterwards: adaptive control accessibility, largest-text selector layout and the tab navigation regression, 3 tests with 0 failures in 94.6 seconds. This is the example app's configuration; the package itself is unchanged, and a consumer app on iOS 27 must adopt scenes in its own host app.
+
+## MIT licensing and distribution readiness — September 18, 2026
+
+The user chose MIT on the public npm registry, superseding decision D07's deferral. The package previously declared `UNLICENSED` with no LICENSE file, and its podspec claimed a Proprietary license with a `https://localhost/...` placeholder source. An MIT LICENSE now sits at the repository root and inside the package, `package.json` carries license, author, repository, homepage, bugs and keywords, and the podspec's license, homepage, author and source match. The package README's install section was rewritten for npm consumers and records the two host-app requirements that are easy to miss: React Native 0.86.x with the New Architecture, and UIScene adoption on iOS 27. [docs/releasing.md](releasing.md) holds the publish and pipeline runbook.
+
+The repacked archive is 77 files and 37.3 kB, sha256 `1047045b…0e946ca9`, and passed the standalone consumer check again: typecheck, both production bundles, autolinking and both native builds, with no Expo or React Navigation dependency. The npm name `react-native-adaptive-liquid-glass` was confirmed unregistered. Nothing has been published; that needs an npm login and an explicit go-ahead.
+
+One verification failure on the way was environmental, not a package defect. The consumer's Android build failed twice with `Daemon compilation failed: null`, first under memory pressure with two simulators booted and 95 MB of RAM free, then on a missing `kotlin-stdlib-2_1_20_jar-snapshot.bin` in the Gradle transforms cache — fallout from clearing `~/.gradle/caches` while the disk was nearly full. Clearing the transforms cache and the stale daemons fixed it, and the full run then passed.
+
+## React Native 0.81 compatibility probe — September 18, 2026
+
+A consuming app on React Native 0.81.5 with React 19.1 and Expo SDK 54, New Architecture enabled, prompted a direct test of the `>=0.86.0 <0.87.0` peer range. A scratch bare RN 0.81.5 app was created, the 0.1.0 tarball installed with `--legacy-peer-deps`, and both platforms built.
+
+The package itself is largely compatible with 0.81. Autolinking resolved both platforms and reported all three Android component descriptors; the production JS bundle built, so the shipped TypeScript source transpiles under 0.81's Metro; and `:app:assembleDebug` succeeded, so Fabric codegen and the Kotlin view managers compile against 0.81. RN 0.81 also provides `RCTReactNativeFactory` and codegen `componentProvider`, the two integration points the package relies on.
+
+Two blockers appeared on iOS. The podspec's `ios 16.4` platform floor exceeds the RN 0.81 template's default, so `pod install` refuses until the app raises its own deployment target; that is a one-line consumer change. The second is not ours: the iOS build fails compiling `Pods/fmt`, with `call to consteval function ... is not a constant expression`. A control build of the same app with the package uninstalled fails identically, so **React Native 0.81 does not compile under Xcode 26** regardless of this package. Since Xcode 26 is required for the iOS 26 glass APIs, that is a fundamental conflict for a bare 0.81 app rather than a porting gap.
+
+That fmt failure turned out not to apply to the real consumer. The Expo app's `Podfile.lock` contains no `fmt` pod at all; it resolves `ReactNativeDependencies (0.81.5)`, React Native's **prebuilt** iOS dependency binary, because `RCT_USE_RN_DEP` defaults on. Re-running the probe's `pod install` with `RCT_USE_RN_DEP=1 RCT_USE_PREBUILT_RNCORE=1` produced the same fmt-free pod set, and the iOS build then **succeeded** with the package installed.
+
+React Native 0.81 is therefore supported, and the peer range was widened to `>=0.81.0 <0.87.0`. Verified builds are 0.81.5 and 0.86.3; 0.87 is untested and excluded. Two host-app requirements are documented: an iOS deployment target of 16.4 or higher, which CocoaPods enforces, and on 0.81 the use of prebuilt React Native dependencies rather than building React Native from source. After widening the range, typecheck, the JS suite and the full standalone consumer check on 0.86 all passed again.
+
+## Backward-compatibility audit — September 18, 2026
+
+Prompted by the user asking what a first public release still needs, and offering an iPhone 7 for older-iOS testing.
+
+**The iOS floor is not what the podspec claims.** Lowering `s.platforms` to 15.1 and rebuilding produced exactly two compile errors, both `preferredMenuElementOrder` in `ALGMenuView.swift`, which needs iOS 16.0. Nothing in the package requires 16.4; that figure was arbitrary. Both call sites are now guarded with `if #available(iOS 16.0, *)`, which is correct defensive code and is kept.
+
+**But lowering the floor is not free.** With the example app's deployment target at 15.1 the package compiles, yet `testNativeTabNavigationBatch` fails at the Search-screen step. Reverting only the deployment target to 16.4 makes it pass again, so UIKit changes native tab behaviour on iOS 26 based on the app's deployment target. The floor therefore stays at 16.4 pending investigation; this is a real trade-off between older-device reach and modern tab behaviour, not a version-string edit.
+
+**An iPhone 7 cannot run this package at any floor we ship today.** It tops out at iOS 15.8, below both the current 16.4 and the 16.0 the menu API needs. Older-device acceptance needs a device on iOS 16.0+.
+
+**A pre-existing regression was found in the menu tests.** `testNativeMenuActionsAndFallback` and `testToolbarAndMenuBatch` both fail at line 116: after tapping outside an open menu, `Share item` never disappears, so the menu does not dismiss. Stashing the availability guard and rebuilding reproduces the failure, so it predates this change. B3 only ever ran the three accessibility and tabs tests, so the menu suite has not been executed since B1 in September, across scene adoption, the iOS 27 SDK and the adaptive-height work. Cause unknown; it needs its own investigation.
+
+**No runtime below iOS 26.5 has ever executed this code.** Only the 26.5 and 27.0 simulator runtimes are installed, so the entire `isLiquidGlassSupported() == false` fallback path — the standard controls every pre-26 device would see — is unverified on any real or simulated older OS.
+
+## B4 iOS floor lowered to 15.1 — September 18, 2026
+
+The user's requirement is that devices below iOS 26 get the standard counterpart controls and full functionality rather than glass, which is the package's existing design; the work was to make that floor reachable and prove it.
+
+The podspec floor moved from 16.4 to **15.1**, React Native's own minimum and the lowest deployment target the iPhoneOS 27.0 SDK accepts. Only one API exceeded it, `preferredMenuElementOrder` at iOS 16.0, now guarded at both call sites.
+
+The real defect was in the tab wiring. `UITabBarController` adopts the `UITab` API based on the app's **deployment target**, not only the running OS. The code branched on `#available(iOS 18.4, *)`, which is true on iOS 26 regardless of deployment target, so an app built for 15.1 set `controller.tabs` that UIKit ignored while never populating `viewControllers`; tab replacement then produced a blank screen. This was found by bisection: at a 15.1 target `testNativeTabNavigationBatch` failed at the Search-screen step, and reverting only the deployment target to 16.4 made it pass. The fix drives the view-controller array whenever the controller's contents do not match the intended order, a no-op once `UITab` has taken effect, and lets selection fall through to the view-controller path when `tab(forIdentifier:)` returns nil.
+
+At a 15.1 deployment target the tab navigation, adaptive accessibility, largest-text, native button/selector and slider tests all pass, along with typecheck and the JS suite.
+
+What is still unproven is the fallback path itself at runtime. Xcode 27 offers only iOS 26.0 for download; 18.x, 17.x and 16.x simulator runtimes are unavailable, so no simulator on this machine can run a pre-26 OS. Verifying the counterpart controls requires a physical device below iOS 26. An iPhone 7 on iOS 15.8 is now within the supported floor and is the only such device available; it was not connected during this work.
+
+## First execution below iOS 26 — September 19, 2026
+
+The user installed the iOS 18.6 simulator runtime, which `xcodebuild -downloadPlatform` reports as unavailable for every version below 26.0, and it was used to execute the pre-26 fallback path for the first time in this project.
+
+The example builds and launches on iOS 18.6 at the new 15.1 floor. The demo's own status line reads **"Standard platform components"** instead of the iOS 26 label, confirming `isLiquidGlassSupported()` gates correctly and the React counterparts render rather than glass. `testNativeTabNavigationBatch` passes, which is the requirement that basic navigation keeps working on older devices, and `testNativeButtonAndSegmentedControl` passes after the checks were made version-aware.
+
+Two behavioural differences below 26 are real and now asserted per version rather than papered over. A loading title button reports the accessibility value `busy`, because the React fallback publishes `accessibilityState.busy`, where the SwiftUI control publishes `Loading`. The selector is an individually accessible radio group rather than a `UISegmentedControl`, so element-type queries differ. Both are correct for their platform.
+
+`testAdaptiveControlAccessibility` still fails on 18.6 at the test's own `reveal` helper, which cannot settle on the shorter fallback layout; loosening it from full frame containment to a centre-point check did not resolve it. The exported accessibility hierarchy from the failure shows every expected element present and correctly typed, including the switches, the cluster toggle and all three tab identifiers, so this is a harness limitation rather than a product defect. It is recorded as open.
+
+All three checks still pass on iOS 26.5 after the test changes, so the version-aware branching did not regress the glass path.
+
+## B4 review: native blur and current release state — September 20, 2026
+
+Reviewed the Claude changes and reconciled stale licensing, deployment-target and peer-range claims. MIT metadata already exists; the package is an unpublished 0.1.0 candidate with an iOS 15.1 floor and declared RN 0.81–0.86 range (prior build probes at 0.81.5 and 0.86.3). Corrected the workspace lockfile's stale UNLICENSED/0.86 metadata. Release instructions now use current npm trusted publishing/granular-token guidance and distinguish Debug consumer checks from Release/archive acceptance.
+
+Older-iOS GlassView/GlassPressable now use the existing native host with UIBlurEffect system material (ultra-thin for clear). Explicit forceFallback keeps the opaque React implementation; Reduce Transparency keeps semantic opaque native backgrounds, material none stays transparent, and older-iOS containers remain ordinary layout. The dirty-prop gate retains the blur across unchanged configurations; children stay in contentView. No Android rendering or accepted iOS 26 action-feedback change.
+
+The prior accessibility failure was not just scrolling: the test asked for UISegmentedControl when older iOS rendered individual React controls. Correcting the query resolves it. The previous menu outside-tap failure did not reproduce in either runtime; the unchanged full menu/toolbar test passes, so no menu-code fix or confirmed old root cause is claimed.
+
+Executed evidence ([record and source hashes](../artifacts/b4-review-verification.json)):
+
+- Typecheck and 10 JavaScript suites / 32 tests pass (exit 0).
+- iOS **18.6**, iPhone 16 Pro simulator: 8 selected tests, 0 failures, xcodebuild exit 0. Native blur/reuse (100 unchanged configurations), surface touch, adaptive accessibility, largest text, title buttons/selectors, tabs, slider and full menus/toolbars. [Result](../artifacts/B4Review186.xcresult). Inspected blur, largest-text and badge/tab screenshots in `artifacts/b4-review-ios186-captures/`.
+- iOS **26.5**, iPhone 17 Pro simulator: 4 selected tests, 0 failures, xcodebuild exit 0. Native action material/interaction configuration, adaptive accessibility, live surface props/merging/forced fallback, and full menus/toolbars. [Result](../artifacts/B4Review265.xcresult). Inspected expanded glass and grouped toolbar screenshots. Post-test simulator diagnostics timed out after 600 seconds before the bundle finalized; `TEST SUCCEEDED` and a readable result bundle were produced. No test rerun was needed.
+- Android Debug build passed (136 tasks, 29 executed). Existing Pixel emulator: focused control checks pass for activation, loading/disabled state, controlled selector and action cluster; settings restored. Log `artifacts/b4-review-android-controls.log`. This does not refresh the large-text/theme/RTL evidence.
+- npm pack dry run: 77 files, no generated build/cache directories. Prior independent consumer tarball predates B4; no refreshed consumer or publication in this review.
+
+No physical Release performance result or measured speedup is claimed. Next: [physical Release profiling](performance.md), Reduce Transparency/Motion runtime transitions, deferred older-device and manual accessibility acceptance; then refresh the packed consumer and distribution builds for the final candidate. iOS 15–17, exact 18.5, iPad, RTL and spoken assistive technology remain unverified.
+
+## Scoped npm package preparation — September 20, 2026
+
+User supplied `https://www.npmjs.com/settings/likith99/packages`; selected `@likith99/react-native-adaptive-liquid-glass`. Updated package/public registry metadata, demo imports/dependency, workspace lockfile, CocoaPods paths, installation docs and the standalone harness. Native module, codegen and pod names are unchanged. No registry publication or authenticated account-permission verification occurred.
+
+Typecheck and 10 JS suites / 32 tests pass, exit 0. Demo pod install passes. The fresh scoped 77-file tarball installs into `/private/tmp/alg-consumer-xWnbpZ`, passes metadata/autolinking checks, consumer TypeScript, both production JS bundles and both Debug native builds; the verifier exits 0. No Expo or React Navigation dependency in the consumer. Archive `artifacts/likith99-react-native-adaptive-liquid-glass-0.1.0.tgz`, SHA-256 `4baca972b97e140cfffdc0e264a945d3e4832e6693a7d51067719bb5cf40c5c0`. [Package record](../artifacts/package-smoke.json), [scope record](../artifacts/scope-verification.json), logs `artifacts/scope-package-verify.log`, `artifacts/scope-typecheck.log`, `artifacts/scope-jest.log`, `artifacts/scope-pods.log`. This refreshes packed-consumer evidence for B4; it does not replace physical Release performance, accessibility or distribution acceptance.

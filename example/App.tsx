@@ -5,7 +5,7 @@ import {SafeAreaProvider, SafeAreaView} from 'react-native-safe-area-context';
 import AccessibilityDemo from './AccessibilityDemo';
 import ToolbarDemo from './ToolbarDemo';
 import TabNavigationDemo from './TabNavigationDemo';
-import {GlassActionCluster, GlassButton, GlassContainer, GlassView, GlassSegmentedControl, GlassSlider, GlassMenuButton, isLiquidGlassSupported} from 'react-native-adaptive-liquid-glass';
+import {GlassActionCluster, GlassButton, GlassContainer, GlassView, GlassSegmentedControl, GlassSlider, GlassMenuButton, isLiquidGlassSupported} from '@likith99/react-native-adaptive-liquid-glass';
 
 const actions = [
   {id: 'heart', title: 'Favorite', systemImage: 'heart'},
@@ -78,7 +78,7 @@ function Lab({onOpenTabs, onOpenAccessibility}: {onOpenTabs: () => void; onOpenA
         <View style={styles.stageTop}>
           <GlassView forceFallback={fallback} material={material} interactive={interactive} tintColor={tintColor}
             cornerRadius={25} testID="adaptive-surface" style={styles.badge}>
-            <Text style={{color: glassForeground, fontSize: 13, fontWeight: '600'}}>✦  {fallback ? 'Standard surface' : 'Native surface'}</Text>
+            <Text style={{color: glassForeground, fontSize: 13, fontWeight: '600'}}>✦  {fallback ? 'Standard surface' : isLiquidGlassSupported() ? 'Native surface' : 'Native blur'}</Text>
           </GlassView>
         </View>
         <View style={styles.stageBottom}>

@@ -1,7 +1,7 @@
 import React from 'react';
 import {View} from 'react-native';
 import type {BottomTabBarProps} from '@react-navigation/bottom-tabs';
-import {GlassTabBar, type GlassTabIcon, type GlassTabItem} from 'react-native-adaptive-liquid-glass';
+import {GlassTabBar, type GlassTabIcon, type GlassTabItem} from '@likith99/react-native-adaptive-liquid-glass';
 
 type Props = BottomTabBarProps & {disabled?: boolean; disabledRoutes?: readonly string[]; reversed?: boolean};
 const icons: Record<string, GlassTabIcon> = {Home: 'home', Library: 'library', Search: 'search', Inbox: 'inbox', Settings: 'settings'};

@@ -4,7 +4,7 @@
 
 ```tsx
 import {useState} from 'react';
-import {GlassMenuButton} from 'react-native-adaptive-liquid-glass';
+import {GlassMenuButton} from '@likith99/react-native-adaptive-liquid-glass';
 
 export function LibraryMenu() {
   const [favorite, setFavorite] = useState(false);

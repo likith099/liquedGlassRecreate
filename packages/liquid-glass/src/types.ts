@@ -8,8 +8,9 @@ export interface GlassViewProps extends ViewProps {
   /** Seconds, 0 disables material transitions. Reduce Motion takes precedence. */
   animationDuration?: number;
   colorScheme?: 'system' | 'light' | 'dark';
-  /** Opaque surface style used on Android, older iOS, or in preview mode. */
+  /** Surface style applied on older iOS, Android, or in forced fallback mode. */
   fallbackStyle?: StyleProp<ViewStyle>;
+  /** Use an opaque React surface instead of native glass or older-iOS blur. */
   forceFallback?: boolean;
 }
 export interface GlassContainerProps extends ViewProps {

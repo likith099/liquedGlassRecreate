@@ -1,6 +1,6 @@
 # Liquid Glass Lab
 
-Bare React Native 0.86 demo for the local `react-native-adaptive-liquid-glass` package. Run the commands from the repository root:
+Bare React Native 0.86 demo for the local `@likith99/react-native-adaptive-liquid-glass` package. Run the commands from the repository root:
 
 ```sh
 npm install

@@ -4,12 +4,12 @@ Pod::Spec.new do |s|
   s.name = 'AdaptiveLiquidGlass'
   s.version = package['version']
   s.summary = package['description']
-  s.homepage = 'https://reactnative.dev'
-  s.license = { :type => 'Proprietary' }
-  s.author = 'Liquid Glass contributors'
-  s.platforms = { :ios => '16.4' }
-  # Local workspace pod; replace with the repository URL before publishing.
-  s.source = { :git => 'https://localhost/adaptive-liquid-glass.git', :tag => s.version.to_s }
+  s.homepage = 'https://github.com/likith099/liquedGlassRecreate'
+  s.license = { :type => 'MIT', :file => 'LICENSE' }
+  s.author = 'Likith Kanneganti'
+  s.platforms = { :ios => '15.1' }
+  # Autolinked from node_modules; the source is declared for completeness.
+  s.source = { :git => 'https://github.com/likith099/liquedGlassRecreate.git', :tag => "v#{s.version}" }
   s.source_files = 'ios/**/*.{h,m,mm,swift}'
   s.private_header_files = 'ios/**/*.h'
   s.swift_version = '5.0'

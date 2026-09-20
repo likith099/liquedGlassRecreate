@@ -1,7 +1,7 @@
 import React, {useState} from 'react';
 import {I18nManager, Pressable, ScrollView, Switch, Text, View, useColorScheme, useWindowDimensions} from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
-import {GlassActionCluster, GlassButton, GlassSegmentedControl, GlassSlider, GlassTabBar, GlassMenuButton, GlassToolbar} from 'react-native-adaptive-liquid-glass';
+import {GlassActionCluster, GlassButton, GlassSegmentedControl, GlassSlider, GlassTabBar, GlassMenuButton, GlassToolbar} from '@likith99/react-native-adaptive-liquid-glass';
 
 const options = [{value: 'all', label: 'All'}, {value: 'saved', label: 'Saved'}, {value: 'shared', label: 'Shared', disabled: true}];
 export default function AccessibilityDemo({onClose}: {onClose: () => void}) {

@@ -2,6 +2,64 @@ import XCTest
 import UIKit
 
 final class GlassInteractionTests: XCTestCase {
+  /// Glass and the native UIKit selector only exist from iOS 26. Below it the package
+  /// renders its React counterparts, which are ordinary views rather than UIKit controls,
+  /// so element types and accessibility values differ and the checks branch accordingly.
+  private var glassEra: Bool {
+    ProcessInfo.processInfo.isOperatingSystemAtLeast(
+      OperatingSystemVersion(majorVersion: 26, minorVersion: 0, patchVersion: 0))
+  }
+
+  @MainActor func testOlderIOSBlurMaterialAndReuse() throws {
+    guard !glassEra else { throw XCTSkip("Exercises the pre-26 material") }
+    guard !UIAccessibility.isReduceTransparencyEnabled else { throw XCTSkip("Blur disabled by accessibility") }
+    let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 320, height: 240))
+    let controller = UIViewController()
+    window.rootViewController = controller
+    let surface = ALGSurfaceView(frame: CGRect(x: 20, y: 20, width: 240, height: 100))
+    controller.view.addSubview(surface)
+    let child = UIButton(type: .system)
+    child.frame = CGRect(x: 10, y: 10, width: 100, height: 44)
+    surface.reactContentView.addSubview(child)
+    window.isHidden = false
+    defer { window.isHidden = true }
+    func configure(_ material: String = "regular", container: Bool = false) {
+      surface.configure(material, interactive: true, tint: nil, radius: 18,
+        container: container, mergingEnabled: false, spacing: 20, duration: 0, scheme: "system")
+      surface.layoutIfNeeded()
+    }
+    configure()
+    let effectView = try XCTUnwrap(surface.subviews.first as? UIVisualEffectView)
+    XCTAssertTrue(effectView.effect is UIBlurEffect)
+    XCTAssertTrue(child.superview === effectView.contentView)
+    XCTAssertTrue(try XCTUnwrap(surface.hitTest(CGPoint(x: 30, y: 30), with: nil)).isDescendant(of: child))
+    var changes = 0
+    let observation = effectView.observe(\.effect) { _, _ in changes += 1 }
+    for _ in 0..<100 { configure() }
+    XCTAssertEqual(changes, 0, "Unchanged props/layout must reuse the existing blur")
+    configure("clear")
+    XCTAssertTrue(effectView.effect is UIBlurEffect)
+    XCTAssertGreaterThan(changes, 0, "A material change must update the effect")
+    observation.invalidate()
+    configure("none")
+    XCTAssertFalse(effectView.effect is UIBlurEffect)
+    configure(container: true)
+    XCTAssertFalse(effectView.effect is UIBlurEffect, "Layout containers must not stack blur effects")
+    XCTAssertTrue(child.superview === effectView.contentView)
+  }
+
+  func testOlderIOSSurfaceInteraction() throws {
+    guard !glassEra else { throw XCTSkip("Exercises the pre-26 surface") }
+    continueAfterFailure = false
+    let app = XCUIApplication(); app.launch()
+    let button = app.buttons["glass-counter"]
+    XCTAssertTrue(button.waitForExistence(timeout: 45))
+    button.tap()
+    XCTAssertTrue(app.staticTexts["React button pressed"].waitForExistence(timeout: 5))
+    let capture = XCTAttachment(screenshot: app.screenshot())
+    capture.name = "Older iOS native blur surface"; capture.lifetime = .keepAlways; add(capture)
+  }
+
   @MainActor func testActionVisualFeedbackConfiguration() throws {
     guard #available(iOS 26.0, *) else { throw XCTSkip("Requires native glass") }
     guard !UIAccessibility.isReduceTransparencyEnabled else { throw XCTSkip("Glass disabled by accessibility") }
@@ -264,7 +322,11 @@ final class GlassInteractionTests: XCTestCase {
     func onScreen(_ element: XCUIElement) -> Bool {
       guard element.exists else { return false }
       let frame = element.frame
-      return frame.height > 0 && app.frame.contains(frame)
+      guard frame.height > 0 else { return false }
+      // Tapping targets the centre, so require that rather than full containment: the pre-26
+      // fallbacks are different heights from the native controls and a stricter test never
+      // settles on some layouts.
+      return app.frame.insetBy(dx: 0, dy: 40).contains(CGPoint(x: frame.midX, y: frame.midY))
     }
     func reveal(_ element: XCUIElement, up: Bool = true) {
       for attempt in 0..<20 {
@@ -282,11 +344,20 @@ final class GlassInteractionTests: XCTestCase {
     XCTAssertTrue(app.staticTexts["Added: 1"].exists)
     let loading = app.switches["adaptive-loading"]
     reveal(loading, up: false); loading.tap(); reveal(button)
-    XCTAssertFalse(button.isEnabled); XCTAssertEqual(button.value as? String, "Loading")
+    XCTAssertFalse(button.isEnabled)
+    // SwiftUI publishes an accessibilityValue; the React fallback reports the busy state.
+    XCTAssertEqual(button.value as? String, glassEra ? "Loading" : "busy")
     reveal(loading, up: false); loading.tap()
-    let segments = app.segmentedControls["adaptive-segments"]
-    reveal(segments); XCTAssertFalse(segments.buttons["Shared"].isEnabled)
-    segments.buttons["Saved"].tap()
+    if glassEra {
+      let segments = app.segmentedControls["adaptive-segments"]
+      reveal(segments); XCTAssertFalse(segments.buttons["Shared"].isEnabled)
+      segments.buttons["Saved"].tap()
+    } else {
+      let saved = app.descendants(matching: .any)["adaptive-segments-saved"].firstMatch
+      reveal(saved)
+      XCTAssertFalse(app.descendants(matching: .any)["adaptive-segments-shared"].firstMatch.isEnabled)
+      saved.tap()
+    }
     XCTAssertTrue(app.staticTexts["Selected: saved"].exists)
     let toggle = app.buttons["glass-cluster-toggle"]
     reveal(toggle); toggle.tap()
@@ -506,14 +577,25 @@ final class GlassInteractionTests: XCTestCase {
     let app = XCUIApplication()
     app.launch()
     XCTAssertTrue(app.buttons["glass-counter"].waitForExistence(timeout: 45))
-    let segments = app.segmentedControls["native-segments"]
-    for _ in 0..<5 {
-      if segments.isHittable { break }
-      app.swipeUp()
+    if glassEra {
+      let segments = app.segmentedControls["native-segments"]
+      for _ in 0..<5 {
+        if segments.isHittable { break }
+        app.swipeUp()
+      }
+      XCTAssertTrue(segments.isHittable, app.debugDescription)
+      XCTAssertFalse(segments.buttons["Shared"].isEnabled)
+      segments.buttons["Saved"].tap()
+    } else {
+      let saved = app.descendants(matching: .any)["native-segments-saved"].firstMatch
+      for _ in 0..<5 {
+        if saved.isHittable { break }
+        app.swipeUp()
+      }
+      XCTAssertTrue(saved.isHittable, app.debugDescription)
+      XCTAssertFalse(app.descendants(matching: .any)["native-segments-shared"].firstMatch.isEnabled)
+      saved.tap()
     }
-    XCTAssertTrue(segments.isHittable, app.debugDescription)
-    XCTAssertFalse(segments.buttons["Shared"].isEnabled)
-    segments.buttons["Saved"].tap()
     XCTAssertTrue(app.staticTexts["Showing: saved"].waitForExistence(timeout: 5))
     let primary = app.buttons["native-primary-button"]
     primary.tap()
@@ -526,7 +608,12 @@ final class GlassInteractionTests: XCTestCase {
     add(native)
     app.switches["controls-disabled-toggle"].tap()
     XCTAssertFalse(primary.isEnabled)
-    XCTAssertFalse(segments.buttons["Saved"].isEnabled)
+    // The disabled selected option is a UIKit segment on iOS 26 and a radio view below it.
+    if glassEra {
+      XCTAssertFalse(app.segmentedControls["native-segments"].buttons["Saved"].isEnabled)
+    } else {
+      XCTAssertFalse(app.descendants(matching: .any)["native-segments-saved"].firstMatch.isEnabled)
+    }
     app.switches["controls-disabled-toggle"].tap()
     app.switches["button-loading-toggle"].tap()
     XCTAssertFalse(primary.isEnabled)

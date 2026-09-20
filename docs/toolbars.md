@@ -3,7 +3,7 @@
 `GlassToolbar` hosts a UIKit `UIToolbar` on iOS and an Android `Toolbar`. Native bar items own taps, menu presentation, and feedback. iOS 26 supplies the system glass appearance; older iOS uses its standard toolbar. No navigation library or Expo Modules is required.
 
 ```tsx
-import {GlassToolbar} from 'react-native-adaptive-liquid-glass';
+import {GlassToolbar} from '@likith99/react-native-adaptive-liquid-glass';
 
 <GlassToolbar
   items={[

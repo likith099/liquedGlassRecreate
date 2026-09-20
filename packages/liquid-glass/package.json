@@ -1,8 +1,34 @@
 {
-  "name": "react-native-adaptive-liquid-glass",
+  "name": "@likith99/react-native-adaptive-liquid-glass",
   "version": "0.1.0",
   "description": "Native iOS Liquid Glass surfaces and controls with standard Android counterparts.",
-  "license": "UNLICENSED",
+  "license": "MIT",
+  "author": "Likith Kanneganti",
+  "homepage": "https://github.com/likith099/liquedGlassRecreate#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/likith099/liquedGlassRecreate.git",
+    "directory": "packages/liquid-glass"
+  },
+  "bugs": {
+    "url": "https://github.com/likith099/liquedGlassRecreate/issues"
+  },
+  "keywords": [
+    "react-native",
+    "ios",
+    "android",
+    "liquid-glass",
+    "glass",
+    "uikit",
+    "swiftui",
+    "material",
+    "fabric",
+    "new-architecture",
+    "tabs",
+    "toolbar",
+    "menu",
+    "accessibility"
+  ],
   "main": "src/index.ts",
   "react-native": "src/index.ts",
   "types": "src/index.ts",
@@ -14,11 +40,12 @@
     "!android/.gradle",
     "AdaptiveLiquidGlass.podspec",
     "react-native.config.js",
-    "README.md"
+    "README.md",
+    "LICENSE"
   ],
   "peerDependencies": {
     "react": ">=19.0.0",
-    "react-native": ">=0.86.0 <0.87.0"
+    "react-native": ">=0.81.0 <0.87.0"
   },
   "codegenConfig": {
     "name": "AdaptiveLiquidGlassSpec",
@@ -38,5 +65,9 @@
         "ALGTabs": "ALGTabsComponentView"
       }
     }
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
   }
 }

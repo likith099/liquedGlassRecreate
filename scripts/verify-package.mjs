@@ -16,7 +16,8 @@ function run(command, args, cwd = consumer, env = {}) {
   return result.stdout;
 }
 console.log(`Consumer: ${consumer}`);
-const packed = JSON.parse(run('npm', ['pack', '--workspace', 'react-native-adaptive-liquid-glass', '--json', '--pack-destination', artifacts], root))[0];
+const packed = JSON.parse(run('npm', ['pack', '--workspace', '@likith99/react-native-adaptive-liquid-glass', '--json', '--pack-destination', artifacts], root))[0];
+if (packed.name !== '@likith99/react-native-adaptive-liquid-glass') throw new Error('Unexpected package scope');
 if (packed.files.some(file => file.path.includes('/build/') || file.path.includes('node_modules'))) throw new Error('Generated files leaked into package');
 const archive = path.join(artifacts, packed.filename);
 const sha256 = createHash('sha256').update(readFileSync(archive)).digest('hex');
@@ -24,7 +25,7 @@ const sha256 = createHash('sha256').update(readFileSync(archive)).digest('hex');
 const tarball = path.join(artifacts, `consumer-${sha256}.tgz`);
 cpSync(archive, tarball);
 const pkg = JSON.parse(readFileSync(path.join(root, 'example/package.json'), 'utf8'));
-pkg.dependencies['react-native-adaptive-liquid-glass'] = `file:${tarball}`;
+pkg.dependencies['@likith99/react-native-adaptive-liquid-glass'] = `file:${tarball}`;
 for (const dependency of ['@react-navigation/native', '@react-navigation/bottom-tabs', 'react-native-screens']) delete pkg.dependencies[dependency];
 pkg.scripts = {};
 writeFileSync(path.join(consumer, 'package.json'), JSON.stringify(pkg, null, 2));
@@ -34,7 +35,7 @@ for (const name of ['ios', 'android', 'index.js', 'app.json', 'babel.config.js']
 }
 // The demo hoists node_modules one level above its app; a standalone app does not.
 for (const [file, from, to] of [
-  ['ios/LiquidGlassLab.xcodeproj/project.pbxproj', '../../packages/liquid-glass/ios/', '../node_modules/react-native-adaptive-liquid-glass/ios/'],
+  ['ios/LiquidGlassLab.xcodeproj/project.pbxproj', '../../packages/liquid-glass/ios/', '../node_modules/@likith99/react-native-adaptive-liquid-glass/ios/'],
   ['android/settings.gradle', '../../node_modules/', '../node_modules/'],
   ['android/app/build.gradle', '../../../node_modules/', '../../node_modules/'],
 ]) {
@@ -45,7 +46,7 @@ writeFileSync(path.join(consumer, 'metro.config.js'), "const {getDefaultConfig} 
 writeFileSync(path.join(consumer, 'tsconfig.json'), JSON.stringify({extends: '@react-native/typescript-config', include: ['App.tsx']}));
 writeFileSync(path.join(consumer, 'App.tsx'), `import React, {useState} from 'react';
 import {Text, View} from 'react-native';
-import {GlassView, GlassContainer, GlassButton, GlassPressable, GlassSegmentedControl, GlassSlider, GlassActionCluster, GlassMenuButton, GlassToolbar, GlassTabBar} from 'react-native-adaptive-liquid-glass';
+import {GlassView, GlassContainer, GlassButton, GlassPressable, GlassSegmentedControl, GlassSlider, GlassActionCluster, GlassMenuButton, GlassToolbar, GlassTabBar} from '@likith99/react-native-adaptive-liquid-glass';
 export default function App() {
   const [value, setValue] = useState(0.4);
   const [selected, setSelected] = useState<string | null>('a');
@@ -66,10 +67,12 @@ export default function App() {
 `);
 console.log('Installing the packed package with an independent dependency tree…');
 run('npm', ['install', '--ignore-scripts', '--no-audit', '--no-fund']);
-const installed = path.join(consumer, 'node_modules/react-native-adaptive-liquid-glass');
+const installed = path.join(consumer, 'node_modules/@likith99/react-native-adaptive-liquid-glass');
 if (!realpathSync(installed).startsWith(consumer)) throw new Error('Consumer unexpectedly points at workspace source');
+const installedPackage = JSON.parse(readFileSync(path.join(installed, 'package.json'), 'utf8'));
+if (installedPackage.name !== packed.name || installedPackage.publishConfig?.access !== 'public' || installedPackage.publishConfig?.registry !== 'https://registry.npmjs.org/') throw new Error('Scoped public package metadata is incorrect');
 const config = JSON.parse(run('node', ['node_modules/react-native/cli.js', 'config']));
-const linked = config.dependencies['react-native-adaptive-liquid-glass'];
+const linked = config.dependencies['@likith99/react-native-adaptive-liquid-glass'];
 if (!linked?.platforms.ios?.podspecPath.startsWith(installed) || !linked?.platforms.android?.sourceDir.startsWith(installed)) throw new Error('Native autolinking failed');
 if (!linked.platforms.android.componentDescriptors.includes('ALGTabsComponentDescriptor')) throw new Error('Tab component descriptor missing from Android autolinking');
 if (!existsSync(path.join(installed, 'ios/ALGTabsComponentView.mm')) || !existsSync(path.join(installed, 'android/src/main/res/drawable/alg_tab_home.xml'))) throw new Error('Tab native source/resources missing from archive');

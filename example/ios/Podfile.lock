@@ -1964,7 +1964,7 @@ PODS:
   - Yoga (0.0.0)
 
 DEPENDENCIES:
-  - AdaptiveLiquidGlass (from `../../node_modules/react-native-adaptive-liquid-glass`)
+  - "AdaptiveLiquidGlass (from `../../node_modules/@likith99/react-native-adaptive-liquid-glass`)"
   - FBLazyVector (from `../../node_modules/react-native/Libraries/FBLazyVector`)
   - hermes-engine (from `../../node_modules/react-native/sdks/hermes-engine/hermes-engine.podspec`)
   - RCTDeprecation (from `../../node_modules/react-native/ReactApple/Libraries/RCTFoundation/RCTDeprecation`)
@@ -2046,7 +2046,7 @@ DEPENDENCIES:
 
 EXTERNAL SOURCES:
   AdaptiveLiquidGlass:
-    :path: "../../node_modules/react-native-adaptive-liquid-glass"
+    :path: "../../node_modules/@likith99/react-native-adaptive-liquid-glass"
   FBLazyVector:
     :path: "../../node_modules/react-native/Libraries/FBLazyVector"
   hermes-engine:
@@ -2204,7 +2204,7 @@ EXTERNAL SOURCES:
     :path: "../../node_modules/react-native/ReactCommon/yoga"
 
 SPEC CHECKSUMS:
-  AdaptiveLiquidGlass: baf3945d1c343f45343f37ef64c55252e5952356
+  AdaptiveLiquidGlass: 1f0c6fb2cc429011fe984d117cf453aad6b3002c
   FBLazyVector: 2138c6c2ab66c31bf5754dc18097fbc498a49c7f
   hermes-engine: 35975068890c71d4609534b47111140882468c3a
   RCTDeprecation: 96f68ebf33f8762466b01d57d6e873c4f30efb07
@@ -2283,6 +2283,6 @@ SPEC CHECKSUMS:
   RNScreens: de068bbd7d91b820fedac25c597d4b14830de74b
   Yoga: 18b74b3ade30bebc1904004dfaceae1dd02a330a
 
-PODFILE CHECKSUM: c659eb1b7e9d831e0d41e2673090ea9347bd201e
+PODFILE CHECKSUM: 09829dfcbe36a8ae6d6c3dc3f45c2474a4a0137b
 
 COCOAPODS: 1.16.2

@@ -41,7 +41,8 @@ public final class ALGMenuView: UIView {
     bar.isHidden = true
     button.showsMenuAsPrimaryAction = true
     button.changesSelectionAsPrimaryAction = false
-    button.preferredMenuElementOrder = .fixed
+    // Keeping the authored order needs iOS 16; below it UIKit picks the order itself.
+    if #available(iOS 16.0, *) { button.preferredMenuElementOrder = .fixed }
     button.titleLabel?.adjustsFontForContentSizeCategory = true
     NotificationCenter.default.addObserver(self, selector: #selector(updateAppearance),
       name: UIAccessibility.reduceTransparencyStatusDidChangeNotification, object: nil)
@@ -190,7 +191,7 @@ public final class ALGMenuView: UIView {
       controls.append(more)
     }
     for control in controls {
-      control.preferredMenuElementOrder = .fixed
+      if #available(iOS 16.0, *) { control.preferredMenuElementOrder = .fixed }
       if #available(iOS 26.0, *) {
         control.sharesBackground = mergingEnabled
         control.hidesSharedBackground = forceFallback || UIAccessibility.isReduceTransparencyEnabled

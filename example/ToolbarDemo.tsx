@@ -1,6 +1,6 @@
 import React, {useEffect, useRef, useState} from 'react';
 import {Pressable, Switch, Text, View} from 'react-native';
-import {GlassMenuButton, GlassToolbar, type GlassMenuElement, type GlassToolbarItem} from 'react-native-adaptive-liquid-glass';
+import {GlassMenuButton, GlassToolbar, type GlassMenuElement, type GlassToolbarItem} from '@likith99/react-native-adaptive-liquid-glass';
 
 export default function ToolbarDemo({foreground, secondary}: {foreground: string; secondary: string}) {
   const [selected, setSelected] = useState('name');
