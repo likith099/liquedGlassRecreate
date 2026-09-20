@@ -4,7 +4,7 @@ A working native prototype: Apple Liquid Glass on iOS 26+, standard controls on 
 
 The package is in `packages/liquid-glass`; `example` is a bare React Native demo. It uses React Native 0.86.3, React 19.2.3, Fabric, Swift, UIKit, and SwiftUI. This is an initial implementation, not a completed general-purpose component suite.
 
-For current feature status, remaining work, development batches, and reusable test evidence, start with the [development tracker](.agent/development.md). Contributors should follow [the development workflow](AGENTS.md).
+For what the package supports today and what is still unverified, see [compatibility](docs/compatibility.md); the rest of the documentation is indexed in [`docs/`](docs/). Contributors should follow [the development workflow](AGENTS.md).
 
 ## What it looks like
 
@@ -226,7 +226,7 @@ xcodebuild -workspace example/ios/LiquidGlassLab.xcworkspace \
   -derivedDataPath artifacts/DerivedData CODE_SIGNING_ALLOWED=NO test
 ```
 
-Metro must be running for the Debug UI tests. They exercise glass/action callbacks, opt-in merging, native buttons and segmented selection, and slider snapping, rejected changes, reset, and disablement. Screenshots are attached to Xcode's test result. See [verification notes](.agent/verification.md) for actual run results.
+Metro must be running for the Debug UI tests. They exercise glass/action callbacks, opt-in merging, native buttons and segmented selection, and slider snapping, rejected changes, reset, and disablement. Screenshots are attached to Xcode's test result.
 
 `python3 scripts/verify-android-slider.py` checks the slider in a running Android demo using adb and saves screenshots/results under `artifacts`. It defaults to `emulator-5554`; override `ANDROID_SERIAL` and `ADB` as needed. This drives the demo UI, so leave that emulator idle during the test.
 
@@ -240,4 +240,4 @@ Metro must be running for the Debug UI tests. They exercise glass/action callbac
 
 ## Reference study
 
-The requested reference packages are installed only under `research/references/node_modules`, with their own lockfile. They are not dependencies of our package or demo. Restore with `npm ci --prefix research/references --ignore-scripts --legacy-peer-deps`. See [research notes](.agent/research.md) for versions, sources, findings, and implementation limits.
+The requested reference packages are installed only under `research/references/node_modules`, with their own lockfile. They are not dependencies of our package or demo. Restore with `npm ci --prefix research/references --ignore-scripts --legacy-peer-deps`.

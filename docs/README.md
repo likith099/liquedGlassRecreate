@@ -12,6 +12,3 @@ are in the [root README](../README.md).
 | [toolbars.md](toolbars.md) | `GlassToolbar` — native toolbars and overflow behaviour |
 | [accessibility.md](accessibility.md) | Text size, appearance, Reduce Transparency and assistive-technology behaviour |
 | [releasing.md](releasing.md) | Cutting a release, publishing, and consuming the package in an app or pipeline |
-
-Internal development tracking and test evidence live in [`.agent/`](../.agent/)
-and are not documentation.

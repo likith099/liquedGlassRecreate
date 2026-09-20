@@ -10,3 +10,6 @@ local.properties
 *.tgz
 artifacts/
 example/ios/.xcode.env.local
+
+# Agent working notes: local to the working copy, not part of the repository
+.agent/

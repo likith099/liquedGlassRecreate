@@ -19,7 +19,7 @@ Material tabs enable label font scaling and up to two lines. Keep native tab tit
 
 ## Verification boundary
 
-B3 adds JS regressions, iOS accessibility-tree/large-text checks, and Android runtime checks for action groups, title buttons, selectors, dark large text and standard light appearance. Current executed evidence and remaining gaps live in the [development tracker](../.agent/development.md). Test implementations alone do not establish a pass.
+B3 adds JS regressions, iOS accessibility-tree/large-text checks, and Android runtime checks for action groups, title buttons, selectors, dark large text and standard light appearance. Test implementations alone do not establish a pass: spoken VoiceOver and TalkBack review remain outstanding.
 
 Manual acceptance still needs real VoiceOver/TalkBack navigation, spoken disabled/selected/loading states and badges, Switch Control or keyboard navigation, settings changes during interactions, and physical-device layout/perception. Older-iOS physical coverage remains deferred; iOS 18.6 simulator checks are tracked in B4. Do not claim comprehensive accessibility conformance from automation.
 

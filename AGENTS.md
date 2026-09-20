@@ -2,6 +2,8 @@
 
 Read `.agent/development.md` first when resuming work. It is the current feature tracker and handoff. Read only the relevant API/source files next; use `.agent/verification.md` for historical evidence when needed, not as the default starting point.
 
+`.agent/` is deliberately untracked. It holds working notes for whoever is developing the package, not documentation, so it lives in the working copy and a fresh clone will not have it. Keep it updated anyway: it is how the next session resumes without re-deriving state.
+
 ## Preserve agreed behavior
 
 - Bare React Native, no Expo Modules or runtime dependency on reference glass libraries.

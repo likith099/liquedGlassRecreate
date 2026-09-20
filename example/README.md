@@ -12,4 +12,4 @@ npm run ios -- --simulator 'iPhone 17 Pro'
 npm run android
 ```
 
-Metro runs on 8093. iOS needs Xcode 26+. Android needs the Android SDK, Java, and an emulator/device. The library itself does not require Expo. See the root README and `../.agent/verification.md` for implementation scope and tested behavior.
+Metro runs on 8093. iOS needs Xcode 26+. Android needs the Android SDK, Java, and an emulator/device. The library itself does not require Expo. See the root README for implementation scope and tested behavior.

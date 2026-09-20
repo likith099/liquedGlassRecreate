@@ -1,6 +1,6 @@
 # Platform support and backward compatibility
 
-What this package can run on, what sets each limit, and what is still unverified. Status is tracked as batch `B4` in the [development tracker](../.agent/development.md).
+What this package can run on, what sets each limit, and what is still unverified.
 
 ## What actually sets the floor
 

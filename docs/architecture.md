@@ -41,7 +41,7 @@ Metro selects the TSX counterparts for surfaces, buttons, the selector, and acti
 
 ## Next extensions
 
-The [development tracker](../.agent/development.md) owns priorities, batch scope, and remaining validation. The tab navigation batch adds an independent native host and a demo-only router adapter; release preparation follows.
+The tab navigation batch adds an independent native host and a demo-only router adapter; release preparation follows.
 
 Potential cross-element SwiftUI morphing would need a declarative native scene/slot contract. Moving arbitrary Fabric children into independent SwiftUI hosts does not automatically provide shared identity/layout. This remains optional research; custom gesture physics is not planned. Do not promise an undocumented Apple stretch control.
 
