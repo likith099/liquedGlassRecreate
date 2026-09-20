@@ -1,6 +1,20 @@
 # @likith99/react-native-adaptive-liquid-glass
 
-Native iOS Liquid Glass surfaces and UIKit action controls, with ordinary Android counterparts. No Expo dependency. React Native 0.81–0.86 / React 19 / Fabric; requires Xcode 26+, and iOS 15.1+ (glass on iOS 26+).
+Native iOS Liquid Glass surfaces and UIKit action controls, with ordinary Android counterparts. No Expo dependency, and no runtime dependencies at all. React Native 0.81+ / React 19 / Fabric; requires Xcode 26+, and iOS 15.1+ (glass on iOS 26+).
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/likith099/liquedGlassRecreate/v0.1.1/docs/images/demo.gif" width="280" alt="Screen recording of the demo: tapping a glass button increments a counter, then the action cluster expands into four icons that sit inside the stretching glass, and the live property toggles change the material">
+</p>
+
+Every surface here is a real native view — `UIGlassEffect`, `UIMenu`, `UIToolbar` — not a JavaScript approximation. Glass merging is opt-in, and native menus render checked, disabled and destructive items exactly as the system draws them:
+
+<table>
+  <tr>
+    <td align="center"><img src="https://raw.githubusercontent.com/likith099/liquedGlassRecreate/v0.1.1/docs/images/glass-merging-off.png" width="230" alt="Two separate circular glass surfaces with a Bring together button"><br><sub>Merging off</sub></td>
+    <td align="center"><img src="https://raw.githubusercontent.com/likith099/liquedGlassRecreate/v0.1.1/docs/images/glass-merging-on.png" width="230" alt="The same two circular glass surfaces joined by a liquid bridge of material"><br><sub>Merging on</sub></td>
+    <td align="center"><img src="https://raw.githubusercontent.com/likith099/liquedGlassRecreate/v0.1.1/docs/images/grouped-menu.png" width="230" alt="A native iOS menu with an Order section containing a checked Most recent item and a Maintenance section with a red Clear history item"><br><sub>Grouped native menu</sub></td>
+  </tr>
+</table>
 
 ## Install
 
@@ -15,9 +29,11 @@ Then rebuild both native apps; a JS-only reload is not enough the first time. Au
 
 ### Requirements
 
-The host app must run **React Native 0.81 to 0.86 with the New Architecture (Fabric)** and React 19; these are Fabric codegen components and will not build on the old architecture. Builds are verified on 0.81.5 and 0.86.3. iOS needs Xcode 26+ and a **deployment target of iOS 15.1 or higher** — below that CocoaPods refuses to resolve the pod — with native glass on iOS 26+ and standard controls below it.
+The host app must run **React Native 0.81 or newer with the New Architecture (Fabric)** and React 19; these are Fabric codegen components and will not build on the old architecture. Builds are verified on 0.81.5, 0.86.3 and 0.87.1. The peer range has no upper bound: it controls what npm will install, while the tested versions are listed here. iOS needs Xcode 26+ and a **deployment target of iOS 15.1 or higher** — below that CocoaPods refuses to resolve the pod — with native glass on iOS 26+ and standard controls below it.
 
-On React Native 0.81 specifically, the app must consume React Native's **prebuilt** iOS dependencies, which is the default (`RCT_USE_RN_DEP=1`) and what Expo SDK 54 does. Building React Native from source on 0.81 fails under Xcode 26 inside `Pods/fmt`, independently of this package. On **iOS 27 the host app must adopt the UIScene lifecycle**, otherwise iOS traps during scene creation before any UI appears; add a `UIApplicationSceneManifest` and a scene delegate that owns the window. Android needs no extra setup. Expo Modules are not used and no router is required.
+On React Native 0.81 specifically, the app must consume React Native's **prebuilt** iOS dependencies, which is the default (`RCT_USE_RN_DEP=1`) and what Expo SDK 54 does. Building React Native from source on 0.81 fails under Xcode 26 inside `Pods/fmt`, independently of this package. On **React Native 0.87** two defects in React Native itself affect any Fabric library, including this one. React's own `ReactCodegen` target fails to compile in 0.87's default prebuilt mode because its header search path misses the `React_RCTFabric` subdirectory; run `RCT_USE_PREBUILT_RNCORE=0 pod install` to build React from source instead. In an npm workspace, `@react-native/metro-config` nests inside the app rather than hoisting, and `@react-native/community-cli-plugin` cannot `require()` it, so Metro will not start until you declare it in the workspace root.
+
+On **iOS 27 the host app must adopt the UIScene lifecycle**, otherwise iOS traps during scene creation before any UI appears; add a `UIApplicationSceneManifest` and a scene delegate that owns the window. Android needs no extra setup. Expo Modules are not used and no router is required.
 
 ```tsx
 import {GlassView, GlassButton, GlassContainer, GlassActionCluster} from '@likith99/react-native-adaptive-liquid-glass';

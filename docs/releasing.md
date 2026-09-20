@@ -1,6 +1,6 @@
 # Publishing and consuming the package
 
-`@likith99/react-native-adaptive-liquid-glass` is MIT licensed and published to the public npm registry. **0.1.0 was released on September 20, 2026** from commit `2cbf5f8`, tag `v0.1.0`. This is the process for cutting a release and for installing it in another app and its pipelines.
+`@likith99/react-native-adaptive-liquid-glass` is MIT licensed and published to the public npm registry. **0.1.1** is the current release; 0.1.0 was the first, released on September 20, 2026. From 0.1.1 onward releases are published by the [release workflow](../.github/workflows/release.yml) on a `v*` tag, using npm trusted publishing, and carry a signed provenance attestation. This is the process for cutting a release and for installing it in another app and its pipelines.
 
 The organization scope is `@likith99` and the publishing account is `likithnmp`, an `owner` of that organization. The login username and organization scope correctly differ. `npm access get status` reports the package `public`.
 
