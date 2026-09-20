@@ -2,6 +2,26 @@
 
 What this package can run on, what sets each limit, and what is still unverified.
 
+## React Native versions
+
+The peer range is `react-native >=0.81.0` with **no upper bound**. That range says what npm will let you install; it is not a claim that every future release is tested. What has actually been built and exercised is this:
+
+| React Native | Status |
+| --- | --- |
+| 0.81.5 | Built and exercised |
+| 0.86.3 | Built and exercised |
+| 0.87.1 | Built and exercised — typecheck, 32 JS tests, Fabric codegen, native compile, and five native UI batches (surface/live props, menus, tabs, buttons/segmented, toolbars) all pass |
+| below 0.81 | Not supported. These are Fabric codegen components and need the New Architecture |
+
+An upper bound was tried and removed. Capping the range at the last tested version makes every new React Native release an install-time `ERESOLVE` failure for everyone, including on versions that work perfectly well. Without the cap, a genuinely incompatible release fails at build time with a real diagnostic instead. Tested versions belong in this table, not in the peer range.
+
+### Known React Native 0.87 issues (in React Native, not this package)
+
+Two problems surfaced while verifying 0.87.1. Neither is in this package, and both affect any Fabric library equally:
+
+- **Prebuilt React-Core header paths.** With 0.87's default prebuilt mode, React's own `ReactCodegen` target fails to compile: its xcconfig puts `Headers/Public/React-Core-prebuilt` on the search path, but `RCTComponentViewProtocol.h` lives one level deeper under `React-Core-prebuilt/React_RCTFabric/React/`, and `RCTRequired` is not published as a public pod header at all. Building React from source with `RCT_USE_PREBUILT_RNCORE=0 pod install` avoids it, and that is how 0.87.1 was verified.
+- **`@react-native/metro-config` nesting in npm workspaces.** On 0.86.3 npm hoisted it to the root `node_modules`; on 0.87.1 it is nested inside the app workspace. `@react-native/community-cli-plugin` loads it with a bare `require()`, which cannot reach a nested copy, so Metro fails to start. Declaring it in the workspace root's `devDependencies` forces the hoist.
+
 ## What actually sets the floor
 
 | Constraint | Value | Set by |
