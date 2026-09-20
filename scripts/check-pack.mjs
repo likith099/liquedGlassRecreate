@@ -35,7 +35,19 @@ try {
   process.exit(1);
 }
 
-const entry = Array.isArray(parsed) ? parsed[0] : parsed;
+// npm has used three shapes for `pack --json`: an array of entries, a bare
+// entry object, and (npm 11.13+) an object keyed by package name.
+function findEntry(value) {
+  if (!value || typeof value !== 'object') return null;
+  if (Array.isArray(value)) return value.find(item => Array.isArray(item?.files)) ?? null;
+  if (Array.isArray(value.files)) return value;
+  for (const nested of Object.values(value)) {
+    if (nested && typeof nested === 'object' && Array.isArray(nested.files)) return nested;
+  }
+  return null;
+}
+
+const entry = findEntry(parsed);
 if (!entry || !Array.isArray(entry.files)) {
   console.error('npm pack JSON has no file list. Parsed value follows:');
   console.error(JSON.stringify(entry, null, 2).slice(0, 2000));
