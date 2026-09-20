@@ -4,7 +4,40 @@ A working native prototype: Apple Liquid Glass on iOS 26+, standard controls on 
 
 The package is in `packages/liquid-glass`; `example` is a bare React Native demo. It uses React Native 0.86.3, React 19.2.3, Fabric, Swift, UIKit, and SwiftUI. This is an initial implementation, not a completed general-purpose component suite.
 
-For current feature status, remaining work, development batches, and reusable test evidence, start with the [development tracker](docs/development.md). Contributors should follow [the development workflow](AGENTS.md).
+For current feature status, remaining work, development batches, and reusable test evidence, start with the [development tracker](.agent/development.md). Contributors should follow [the development workflow](AGENTS.md).
+
+## What it looks like
+
+Captured from the `example` demo on the iOS 26.5 simulator. Every surface below
+is a real native view — `UIGlassEffect`, `UIMenu` and `UIToolbar` — not a
+JavaScript approximation.
+
+<p align="center">
+  <img src="docs/images/hero-glass-surface.png" width="300" alt="A native glass surface over a colourful backdrop, with a glass button and a four-icon action cluster whose icons sit inside the glass">
+</p>
+
+Glass merging is opt-in. Two nearby surfaces stay separate until you allow them
+to join, then the material bridges between them:
+
+<table>
+  <tr>
+    <td align="center"><img src="docs/images/glass-merging-off.png" width="260" alt="Two separate circular glass surfaces with a Bring together button"><br><sub><b>Merging off</b> — independent surfaces</sub></td>
+    <td align="center"><img src="docs/images/glass-merging-on.png" width="260" alt="The same two circular glass surfaces joined by a liquid bridge of material, with a Separate surfaces button"><br><sub><b>Merging on</b> — the material joins</sub></td>
+  </tr>
+</table>
+
+Menus are real `UIMenu` presentations, so checked, disabled and destructive
+items render and behave exactly as the system draws them:
+
+<table>
+  <tr>
+    <td align="center"><img src="docs/images/native-menu.png" width="260" alt="A native iOS menu with Favorite item, Share item, a greyed-out Unavailable action, and a red Remove item with a trash icon"><br><sub><b>Flat menu</b> — disabled and destructive items</sub></td>
+    <td align="center"><img src="docs/images/grouped-menu.png" width="260" alt="A native iOS menu with an Order section containing By name and a checked Most recent, and a Maintenance section containing Locked action and a red Clear history"><br><sub><b>Grouped menu</b> — sections and checked state</sub></td>
+  </tr>
+</table>
+
+On Android and older iOS the same API renders standard platform controls
+instead; see [compatibility](docs/compatibility.md).
 
 ## Run the demo
 
@@ -191,7 +224,7 @@ xcodebuild -workspace example/ios/LiquidGlassLab.xcworkspace \
   -derivedDataPath artifacts/DerivedData CODE_SIGNING_ALLOWED=NO test
 ```
 
-Metro must be running for the Debug UI tests. They exercise glass/action callbacks, opt-in merging, native buttons and segmented selection, and slider snapping, rejected changes, reset, and disablement. Screenshots are attached to Xcode's test result. See [verification notes](docs/verification.md) for actual run results.
+Metro must be running for the Debug UI tests. They exercise glass/action callbacks, opt-in merging, native buttons and segmented selection, and slider snapping, rejected changes, reset, and disablement. Screenshots are attached to Xcode's test result. See [verification notes](.agent/verification.md) for actual run results.
 
 `python3 scripts/verify-android-slider.py` checks the slider in a running Android demo using adb and saves screenshots/results under `artifacts`. It defaults to `emulator-5554`; override `ANDROID_SERIAL` and `ADB` as needed. This drives the demo UI, so leave that emulator idle during the test.
 
@@ -205,4 +238,4 @@ Metro must be running for the Debug UI tests. They exercise glass/action callbac
 
 ## Reference study
 
-The requested reference packages are installed only under `research/references/node_modules`, with their own lockfile. They are not dependencies of our package or demo. Restore with `npm ci --prefix research/references --ignore-scripts --legacy-peer-deps`. See [research notes](docs/research.md) for versions, sources, findings, and implementation limits.
+The requested reference packages are installed only under `research/references/node_modules`, with their own lockfile. They are not dependencies of our package or demo. Restore with `npm ci --prefix research/references --ignore-scripts --legacy-peer-deps`. See [research notes](.agent/research.md) for versions, sources, findings, and implementation limits.

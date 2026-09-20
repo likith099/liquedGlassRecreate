@@ -54,7 +54,7 @@ The [demo](../example/TabNavigationDemo.tsx) includes prevented Inbox navigation
 
 ## Verification scope
 
-Shared API/event tests and adapter tests live under `example/__tests__`. Native interaction coverage is `GlassInteractionTests/testNativeTabNavigationBatch` on iOS and `scripts/verify-android-tabs.py` on Android. On the iOS 26.5 simulator, XCTest reports disabled tabs as enabled even when UIKit dims them and blocks taps. The runtime test asserts unchanged selection and event count; VoiceOver disabled-state announcements remain part of the accessibility audit. Actual results and remaining device/accessibility coverage are recorded in the [development tracker](development.md); source existence alone is not a passing test result.
+Shared API/event tests and adapter tests live under `example/__tests__`. Native interaction coverage is `GlassInteractionTests/testNativeTabNavigationBatch` on iOS and `scripts/verify-android-tabs.py` on Android. On the iOS 26.5 simulator, XCTest reports disabled tabs as enabled even when UIKit dims them and blocks taps. The runtime test asserts unchanged selection and event count; VoiceOver disabled-state announcements remain part of the accessibility audit. Actual results and remaining device/accessibility coverage are recorded in the [development tracker](../.agent/development.md); source existence alone is not a passing test result.
 
 ## Platform references
 

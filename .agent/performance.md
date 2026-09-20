@@ -20,4 +20,4 @@ Profile a Release build with an embedded JS bundle on a representative older iPh
 
 Capture frame times and hitches, main-thread/JS time, CPU, memory after repeated navigation, and GPU/compositing cost using Instruments and Android profiling tools. Compare with each display's frame budget (about 16.7 ms at 60 Hz, 8.3 ms at 120 Hz); do not claim that a simulator Debug interaction test meets either budget. Fix measured hotspots and repeat the same workload. No physical Release performance baseline or measured speedup is claimed yet.
 
-Current test and release state lives in [the tracker](development.md); final candidate checks live in [releasing](releasing.md).
+Current test and release state lives in [the tracker](development.md); final candidate checks live in [releasing](../docs/releasing.md).

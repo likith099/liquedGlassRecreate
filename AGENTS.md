@@ -1,6 +1,6 @@
 # Development workflow
 
-Read `docs/development.md` first when resuming work. It is the current feature tracker and handoff. Read only the relevant API/source files next; use `docs/verification.md` for historical evidence when needed, not as the default starting point.
+Read `.agent/development.md` first when resuming work. It is the current feature tracker and handoff. Read only the relevant API/source files next; use `.agent/verification.md` for historical evidence when needed, not as the default starting point.
 
 ## Preserve agreed behavior
 

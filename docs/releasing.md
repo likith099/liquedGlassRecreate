@@ -61,13 +61,13 @@ Because the package is public, dev, UAT and production pipelines install it the 
 
 State for 0.1.0:
 
-- [x] B4 fallback/menu checks pass — **physical Release performance still not profiled**; see [performance](performance.md)
+- [x] B4 fallback/menu checks pass — **physical Release performance still not profiled**; see [performance](../.agent/performance.md)
 - [x] Release/archive and oldest supported device gaps explicitly documented, not resolved; see [compatibility](compatibility.md)
 - [x] Checks pass, including `node scripts/verify-package.mjs`
 - [x] Version set and packed contents inspected — 77 files, no `node_modules`, `android/build` or `.gradle`
 - [x] `npm publish` run deliberately, with explicit user authorization
 - [x] Git tag `v0.1.0` pushed for the podspec source
-- [x] Tracker and [verification history](verification.md) updated
+- [x] Tracker and [verification history](../.agent/verification.md) updated
 
 After publishing, confirm the registry copy is the artifact you verified rather than trusting the CLI's exit code:
 

@@ -48,6 +48,6 @@ Changing items, disabling the host, detaching, or rebuilding for a changed toolb
 
 Rebuild native apps after installing this batch because the shared `ALGMenu` Fabric spec gained toolbar props. The demo's **Toolbars and grouped menus** section exercises overflow, hierarchical menus, checkmarks, narrow width, fallback appearance, shared backgrounds, and replacement while a menu is open. The timer is a demo control, not package behavior.
 
-The consolidated iOS test is `GlassInteractionTests/testToolbarAndMenuBatch`; Android uses `python3 scripts/verify-android-toolbar.py` after installing and launching a fresh demo. Current results and remaining coverage are tracked in [development](development.md).
+The consolidated iOS test is `GlassInteractionTests/testToolbarAndMenuBatch`; Android uses `python3 scripts/verify-android-toolbar.py` after installing and launching a fresh demo. Current results and remaining coverage are tracked in [development](../.agent/development.md).
 
 Platform references: [UIToolbar](https://developer.apple.com/documentation/uikit/uitoolbar), [UIBarButtonItem shared backgrounds](https://developer.apple.com/documentation/uikit/uibarbuttonitem/sharesbackground), [Android Toolbar](https://developer.android.com/reference/android/widget/Toolbar), [Android action placement](https://developer.android.com/develop/ui/views/components/appbar/actions).
