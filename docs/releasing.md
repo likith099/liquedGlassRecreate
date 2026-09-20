@@ -1,8 +1,8 @@
 # Publishing and consuming the package
 
-`@likith99/react-native-adaptive-liquid-glass` is MIT licensed and intended for the public npm registry; it has not been published. This is the process for cutting a release and for installing it in another app and its pipelines.
+`@likith99/react-native-adaptive-liquid-glass` is MIT licensed and published to the public npm registry. **0.1.0 was released on September 20, 2026** from commit `2cbf5f8`, tag `v0.1.0`. This is the process for cutting a release and for installing it in another app and its pipelines.
 
-The selected organization scope is `@likith99`. Authenticated registry checks confirmed `npm whoami` returns `likithnmp` and `npm org ls likith99 --json` lists that account as `owner`. The login username and organization scope correctly differ. No registry package has been published; npm may still require an authentication/2FA challenge when publishing.
+The organization scope is `@likith99` and the publishing account is `likithnmp`, an `owner` of that organization. The login username and organization scope correctly differ. `npm access get status` reports the package `public`.
 
 ## One-time setup
 
@@ -12,6 +12,8 @@ For an interactive developer session:
 npm login            # interactive, on a developer machine
 npm whoami           # confirms the account
 ```
+
+**The account must have 2FA enabled to publish at all.** A plain login token is rejected with `403 ... Two-factor authentication or granular access token with bypass 2fa enabled is required`. npm no longer enrols new TOTP authenticators, so 2FA means a WebAuthn security key or passkey (Touch ID, Face ID, Windows Hello, YubiKey); the account is set to `auth-and-writes`. Because a passkey produces no 6-digit code, **do not pass `--otp`** — npm prints an `https://www.npmjs.com/auth/cli/<uuid>` URL, you approve it in the browser, and the CLI continues. Recovery codes are the fallback if a bare `Enter OTP:` prompt appears.
 
 For supported CI providers, use [npm trusted publishing](https://docs.npmjs.com/trusted-publishers/) with OIDC. If that is unavailable, use a scoped, short-lived [granular token](https://docs.npmjs.com/about-access-tokens/) with the publishing permissions required by your account. Classic automation-token instructions are obsolete. Keep credentials in CI secrets; public-package consumers need no token. No publishing workflow is configured in this repository yet.
 
@@ -27,10 +29,11 @@ For supported CI providers, use [npm trusted publishing](https://docs.npmjs.com/
    npm pack --workspace @likith99/react-native-adaptive-liquid-glass --dry-run
    ```
    The list should contain `src`, `ios`, `android`, the podspec, `react-native.config.js`, `README.md` and `LICENSE`, and must not contain `android/build`, `.gradle`, or `node_modules`.
-4. Publish:
+4. Publish. Run this from an interactive terminal: the 2FA challenge needs a TTY, and without one npm exits `EOTP` instead of waiting for the browser approval.
    ```sh
    npm publish --workspace @likith99/react-native-adaptive-liquid-glass --access public
    ```
+   Publishing the packed tarball directly also works, but keep the leading `./` — npm parses a bare `artifacts/x.tgz` as a git spec and fails with `git error 128 / Permission denied (publickey)`.
    Confirm package-name availability and account access at release time. Published name/version pairs cannot be reused; consult the current [npm unpublish policy](https://docs.npmjs.com/policies/unpublish) if removal is ever needed. Publishing requires explicit authorization.
 5. Tag the commit so the podspec's `source` tag resolves: `git tag v<version> && git push --tags`.
 
@@ -56,10 +59,21 @@ Because the package is public, dev, UAT and production pipelines install it the 
 
 ## Release checklist
 
-- [ ] B4 fallback/menu checks pass; physical Release performance reviewed
-- [ ] Release/archive and oldest supported device gaps resolved or explicitly documented
-- [ ] Checks pass, including `node scripts/verify-package.mjs`
-- [ ] Version bumped and `npm pack --dry-run` inspected
-- [ ] `npm publish` run deliberately
-- [ ] Git tag pushed for the podspec source
-- [ ] Tracker and [verification history](verification.md) updated
+State for 0.1.0:
+
+- [x] B4 fallback/menu checks pass — **physical Release performance still not profiled**; see [performance](performance.md)
+- [x] Release/archive and oldest supported device gaps explicitly documented, not resolved; see [compatibility](compatibility.md)
+- [x] Checks pass, including `node scripts/verify-package.mjs`
+- [x] Version set and packed contents inspected — 77 files, no `node_modules`, `android/build` or `.gradle`
+- [x] `npm publish` run deliberately, with explicit user authorization
+- [x] Git tag `v0.1.0` pushed for the podspec source
+- [x] Tracker and [verification history](verification.md) updated
+
+After publishing, confirm the registry copy is the artifact you verified rather than trusting the CLI's exit code:
+
+```sh
+npm view @likith99/react-native-adaptive-liquid-glass version dist.shasum dist.fileCount
+npm pack @likith99/react-native-adaptive-liquid-glass@<version>   # then compare sha256 with the local tarball
+```
+
+A first publish can return `PUT 200` while anonymous `GET` still 404s for a minute or two; that is read-path propagation, not a failed publish. `npm access list packages` and `npm access get status <pkg>` distinguish a propagating package from a genuinely missing or private one.

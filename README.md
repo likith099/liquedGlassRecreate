@@ -33,11 +33,20 @@ Requires Node 22.11+, Xcode 26+, CocoaPods, and a native development build. iOS 
 From another React Native app:
 
 ```sh
-npm install /absolute/path/to/liquedGlassRecreate/artifacts/likith99-react-native-adaptive-liquid-glass-0.1.0.tgz
+npm install @likith99/react-native-adaptive-liquid-glass
 cd ios && pod install
 ```
 
-Then rebuild the native app. Create that local archive with `npm pack --workspace @likith99/react-native-adaptive-liquid-glass --pack-destination artifacts` from this repository (create `artifacts` first if absent). Using the archive installs a complete copy without workspace symlinks. This package has not been published to npm. MIT license and repository metadata are present. See [release gates](docs/releasing.md) before publication.
+Then rebuild the native app; a JS reload will not pick up new native code. The package is published on the public npm registry under the MIT license — no registry credentials are needed to install it.
+
+To test an unreleased change instead, pack the workspace and install the archive, which gives a complete copy without workspace symlinks:
+
+```sh
+npm pack --workspace @likith99/react-native-adaptive-liquid-glass --pack-destination artifacts
+npm install /absolute/path/to/liquedGlassRecreate/artifacts/likith99-react-native-adaptive-liquid-glass-<version>.tgz
+```
+
+See [releasing](docs/releasing.md) for the release process and the gates that still apply.
 
 ```tsx
 import {useState} from 'react';
