@@ -1,5 +1,5 @@
 PODS:
-  - AdaptiveLiquidGlass (0.1.0):
+  - AdaptiveLiquidGlass (0.1.2):
     - hermes-engine
     - RCTRequired
     - RCTTypeSafety
@@ -2172,7 +2172,7 @@ EXTERNAL SOURCES:
     :path: "../../node_modules/react-native/ReactCommon/yoga"
 
 SPEC CHECKSUMS:
-  AdaptiveLiquidGlass: a2db990c73d3167774b2261938f79ce8f0901250
+  AdaptiveLiquidGlass: bffeb5e4af822e4692de7fe2918bb34181b7554f
   boost: 8502bfdc46e2804408af2e163049ece181009af4
   DoubleConversion: 501a575c40c0b50c89685762dd3e415e6bb26fb0
   fast_float: 7c925d1cebf8328d4018d061f49377e9f887e3b4

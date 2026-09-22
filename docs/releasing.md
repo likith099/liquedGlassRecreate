@@ -4,38 +4,43 @@
 
 The organization scope is `@likith99` and the publishing account is `likithnmp`, an `owner` of that organization. The login username and organization scope correctly differ. `npm access get status` reports the package `public`.
 
-## One-time setup
+## Publishing setup
 
-For an interactive developer session:
+The existing [release workflow](../.github/workflows/release.yml) uses
+[npm trusted publishing](https://docs.npmjs.com/trusted-publishers/) with GitHub
+OIDC. The npm publisher is bound to the repository and `release.yml` filename;
+keep that identity when changing the pipeline. Only the publish job receives
+`id-token: write`. Consumers of this public package need no npm credentials.
 
-```sh
-npm login            # interactive, on a developer machine
-npm whoami           # confirms the account
-```
+The first release used interactive npm login and account 2FA. Normal releases
+now use the tag workflow; an interactive publish would bypass its checks.
 
-**The account must have 2FA enabled to publish at all.** A plain login token is rejected with `403 ... Two-factor authentication or granular access token with bypass 2fa enabled is required`. npm no longer enrols new TOTP authenticators, so 2FA means a WebAuthn security key or passkey (Touch ID, Face ID, Windows Hello, YubiKey); the account is set to `auth-and-writes`. Because a passkey produces no 6-digit code, **do not pass `--otp`** — npm prints an `https://www.npmjs.com/auth/cli/<uuid>` URL, you approve it in the browser, and the CLI continues. Recovery codes are the fallback if a bare `Enter OTP:` prompt appears.
+## Cutting the next release
 
-For supported CI providers, use [npm trusted publishing](https://docs.npmjs.com/trusted-publishers/) with OIDC. If that is unavailable, use a scoped, short-lived [granular token](https://docs.npmjs.com/about-access-tokens/) with the publishing permissions required by your account. Classic automation-token instructions are obsolete. Keep credentials in CI secrets; public-package consumers need no token. No publishing workflow is configured in this repository yet.
+1. Review the [iPhone-first candidate](../release/iphone-first-0.1.2.md) and
+   [release policy](release-acceptance.md). Run the SwiftUI/current-iOS, older-iOS fallback and packed Release consumer
+   checks. The owner authorized testing and publishing; remaining manual/device
+   deferrals are coverage limits and must not be relabeled as passes.
+2. Keep the package version, example dependency and npm lockfile synchronized.
+   They are already set to **0.1.2** for this candidate. Screenshot URLs can stay
+   pinned to the version from which the captures came.
+3. Record source review and documented deferrals in `release/acceptance.json`.
+   After final source edits, get the digest with
+   `node scripts/check-release-acceptance.mjs --print-digest`. A digest identifies
+   reviewed source; it does not mean tests passed. Commit the candidate and its
+   durable review report together so the evidence survives a clean clone.
+4. Push the candidate commit and its matching `v0.1.2` tag when proceeding with
+   publication. The tag triggers shared checks, both native Release builds, then
+   OIDC publishing with provenance. Do not bypass a CI failure with manual publish.
+   Push only the intended tag. A branch dispatch cannot publish, and published
+   name/version pairs cannot be reused.
+5. Inspect Actions results and verify the registry artifact as described below.
 
-## Cutting a release
-
-1. Land the change and run the checks: `npm run typecheck`, `npm test`, the platform runtime checks in [README](../README.md#checks), and `node scripts/verify-package.mjs`. The last one packs the tarball and builds it inside a throwaway app on both platforms, which is the real gate for a release.
-2. Bump the version. Semver applies to the public API in `src/types.ts` and to native behaviour consumers can observe:
-   ```sh
-   npm version patch --workspace @likith99/react-native-adaptive-liquid-glass --no-git-tag-version
-   ```
-3. Inspect exactly what will ship before sending it:
-   ```sh
-   npm pack --workspace @likith99/react-native-adaptive-liquid-glass --dry-run
-   ```
-   The list should contain `src`, `ios`, `android`, the podspec, `react-native.config.js`, `README.md` and `LICENSE`, and must not contain `android/build`, `.gradle`, or `node_modules`.
-4. Publish. Run this from an interactive terminal: the 2FA challenge needs a TTY, and without one npm exits `EOTP` instead of waiting for the browser approval.
-   ```sh
-   npm publish --workspace @likith99/react-native-adaptive-liquid-glass --access public
-   ```
-   Publishing the packed tarball directly also works, but keep the leading `./` — npm parses a bare `artifacts/x.tgz` as a git spec and fails with `git error 128 / Permission denied (publickey)`.
-   Confirm package-name availability and account access at release time. Published name/version pairs cannot be reused; consult the current [npm unpublish policy](https://docs.npmjs.com/policies/unpublish) if removal is ever needed. Publishing requires explicit authorization.
-5. Tag the commit so the podspec's `source` tag resolves: `git tag v<version> && git push --tags`.
+The earlier source-review pass did not execute tests. The subsequent
+[release verification](../release/verification-0.1.2.md) records actual candidate execution. The
+unsigned iOS archive and demo-signed Android bundle are build checks. Signing and
+store delivery belong to the host app; they are not prerequisites for publishing
+this native source package under the agreed scope.
 
 ## Consuming it in another app
 
@@ -44,9 +49,9 @@ npm install @likith99/react-native-adaptive-liquid-glass
 cd ios && pod install
 ```
 
-Then rebuild both native apps once; a JS reload will not pick up new native code. Autolinking finds the iOS podspec and the Android Gradle module inside `node_modules`, so nothing is registered by hand.
+Then rebuild the native app you are using; a JS reload will not pick up new native code. Autolinking finds the iOS podspec and the Android Gradle module inside `node_modules`, so nothing is registered by hand.
 
-The host app must be on **React Native 0.81 to 0.86 with the New Architecture**, because these are Fabric codegen components; 0.81.5 and 0.86.3 are the verified builds. Its iOS deployment target must be **15.1 or higher**, and on 0.81 it must use React Native's prebuilt iOS dependencies rather than building React Native from source. On **iOS 27** the host app must adopt the UIScene lifecycle or iOS traps during scene creation; see the `UIApplicationSceneManifest` and `SceneDelegate` in `example/ios/LiquidGlassLab`.
+The host app must use **React Native >=0.81 with the New Architecture**. Builds have been verified at 0.81.5, 0.86.3 and 0.87.1; the unbounded peer range does not establish future-version compatibility. See [compatibility](compatibility.md) for version-specific setup, including the RN 0.87 source-mode workaround. Its iOS deployment target must be **15.1 or higher**, and on 0.81 it must use React Native's prebuilt iOS dependencies rather than building React Native from source. On **iOS 27** the host app must adopt the UIScene lifecycle or iOS traps during scene creation; see the `UIApplicationSceneManifest` and `SceneDelegate` in `example/ios/LiquidGlassLab`.
 
 ## Pipelines and environments
 
@@ -77,3 +82,12 @@ npm pack @likith99/react-native-adaptive-liquid-glass@<version>   # then compare
 ```
 
 A first publish can return `PUT 200` while anonymous `GET` still 404s for a minute or two; that is read-path propagation, not a failed publish. `npm access list packages` and `npm access get status <pkg>` distinguish a propagating package from a genuinely missing or private one.
+
+## Next-release gate
+
+The [acceptance record](../release/acceptance.json) uses schema 2 and the
+`iphone-first` scope. Documented owner deferrals do not block publication. Source
+review, SwiftUI/fallback runtime evidence, the packed Release consumer, exact
+source/version/tag matching, shared CI and native Release builds
+remain required. Current local changes still need commit/push; 0.1.2 is not yet
+published. To use these changes now, follow [iPhone integration](iphone-integration.md).

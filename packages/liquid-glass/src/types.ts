@@ -84,6 +84,9 @@ export interface GlassAction {
   disabled?: boolean;
 }
 export interface GlassActionClusterProps extends Omit<ViewProps, 'children'> {
+  /** iOS 26+: current UIKit material controls (default) or stock SwiftUI glass buttons.
+   * Older iOS, Android and narrow hosts use the standard fallback in either mode. */
+  iosImplementation?: 'uikit' | 'swiftui';
   actions: readonly GlassAction[];
   expanded: boolean;
   onExpandedChange: (expanded: boolean) => void;
@@ -91,9 +94,12 @@ export interface GlassActionClusterProps extends Omit<ViewProps, 'children'> {
   /** Enable shared glass merging and morphing. Defaults to false. */
   mergingEnabled?: boolean;
   spacing?: number;
-  /** Native material tint. Default: neutral dark-mode shading; overrides replace it. */
+  /** UIKit: material tint (neutral dark-mode shading by default).
+   * SwiftUI: standard button tint; no custom default shading. */
   tintColor?: ColorValue;
+  /** UIKit only; SwiftUI uses its standard glass material. */
   material?: 'regular' | 'clear';
+  /** UIKit only; SwiftUI retains standard button feedback. Does not disable actions. */
   interactive?: boolean;
   /** @deprecated Ignored. Native glass feedback follows interactive; custom feedback was removed. */
   pressFeedback?: 'subtle' | 'native';

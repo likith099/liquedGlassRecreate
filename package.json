@@ -12,7 +12,11 @@
     "xcode": "open example/ios/LiquidGlassLab.xcworkspace",
     "android": "npm run android --workspace example --",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "test": "npm run test --workspace example -- --runInBand"
+    "test": "npm run test --workspace example -- --runInBand",
+    "test:release-tools": "node --test scripts/__tests__/*.test.mjs",
+    "check:acceptance": "node scripts/check-release-acceptance.mjs",
+    "build:release:ios": "node scripts/verify-release-builds.mjs ios",
+    "build:release:android": "node scripts/verify-release-builds.mjs android"
   },
   "devDependencies": {
     "@react-native/metro-config": "0.87.1"

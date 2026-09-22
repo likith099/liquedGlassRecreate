@@ -21,6 +21,20 @@ Material tabs enable label font scaling and up to two lines. Keep native tab tit
 
 B3 adds JS regressions, iOS accessibility-tree/large-text checks, and Android runtime checks for action groups, title buttons, selectors, dark large text and standard light appearance. Test implementations alone do not establish a pass: spoken VoiceOver and TalkBack review remain outstanding.
 
-Manual acceptance still needs real VoiceOver/TalkBack navigation, spoken disabled/selected/loading states and badges, Switch Control or keyboard navigation, settings changes during interactions, and physical-device layout/perception. Older-iOS physical coverage remains deferred; iOS 18.6 simulator checks are tracked in B4. Do not claim comprehensive accessibility conformance from automation.
+VoiceOver testing and development are deferred by user request and do not block the next release. Existing labels and states are retained, with no spoken VoiceOver compatibility claim.
+
+Remaining acceptance includes TalkBack navigation, spoken disabled/selected/loading states and badges, Switch Control or keyboard navigation, settings changes during interactions, and physical-device layout/perception. Older-iOS physical coverage remains deferred; iOS 18.6 simulator checks are tracked in B4. Do not claim comprehensive accessibility conformance from automation.
 
 Platform references: [Apple notEnabled trait](https://developer.apple.com/documentation/uikit/uiaccessibilitytraits/notenabled), [UISegmentedControl](https://developer.apple.com/documentation/uikit/uisegmentedcontrol), and [Material 1.13.0 NavigationBarView public scaling API](https://github.com/material-components/material-components-android/blob/1.13.0/lib/java/com/google/android/material/navigation/NavigationBarView.java).
+
+## RTL layout
+
+The native iOS action cluster follows the inherited interface direction: its toggle sits at the trailing edge and the actions mirror with it. Changing direction preserves control identity and the existing material/touch behavior. The React fallback uses Yoga row direction on both platforms.
+
+The iOS example declares English and Arabic locales for layout testing. Its demo copy remains English; this is not an Arabic translation. The Arabic launch test must observe `RTL` in the environment label and verifies action placement and selector order/selection. It does not establish the entire RTL acceptance matrix.
+
+The Android example also declares English/Arabic per-app locales. In RN 0.87.1, the installed source and Maven Release bytecode read `Locale.getAvailableLocales()[0]` for RTL detection. The example aligns React Native with `resources.configuration.layoutDirection` before its host starts. This workaround belongs to the host app; the library never sets global locale/RTL preferences. Cold-launch after changing the app language. `scripts/verify-android-rtl.py` checks English → Arabic → English and restores the original app locale. Demo text remains English.
+
+For the iPhone-first 0.1.2 candidate, the owner also deferred the remaining manual
+checks and further local execution. They are coverage gaps, not release blockers.
+See [release scope](../release/iphone-first-0.1.2.md); no spoken compatibility is claimed.

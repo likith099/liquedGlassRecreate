@@ -1,69 +1,55 @@
 name: Release
 
-# Publishes @likith99/react-native-adaptive-liquid-glass to npm with a signed
-# provenance attestation, using npm trusted publishing (OIDC). No npm token is
-# stored in this repository: the id-token permission below lets the runner mint
-# a short-lived OIDC credential that npm exchanges for publish rights.
-#
-# Release flow:
-#   1. bump the version in packages/liquid-glass/package.json
-#   2. commit, then `git tag v<version> && git push origin v<version>`
-#   3. this workflow verifies, packs and publishes that exact commit
-
+# The existing npm trusted publisher remains bound to this workflow filename.
+# Only a version tag with reviewed source and documented deferrals can reach the OIDC publish job.
 on:
   push:
     tags:
       - 'v*'
   workflow_dispatch:
-
 permissions:
   contents: read
-
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
 jobs:
+  checks:
+    name: Verify source and acceptance
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: node --test scripts/__tests__/*.test.mjs
+      - run: npm run typecheck
+      - run: npm test
+      - run: node scripts/check-pack.mjs
+      - name: Require matching tag, source review and documented deferrals
+        run: node scripts/check-release-acceptance.mjs
+  native:
+    needs: checks
+    uses: ./.github/workflows/native-acceptance.yml
   release:
-    name: Verify and publish
+    name: Publish verified release
+    needs: [checks, native]
+    if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      id-token: write   # required for provenance and trusted publishing
-
+      id-token: write
     steps:
-      - name: Check out the tagged commit
-        uses: actions/checkout@v4
-
-      - name: Set up Node
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: '22'
           registry-url: 'https://registry.npmjs.org'
-
-      - name: Use an npm that supports trusted publishing
-        run: npm install -g npm@latest
-
-      - name: Install workspace dependencies
-        run: npm ci
-
-      - name: Typecheck
-        run: npm run typecheck
-
-      - name: Test
-        run: npm test
-
-      - name: Verify the tag matches the package version
-        if: startsWith(github.ref, 'refs/tags/v')
-        run: |
-          TAG="${GITHUB_REF_NAME#v}"
-          PKG="$(node -p "require('./packages/liquid-glass/package.json').version")"
-          echo "tag=$TAG package.json=$PKG"
-          if [ "$TAG" != "$PKG" ]; then
-            echo "::error::Tag $GITHUB_REF_NAME does not match package version $PKG"
-            exit 1
-          fi
-
-      - name: Inspect what will ship
-        run: node scripts/check-pack.mjs
-
+      - name: Use tested npm with trusted publishing support
+        run: npm install -g npm@11.12.1
+      - run: npm ci
+      - run: node scripts/check-release-acceptance.mjs
+      - run: node scripts/check-pack.mjs
       - name: Publish with provenance
-        run: |
-          npm publish --workspace @likith99/react-native-adaptive-liquid-glass \
-            --access public --provenance
+        run: npm publish --workspace @likith99/react-native-adaptive-liquid-glass --access public --provenance

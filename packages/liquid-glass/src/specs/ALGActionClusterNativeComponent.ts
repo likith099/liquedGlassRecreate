@@ -1,5 +1,6 @@
 import {codegenNativeComponent, type ViewProps, type ColorValue, type CodegenTypes} from 'react-native';
 export interface NativeProps extends ViewProps {
+  iosImplementation?: CodegenTypes.WithDefault<'uikit' | 'swiftui', 'uikit'>;
   actionsJSON?: string;
   expanded?: CodegenTypes.WithDefault<boolean, false>;
   mergingEnabled?: CodegenTypes.WithDefault<boolean, false>;

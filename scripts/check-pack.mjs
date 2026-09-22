@@ -2,6 +2,7 @@
 // Run standalone so the release workflow does not depend on shell quoting or on
 // the precise shape of npm's --json output, which has changed between versions.
 import {execFileSync} from 'node:child_process';
+import {parsePackResult} from './lib/pack-result.mjs';
 
 const PACKAGE = '@likith99/react-native-adaptive-liquid-glass';
 
@@ -18,41 +19,7 @@ try {
   process.exit(1);
 }
 
-// npm has at times prefixed the JSON with notices; take the first array/object.
-const start = raw.search(/[[{]/);
-if (start === -1) {
-  console.error('npm pack produced no JSON. Raw output follows:');
-  console.error(raw.slice(0, 2000));
-  process.exit(1);
-}
-
-let parsed;
-try {
-  parsed = JSON.parse(raw.slice(start));
-} catch (error) {
-  console.error(`Could not parse npm pack JSON: ${error.message}`);
-  console.error(raw.slice(0, 2000));
-  process.exit(1);
-}
-
-// npm has used three shapes for `pack --json`: an array of entries, a bare
-// entry object, and (npm 11.13+) an object keyed by package name.
-function findEntry(value) {
-  if (!value || typeof value !== 'object') return null;
-  if (Array.isArray(value)) return value.find(item => Array.isArray(item?.files)) ?? null;
-  if (Array.isArray(value.files)) return value;
-  for (const nested of Object.values(value)) {
-    if (nested && typeof nested === 'object' && Array.isArray(nested.files)) return nested;
-  }
-  return null;
-}
-
-const entry = findEntry(parsed);
-if (!entry || !Array.isArray(entry.files)) {
-  console.error('npm pack JSON has no file list. Parsed value follows:');
-  console.error(JSON.stringify(entry, null, 2).slice(0, 2000));
-  process.exit(1);
-}
+const entry = parsePackResult(raw, PACKAGE);
 
 const paths = entry.files.map(file => file.path);
 const forbidden = paths.filter(p =>

@@ -1,8 +1,8 @@
 # React Native Adaptive Liquid Glass
 
-A working native prototype: Apple Liquid Glass on iOS 26+, standard controls on Android and older iOS. **No Expo or third-party glass library is required.**
+Native React Native components: Apple Liquid Glass on iOS 26+, standard controls on Android and older iOS. **No Expo or third-party glass library is required.**
 
-The package is in `packages/liquid-glass`; `example` is a bare React Native demo. It uses React Native 0.86.3, React 19.2.3, Fabric, Swift, UIKit, and SwiftUI. This is an initial implementation, not a completed general-purpose component suite.
+The package is in `packages/liquid-glass`; `example` is a bare React Native demo. It uses React Native 0.87.1, React 19, Fabric, Swift, UIKit, and SwiftUI. See the compatibility documentation for tested versions and remaining coverage limits.
 
 For what the package supports today and what is still unverified, see [compatibility](docs/compatibility.md); the rest of the documentation is indexed in [`docs/`](docs/). Contributors should follow [the development workflow](AGENTS.md).
 
@@ -45,7 +45,7 @@ instead; see [compatibility](docs/compatibility.md).
 
 ```sh
 npm install
-cd example/ios && pod install && cd ../..
+cd example/ios && RCT_USE_PREBUILT_RNCORE=0 pod install && cd ../..
 npm start
 # In a second terminal:
 npm run ios -- --simulator 'iPhone 17 Pro'
@@ -61,11 +61,13 @@ Run `npm run xcode` from the repository root to open **`example/ios/LiquidGlassL
 
 Opening `LiquidGlassLab.xcodeproj` directly omits those dependency targets and can produce `AdaptiveLiquidGlass.modulemap not found` or `No such module React`. Close that project window and open the workspace. If dependencies have not been installed, run `npm install` and then `pod install` in `example/ios` first.
 
-Requires Node 22.11+, Xcode 26+, CocoaPods, and a native development build. iOS deployment minimum is 15.1; glass APIs are guarded at iOS 26. Android uses React Native views and ripple feedback for surfaces/buttons, plus Kotlin bridges to SeekBar, popup menus, Toolbar, and Material BottomNavigationView. The package autolinks on both platforms; rebuild both native apps after installation. New Architecture only. The declared React Native range is 0.81–0.86; builds have been checked on 0.81.5 and 0.86.3.
+Requires Node 22.11+, Xcode 26+, CocoaPods, and a native development build. iOS deployment minimum is 15.1; glass APIs are guarded at iOS 26. Android uses React Native views and ripple feedback for surfaces/buttons, plus Kotlin bridges to SeekBar, popup menus, Toolbar, and Material BottomNavigationView. The package autolinks on both platforms; rebuild both native apps after installation. New Architecture only. The declared React Native range is >=0.81; builds have been checked on 0.81.5, 0.86.3 and 0.87.1. On 0.87.1 use `RCT_USE_PREBUILT_RNCORE=0 pod install`; see [compatibility](docs/compatibility.md).
 
 ## Use the package
 
-From another React Native app:
+For the local 0.1.2 candidate and an iPhone-focused setup, see [iPhone integration](docs/iphone-integration.md). See [release verification](release/verification-0.1.2.md) for candidate test evidence.
+
+To install the published version in another React Native app:
 
 ```sh
 npm install @likith99/react-native-adaptive-liquid-glass
@@ -113,6 +115,32 @@ export function Controls() {
 }
 ```
 
+## Choose the action-cluster appearance
+
+```tsx
+<GlassActionCluster
+  iosImplementation="swiftui" // "uikit" is the existing appearance and default
+  actions={actions}
+  expanded={expanded}
+  onExpandedChange={setExpanded}
+  onAction={handleAction}
+/>
+```
+
+On iOS 26+, `swiftui` uses Apple's stock `.glass` button style with standard
+material and touch response, without our default dark-mode shading. Change this
+prop at runtime to switch; the controlled actions/expanded state are retained.
+UIKit-specific `material` and `interactive` props do not alter the SwiftUI mode.
+`tintColor` uses SwiftUI's button tint there. Merging remains opt-in, using
+`GlassEffectContainer`; its transitions may differ from UIKit. Older iOS,
+Android, narrow hosts and `forceFallback` keep standard controls. Standalone
+`GlassButton` is unaffected. Rebuild iOS after installing this update.
+
+The SwiftUI branch compiled and passed simulator switching, merging and RTL
+interaction checks on iOS 26.5. The older-iOS fallback passed on iOS 18.6.
+
+See [action-cluster options](docs/action-clusters.md) for details.
+
 ## Components
 
 | Component | iOS 26+ | Android / older iOS |
@@ -134,7 +162,7 @@ See [the typed API](packages/liquid-glass/src/types.ts) and [native architecture
 
 `GlassContainer.mergingEnabled` defaults to **false**: nearby surfaces remain independent. Set `mergingEnabled={true}` to allow them to join. `GlassContainer.spacing` is the **merging threshold when enabled**, not CSS gap. Place `GlassView` descendants inside it and change their layout or transforms to move them together. Avoid nesting glass surfaces inside other glass surfaces. The demo's position animation uses React Native's native animation driver; UIKit renders the material merging.
 
-`GlassActionCluster` is controlled: update `expanded` in `onExpandedChange`. It accepts typed actions, material, tint, interaction, animation duration, and merging spacing. Its `mergingEnabled` also defaults to false; opt in to shared UIKit glass merging during expansion/collapse. Buttons still expand, respond to touch, and deliver callbacks with merging off. IDs must be unique, nonempty, stable, and must not equal `__toggle`. iOS uses SF Symbols with accessible titles; Android displays those titles. Give the native cluster enough horizontal space: approximately `24 + 52 * (actions.length + 1) + 12 * actions.length` points, and at least 80 points of height. Its native controls do not accept arbitrary React children. The toggle uses the same UIKit material host as GlassView; expansion does not animate its glass opacity or replace its material. Merging uses UIKit geometry and compositing, not SwiftUI matched geometry. The Android fallback can wrap.
+`GlassActionCluster` is controlled: update `expanded` in `onExpandedChange`. It accepts typed actions, material, tint, interaction, animation duration, and merging spacing. Its `mergingEnabled` also defaults to false; opt in to shared UIKit glass merging during expansion/collapse. Buttons still expand, respond to touch, and deliver callbacks with merging off. IDs must be unique, nonempty, stable, and must not equal `__toggle`. iOS uses SF Symbols with accessible titles; Android displays those titles. Give the native cluster enough horizontal space: approximately `24 + 52 * (actions.length + 1) + 12 * actions.length` points, and at least 80 points of height. Its native controls do not accept arbitrary React children. The toggle uses the same UIKit material host as GlassView; expansion does not animate its glass opacity or replace its material. Merging uses UIKit geometry and compositing, not SwiftUI matched geometry. On iOS, a narrower measured host automatically selects the existing wrapping standard controls and returns to native glass when it fits. Controlled state is retained; allow height to grow instead of assigning a fixed height. The Android fallback can also wrap.
 
 `GlassActionCluster` uses the same native interactive material as `GlassView`: UIKit owns finger-localized lighting and deformation, with SF Symbols inside the effect content so they stretch with it. There is no custom press overlay, movement animation, or detached icon. By default, dark-mode actions use a neutral black native material tint at 0.65 alpha to reduce lightness; it darkens the glass **at rest as well as during a press**. Light mode uses a transparent tint, and an explicit `tintColor` overrides this default. This is material tinting, not a 65% highlight-strength setting: UIKit has no separate intensity control ([Apple API](https://developer.apple.com/documentation/uikit/uiglasseffect)). `interactive={false}` disables native press visuals without disabling activation. The former `pressFeedback` prop is deprecated and ignored; the demo has one **Touch response** switch. Android retains its standard ripple response.
 

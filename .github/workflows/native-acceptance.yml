@@ -1,0 +1,53 @@
+name: Native Release builds
+on:
+  workflow_call:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  native:
+    name: ${{ matrix.platform }} Release
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: ios
+            runner: macos-26
+          - platform: android
+            runner: ubuntu-latest
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+    env:
+      RCT_USE_PREBUILT_RNCORE: '0'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - uses: actions/setup-java@v4
+        if: matrix.platform == 'android'
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+        if: matrix.platform == 'android'
+      - name: Install Android SDK components
+        if: matrix.platform == 'android'
+        run: sdkmanager 'platforms;android-36' 'build-tools;36.0.0' 'ndk;27.1.12297006' 'cmake;3.22.1'
+      - name: Install iOS pods
+        if: matrix.platform == 'ios'
+        working-directory: example/ios
+        run: pod install
+      - name: Build Release artifacts
+        run: node scripts/verify-release-builds.mjs ${{ matrix.platform }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: release-${{ matrix.platform }}-${{ github.sha }}
+          path: |
+            artifacts/release-*-build.*
+            artifacts/LiquidGlassLab.xcarchive/Info.plist
+            example/android/app/build/outputs/bundle/release/*.aab
+          retention-days: 30

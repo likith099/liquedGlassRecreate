@@ -68,46 +68,58 @@ public final class ALGButtonView: UIView {
       let controller = UIHostingController(rootView: NativeButtonContent(model: model))
       controller.view.backgroundColor = .clear
       host = controller
-      addSubview(controller.view)
     }
   }
   required init?(coder: NSCoder) { fatalError("init(coder:) is unavailable") }
 
   @objc public func configure(_ title: String, symbol: String, prominent: Bool, disabled: Bool,
     loading: Bool, tint: UIColor?, scheme: String, label: String, hint: String, identifier: String) {
-    model.title = title
-    model.symbol = symbol
-    model.prominent = prominent
-    model.disabled = disabled
-    model.loading = loading
-    model.tint = tint
-    model.label = label
-    model.hint = hint
-    model.identifier = identifier
+    // @Published emits even for equal assignments. React commits frequently
+    // carry unchanged fields; keep those from invalidating SwiftUI content.
+    if model.title != title { model.title = title }
+    if model.symbol != symbol { model.symbol = symbol }
+    if model.prominent != prominent { model.prominent = prominent }
+    if model.disabled != disabled { model.disabled = disabled }
+    if model.loading != loading { model.loading = loading }
+    if model.tint != tint { model.tint = tint }
+    if model.label != label { model.label = label }
+    if model.hint != hint { model.hint = hint }
+    if model.identifier != identifier { model.identifier = identifier }
     overrideUserInterfaceStyle = scheme == "dark" ? .dark : scheme == "light" ? .light : .unspecified
   }
 
-  public override func layoutSubviews() { super.layoutSubviews(); host?.view.frame = bounds }
+  private func detachHost() {
+    guard let host, host.parent != nil else { return }
+    host.willMove(toParent: nil)
+    host.view.removeFromSuperview()
+    host.removeFromParent()
+  }
+  private func attachHost() {
+    guard window != nil, let host else { return }
+    var responder: UIResponder? = superview
+    while let current = responder, !(current is UIViewController) { responder = current.next }
+    guard let parent = responder as? UIViewController, parent !== host else { return }
+    if host.parent !== parent {
+      detachHost()
+      parent.addChild(host)
+      host.view.frame = bounds
+      addSubview(host.view)
+      host.didMove(toParent: parent)
+    }
+  }
+  public override func layoutSubviews() {
+    super.layoutSubviews()
+    attachHost()
+    host?.view.frame = bounds
+  }
   public override func didMoveToWindow() {
     super.didMoveToWindow()
-    guard let host else { return }
     if window == nil {
-      host.willMove(toParent: nil)
-      host.removeFromParent()
-      return
-    }
-    var responder: UIResponder? = superview
-    while let current = responder {
-      if let parent = current as? UIViewController {
-        if host.parent !== parent {
-          host.willMove(toParent: nil)
-          host.removeFromParent()
-          parent.addChild(host)
-          host.didMove(toParent: parent)
-        }
-        break
-      }
-      responder = current.next
+      detachHost()
+    } else {
+      attachHost()
+      // Fabric may finish connecting the responder chain after window insertion.
+      DispatchQueue.main.async { [weak self] in self?.attachHost() }
     }
   }
 }

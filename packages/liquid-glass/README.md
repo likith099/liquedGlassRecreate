@@ -1,6 +1,6 @@
 # @likith99/react-native-adaptive-liquid-glass
 
-Native iOS Liquid Glass surfaces and UIKit action controls, with ordinary Android counterparts. No Expo dependency, and no runtime dependencies at all. React Native 0.81+ / React 19 / Fabric; requires Xcode 26+, and iOS 15.1+ (glass on iOS 26+).
+Native iOS Liquid Glass surfaces and UIKit action controls, with ordinary Android counterparts. No Expo or third-party glass dependency. No direct npm runtime dependencies; React/React Native peers and native platform dependencies are required. React Native 0.81+ / React 19 / Fabric; requires Xcode 26+, and iOS 15.1+ (glass on iOS 26+).
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/likith099/liquedGlassRecreate/v0.1.1/docs/images/demo.gif" width="280" alt="Screen recording of the demo: tapping a glass button increments a counter, then the action cluster expands into four icons that sit inside the stretching glass, and the live property toggles change the material">
@@ -52,11 +52,35 @@ import {GlassView, GlassButton, GlassContainer, GlassActionCluster} from '@likit
 
 `GlassView` accepts material (`regular`, `clear`, `none`), interactive, tintColor, cornerRadius, colorScheme, animationDuration (seconds), fallbackStyle, and forceFallback. Use cornerRadius instead of style.borderRadius. `GlassPressable` adds custom React children, press semantics and Android ripple. `GlassButton` with a `title` uses a fully native SwiftUI button on iOS 26+. Existing children-based GlassButton calls remain compatible. `GlassContainer.mergingEnabled` defaults to false. Set it to true to allow nearby surfaces to join; `spacing` then controls the merging threshold, independently of layout gap. The action cluster also defaults to `mergingEnabled={false}`; enable it to opt into native glass merging during expansion and collapse. For a GlassContainer, place participating GlassViews inside it.
 
-The UIKit action cluster retains controls by stable IDs and uses the same UIGlassEffect material host as GlassView. The toggle keeps its material, bounds, and opacity unchanged during expansion. UIKit owns the native finger-localized highlight and deformation whenever `interactive` is enabled. There is no custom press overlay, scale, or finger-follow animation. SF Symbols remain inside the effect content view, so UIKit deforms the icon and glass together. A tap recognizer observes activation without cancelling or delaying native glass touches. There is no separate UIControl or forced hit-test target. Default dark-mode actions apply a neutral black native material tint at 0.65 alpha to reduce lightness. This also darkens the resting material; it is not a highlight-strength percentage. Light mode uses transparent tint. An explicit tintColor overrides the default. UIKit still owns the highlight and provides no separate intensity setting. The old `pressFeedback` prop is deprecated and ignored. `interactive={false}` disables native press visuals without disabling callbacks. Android keeps its normal ripple. Opt-in merging uses UIGlassContainerEffect and animated UIKit geometry; SwiftUI matched-geometry transitions are no longer used. Supply unique nonempty action IDs; `__toggle` is reserved. Keep expanded controlled. iOS renders SF Symbols with accessible titles, while Android displays titles on ordinary buttons. Allow approximately `24 + 52 * (actions.length + 1) + 12 * actions.length` points of width and at least 80 of height. Arbitrary React children are supported by the surface, but not the action cluster.
+The UIKit action cluster retains controls by stable IDs and uses the same UIGlassEffect material host as GlassView. The toggle keeps its material, bounds, and opacity unchanged during expansion. UIKit owns the native finger-localized highlight and deformation whenever `interactive` is enabled. There is no custom press overlay, scale, or finger-follow animation. SF Symbols remain inside the effect content view, so UIKit deforms the icon and glass together. A tap recognizer observes activation without cancelling or delaying native glass touches. There is no separate UIControl or forced hit-test target. Default dark-mode actions apply a neutral black native material tint at 0.65 alpha to reduce lightness. This also darkens the resting material; it is not a highlight-strength percentage. Light mode uses transparent tint. An explicit tintColor overrides the default. UIKit still owns the highlight and provides no separate intensity setting. The old `pressFeedback` prop is deprecated and ignored. `interactive={false}` disables native press visuals without disabling callbacks. Android keeps its normal ripple. Opt-in merging uses UIGlassContainerEffect and animated UIKit geometry; The default UIKit branch does not use SwiftUI matched-geometry transitions. Supply unique nonempty action IDs; `__toggle` is reserved. Keep expanded controlled. iOS renders SF Symbols with accessible titles, while Android displays titles on ordinary buttons. Allow approximately `24 + 52 * (actions.length + 1) + 12 * actions.length` points of width and at least 80 of height. On iOS, a narrower measured host automatically uses wrapping standard controls, then returns to native glass when it fits. Controlled state and callbacks are retained. Allow height to grow in narrow layouts rather than forcing a fixed height. Arbitrary React children are supported by the surface, but not the action cluster.
 
 Reduce Transparency replaces our glass surface/cluster materials with opaque backgrounds. Reduce Motion suppresses our native property/morph transitions. Use semantic text colors for your children; the package does not recolor arbitrary content. `forceFallback` previews the standard implementation on surfaces, buttons, selectors, and action clusters. The native slider has no `forceFallback` prop.
 
 See `src/types.ts` for the complete typed API. The repository root README contains the demo commands, architecture, reference study, and verification results. Custom drag/stretch physics, a full native control suite, arbitrary React-tree morphing, physical-device profiling, and broader React Native compatibility remain future work. MIT licensed.
+
+## Choose the action-cluster appearance
+
+```tsx
+<GlassActionCluster
+  iosImplementation="swiftui" // "uikit" is the existing appearance and default
+  actions={actions}
+  expanded={expanded}
+  onExpandedChange={setExpanded}
+  onAction={handleAction}
+/>
+```
+
+On iOS 26+, `swiftui` uses Apple's stock `.glass` button style with standard
+material and touch response, without our default dark-mode shading. Change this
+prop at runtime to switch; the controlled actions/expanded state are retained.
+UIKit-specific `material` and `interactive` props do not alter the SwiftUI mode.
+`tintColor` uses SwiftUI's button tint there. Merging remains opt-in, using
+`GlassEffectContainer`; its transitions may differ from UIKit. Older iOS,
+Android, narrow hosts and `forceFallback` keep standard controls. Standalone
+`GlassButton` is unaffected. Rebuild iOS after installing this update.
+
+The SwiftUI branch compiled and passed simulator switching, merging and RTL
+interaction checks on iOS 26.5. The older-iOS fallback passed on iOS 18.6.
 
 ## Native controls
 
@@ -132,7 +156,7 @@ const [tab, setTab] = useState('home');
 
 Supply 1–5 items with unique nonempty IDs/titles and a `value` present in the list. Empty items require `value={null}`. Items accept icon presets (`home`, `search`, `library`, `favorites`, `inbox`, `settings`), iOS `systemImage`/`selectedSystemImage`, Android app drawable name `androidIcon`, numeric or `'dot'` badge, `disabled`, and `accessibilityLabel`. Numeric badges are nonnegative 32-bit integers; native display caps at 999+. Omitting a badge removes it.
 
-Selection is controlled: update `value` in `onValueChange` to accept a tap. Rejected changes restore the supplied value after the React transaction; tapping the current tab calls only `onTabReselect`. Programmatic values emit no callbacks and may select disabled tabs. Global `disabled` blocks user taps. On the iOS 26.5 simulator, XCTest still reports disabled tabs as enabled despite native dimming and blocked activation; VoiceOver announcements need the planned accessibility audit. `tintColor` changes the selected foreground accent. Stable IDs preserve tab identity across reorder/replacement; native controls own press and selection animations.
+Selection is controlled: update `value` in `onValueChange` to accept a tap. Rejected changes restore the supplied value after the React transaction; tapping the current tab calls only `onTabReselect`. Programmatic values emit no callbacks and may select disabled tabs. Global `disabled` blocks user taps. On the iOS 26.5 simulator, XCTest still reports disabled tabs as enabled despite native dimming and blocked activation; spoken VoiceOver acceptance is deferred by the owner. `tintColor` changes the selected foreground accent. Stable IDs preserve tab identity across reorder/replacement; native controls own press and selection animations.
 
 Default host height is 80 points, minimum width 180. Supply sufficient width/height for your labels. The screen owns safe-area spacing outside the host and the content above it. This primitive does not own a navigation stack, React screens, automatic scroll minimization, or an iPad sidebar. It does not accept React children or `forceFallback`; the native system determines its appearance. The repository demo shows a React Navigation 7 custom tab-bar adapter using route keys, preventable `tabPress`, reselection, retained screen state, and back history.
 
@@ -141,3 +165,14 @@ Default host height is 80 points, minimum width 180. Supply sufficient width/hei
 The deployment floor is iOS 15.1. Below iOS 26, GlassView and GlassPressable use UIKit system blur (`regular`: system material; `clear`: ultra-thin material). `material="none"` is transparent. Reduce Transparency uses an opaque semantic background; `forceFallback` explicitly selects the opaque React surface. `fallbackStyle` still applies below iOS 26 and can cover the blur if it supplies an opaque background. A translucent tint overlays the older-iOS blur. GlassContainer remains ordinary layout with no merging below iOS 26. Other controls retain standard UIKit or React implementations. iOS 18.6 is the installed fallback test runtime; iOS 15–17 and physical older devices remain unverified.
 
 Keep blurred areas bounded, avoid nested material surfaces, and use the opaque opt-out for dense lists where appropriate. The native host retains its effect across unchanged props and layout. These safeguards are not measured frame-rate guarantees; profile Release builds on representative physical devices before making performance claims.
+
+## 0.1.2 iPhone-first scope
+
+Selectable UIKit/stock SwiftUI action clusters, native action RTL, automatic
+narrow-cluster fallback, corrected native title-button containment and fewer
+redundant SwiftUI updates. SwiftUI switching, merging and RTL interactions passed
+on the iOS 26.5 simulator. The broader current-iOS regression and eight iOS 18.6
+fallback/control cases passed. These results do not establish iOS 15–17 execution,
+spoken VoiceOver/TalkBack compatibility, narrow iPad multitasking or a frame-rate
+guarantee. The package needs no new runtime dependency. Full release evidence is
+maintained in the repository's `release/verification-0.1.2.md`.

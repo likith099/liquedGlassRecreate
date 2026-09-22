@@ -3,10 +3,13 @@ import {createHash} from 'node:crypto';
 import {spawnSync} from 'node:child_process';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
+import {parsePackResult} from './lib/pack-result.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const artifacts = path.join(root, 'artifacts');
 mkdirSync(artifacts, {recursive: true});
+const configuration = process.env.ALG_BUILD_CONFIGURATION ?? 'Debug';
+if (!['Debug', 'Release'].includes(configuration)) throw new Error('ALG_BUILD_CONFIGURATION must be Debug or Release');
 const requestedConsumer = process.env.ALG_CONSUMER_DIR;
 if (requestedConsumer && (!/^\/private\/tmp\/alg-consumer-[a-zA-Z0-9]+$/.test(requestedConsumer) || !existsSync(path.join(requestedConsumer, 'package.json')) || realpathSync(requestedConsumer) !== requestedConsumer)) throw new Error('ALG_CONSUMER_DIR must be an existing standalone alg-consumer directory in /private/tmp');
 const consumer = requestedConsumer ?? mkdtempSync('/private/tmp/alg-consumer-');
@@ -16,7 +19,7 @@ function run(command, args, cwd = consumer, env = {}) {
   return result.stdout;
 }
 console.log(`Consumer: ${consumer}`);
-const packed = JSON.parse(run('npm', ['pack', '--workspace', '@likith99/react-native-adaptive-liquid-glass', '--json', '--pack-destination', artifacts], root))[0];
+const packed = parsePackResult(run('npm', ['pack', '--workspace', '@likith99/react-native-adaptive-liquid-glass', '--json', '--pack-destination', artifacts], root));
 if (packed.name !== '@likith99/react-native-adaptive-liquid-glass') throw new Error('Unexpected package scope');
 if (packed.files.some(file => file.path.includes('/build/') || file.path.includes('node_modules'))) throw new Error('Generated files leaked into package');
 const archive = path.join(artifacts, packed.filename);
@@ -61,7 +64,7 @@ export default function App() {
     <GlassToolbar items={[{id: 'save', title: 'Save'}, {kind: 'submenu', id: 'order', title: 'Order', items: [{id: 'name', title: 'Name', checked: true}]}]} onAction={() => {}} />
     <GlassTabBar items={[{id: 'home', title: 'Home', icon: 'home'}, {id: 'inbox', title: 'Inbox', icon: 'inbox', badge: 3}]} value={tab} onValueChange={setTab} />
     <GlassSlider value={value} onValueChange={setValue} />
-    <GlassActionCluster actions={[{id: 'save', title: 'Save', systemImage: 'bookmark'}]} expanded={expanded} onExpandedChange={setExpanded} onAction={() => {}} />
+    <GlassActionCluster iosImplementation="swiftui" actions={[{id: 'save', title: 'Save', systemImage: 'bookmark'}]} expanded={expanded} onExpandedChange={setExpanded} onAction={() => {}} />
   </View>;
 }
 `);
@@ -82,8 +85,8 @@ for (const platform of ['ios', 'android']) {
 }
 console.log('Both platform bundles and consumer typecheck passed; compiling the installed iOS source…');
 run('pod', ['install'], path.join(consumer, 'ios'));
-run('xcodebuild', ['-workspace', 'ios/LiquidGlassLab.xcworkspace', '-scheme', 'LiquidGlassLab', '-configuration', 'Debug', '-sdk', 'iphonesimulator', '-destination', 'generic/platform=iOS Simulator', '-derivedDataPath', path.join(artifacts, 'ConsumerDerivedData'), '-jobs', '2', 'COMPILER_INDEX_STORE_ENABLE=NO', 'ARCHS=arm64', 'ONLY_ACTIVE_ARCH=YES', 'CODE_SIGNING_ALLOWED=NO', 'build']);
+run('xcodebuild', ['-workspace', 'ios/LiquidGlassLab.xcworkspace', '-scheme', 'LiquidGlassLab', '-configuration', configuration, '-sdk', 'iphonesimulator', '-destination', 'generic/platform=iOS Simulator', '-derivedDataPath', path.join(artifacts, 'ConsumerDerivedData'), '-jobs', '2', 'COMPILER_INDEX_STORE_ENABLE=NO', 'ARCHS=arm64', 'ONLY_ACTIVE_ARCH=YES', 'CODE_SIGNING_ALLOWED=NO', 'build']);
 console.log('Compiling the installed Android source (requires ANDROID_HOME and JAVA_HOME)…');
-run('./gradlew', [':app:assembleDebug', '-PreactNativeArchitectures=arm64-v8a', '--console=plain'], path.join(consumer, 'android'));
-writeFileSync(path.join(artifacts, 'package-smoke.json'), JSON.stringify({consumer, tarball: archive, installedTarball: tarball, sha256, fileCount: packed.files.length, typecheck: 'passed', iosBundle: 'passed', androidBundle: 'passed', iosNativeBuild: 'passed', androidNativeBuild: 'passed', expoDependency: existsSync(path.join(consumer, 'node_modules/expo')), navigationDependency: existsSync(path.join(consumer, 'node_modules/@react-navigation/native'))}, null, 2));
+run('./gradlew', [`:app:assemble${configuration}`, '-PreactNativeArchitectures=arm64-v8a', '-PreactNativeDevServerPort=8093', '--console=plain'], path.join(consumer, 'android'));
+writeFileSync(path.join(artifacts, 'package-smoke.json'), JSON.stringify({configuration, consumer, tarball: archive, installedTarball: tarball, sha256, fileCount: packed.files.length, typecheck: 'passed', iosBundle: 'passed', androidBundle: 'passed', iosNativeBuild: 'passed', androidNativeBuild: 'passed', expoDependency: existsSync(path.join(consumer, 'node_modules/expo')), navigationDependency: existsSync(path.join(consumer, 'node_modules/@react-navigation/native'))}, null, 2));
 console.log('Standalone package verification passed. See artifacts/package-smoke.json');

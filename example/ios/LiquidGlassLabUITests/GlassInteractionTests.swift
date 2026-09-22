@@ -2,6 +2,152 @@ import XCTest
 import UIKit
 
 final class GlassInteractionTests: XCTestCase {
+  // Deferred with the rest of candidate execution; covers the Fabric host swap.
+  func testActionClusterImplementationSwitch() throws {
+    guard glassEra else { throw XCTSkip("SwiftUI glass requires iOS 26") }
+    continueAfterFailure = false
+    let app = XCUIApplication(); app.launch()
+    defer { app.terminate() }
+    let toggle = app.buttons["glass-cluster-toggle"]
+    XCTAssertTrue(toggle.waitForExistence(timeout: 45)); toggle.tap()
+    let favorite = app.buttons["glass-action-heart"]
+    XCTAssertTrue(favorite.waitForExistence(timeout: 5))
+    let setting = app.switches["swiftui-cluster-toggle"]
+    for implementation in ["SwiftUI", "UIKit"] {
+      for _ in 0..<5 {
+        if setting.isHittable { break }
+        app.swipeUp()
+      }
+      XCTAssertTrue(setting.isHittable); setting.tap()
+      for _ in 0..<5 {
+        if favorite.isHittable { break }
+        app.swipeDown()
+      }
+      XCTAssertTrue(favorite.isHittable)
+      let capture = XCTAttachment(screenshot: app.screenshot())
+      capture.name = "\(implementation) action cluster expanded"; capture.lifetime = .keepAlways; add(capture)
+      favorite.tap()
+      XCTAssertTrue(app.staticTexts["Favorite selected"].waitForExistence(timeout: 5))
+      toggle.tap()
+      XCTAssertTrue(favorite.waitForNonExistence(timeout: 5))
+      toggle.tap()
+      XCTAssertTrue(favorite.waitForExistence(timeout: 5))
+    }
+  }
+
+  @MainActor func testActionClusterMirrorsLayoutDirection() throws {
+    guard #available(iOS 26.0, *) else { throw XCTSkip("Native action cluster requires glass") }
+    let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 400, height: 200))
+    let controller = UIViewController(); window.rootViewController = controller
+    let cluster = ALGActionClusterView(frame: CGRect(x: 0, y: 0, width: 400, height: 88))
+    controller.view.addSubview(cluster); window.isHidden = false
+    defer { window.isHidden = true }
+    let actions = #"[{"id":"first","title":"First"},{"id":"last","title":"Last"}]"#
+    cluster.configure(actions, expanded: true, mergingEnabled: false, spacing: 20,
+      tint: nil, material: "regular", interactive: true, duration: 0, toggleLabel: "Actions")
+    func find(_ view: UIView, _ id: String) -> UIView? {
+      if view.accessibilityIdentifier == id { return view }
+      return view.subviews.compactMap { find($0, id) }.first
+    }
+    cluster.semanticContentAttribute = .forceLeftToRight
+    cluster.setNeedsLayout(); cluster.layoutIfNeeded()
+    let toggle = try XCTUnwrap(find(cluster, "glass-cluster-toggle"))
+    let first = try XCTUnwrap(find(cluster, "glass-action-first"))
+    let last = try XCTUnwrap(find(cluster, "glass-action-last"))
+    let ltrFrames = [toggle.frame, first.frame, last.frame]
+    XCTAssertLessThan(first.frame.midX, last.frame.midX)
+    XCTAssertLessThan(last.frame.midX, toggle.frame.midX)
+    cluster.semanticContentAttribute = .forceRightToLeft
+    cluster.setNeedsLayout(); cluster.layoutIfNeeded()
+    XCTAssertLessThan(toggle.frame.midX, last.frame.midX)
+    XCTAssertLessThan(last.frame.midX, first.frame.midX)
+    for (item, ltr) in zip([toggle, first, last], ltrFrames) {
+      XCTAssertEqual(item.frame.minX, cluster.bounds.width - ltr.maxX, accuracy: 0.5)
+      XCTAssertTrue(cluster.bounds.contains(item.frame))
+    }
+    XCTAssertTrue(find(cluster, "glass-action-first") === first)
+    cluster.semanticContentAttribute = .forceLeftToRight
+    cluster.setNeedsLayout(); cluster.layoutIfNeeded()
+    XCTAssertEqual([toggle.frame, first.frame, last.frame], ltrFrames)
+  }
+
+  func testArabicLocaleLayoutAndSelection() throws {
+    guard glassEra else { throw XCTSkip("Native RTL controls") }
+    continueAfterFailure = false
+    let app = XCUIApplication()
+    app.launchArguments = ["-AppleLanguages", "(ar)", "-AppleLocale", "ar_SA"]
+    app.launch()
+    defer { app.terminate() }
+    let toggle = app.buttons["glass-cluster-toggle"]
+    XCTAssertTrue(toggle.waitForExistence(timeout: 45)); toggle.tap()
+    let favorite = app.buttons["glass-action-heart"]
+    XCTAssertTrue(favorite.waitForExistence(timeout: 5))
+    XCTAssertGreaterThan(favorite.frame.midX, toggle.frame.midX)
+    favorite.tap()
+    XCTAssertTrue(app.staticTexts["Favorite selected"].waitForExistence(timeout: 5))
+    toggle.tap()
+    app.buttons["open-accessibility-demo"].tap()
+    let environment = app.staticTexts["adaptive-environment"]
+    XCTAssertTrue(environment.waitForExistence(timeout: 15))
+    XCTAssertTrue(environment.label.contains("RTL"), "Must exercise real RTL, not an LTR app with a locale flag")
+    let segments = app.segmentedControls["adaptive-segments"]
+    XCTAssertTrue(segments.waitForExistence(timeout: 5))
+    XCTAssertGreaterThan(segments.buttons["All"].frame.midX, segments.buttons["Shared"].frame.midX)
+    segments.buttons["Saved"].tap()
+    XCTAssertTrue(app.staticTexts["Selected: saved"].waitForExistence(timeout: 5))
+    let capture = XCTAttachment(screenshot: app.screenshot())
+    capture.name = "Arabic locale RTL controls"; capture.lifetime = .keepAlways; add(capture)
+  }
+
+  func testIPadRotationAndTabLayout() throws {
+    guard UIDevice.current.userInterfaceIdiom == .pad else { throw XCTSkip("iPad acceptance") }
+    continueAfterFailure = false
+    let app = XCUIApplication(); app.launch()
+    let originalOrientation = XCUIDevice.shared.orientation
+    defer { XCUIDevice.shared.orientation = originalOrientation }
+    let open = app.buttons["open-tabs-demo"]
+    XCTAssertTrue(open.waitForExistence(timeout: 45)); open.tap()
+    for orientation in [UIDeviceOrientation.portrait, .landscapeLeft] {
+      XCUIDevice.shared.orientation = orientation
+      let home = app.buttons["Home tab"]
+      let library = app.buttons["Library tab"]
+      XCTAssertTrue(home.waitForExistence(timeout: 8))
+      XCTAssertTrue(home.isHittable); XCTAssertTrue(library.isHittable)
+      XCTAssertTrue(app.frame.contains(home.frame)); XCTAssertTrue(app.frame.contains(library.frame))
+      library.tap()
+      XCTAssertTrue(app.staticTexts["Library screen"].waitForExistence(timeout: 8))
+      home.tap()
+      XCTAssertTrue(app.staticTexts["Home screen"].waitForExistence(timeout: 8))
+      let capture = XCTAttachment(screenshot: app.screenshot())
+      capture.name = "iPad tabs \(orientation.rawValue)"; capture.lifetime = .keepAlways; add(capture)
+    }
+  }
+
+  func testPhysicalReleaseInteractionProfile() throws {
+#if targetEnvironment(simulator) || DEBUG
+    throw XCTSkip("Performance acceptance requires a physical Release build")
+#else
+    continueAfterFailure = false
+    let app = XCUIApplication(); app.launch()
+    let toggle = app.buttons["glass-cluster-toggle"]
+    XCTAssertTrue(toggle.waitForExistence(timeout: 45))
+    toggle.tap(); app.buttons["glass-action-heart"].tap(); toggle.tap()
+    let context = XCTAttachment(string: "Device: \(UIDevice.current.model); OS: \(UIDevice.current.systemVersion); "
+      + "thermal: \(ProcessInfo.processInfo.thermalState.rawValue); maximumFPS: \(UIScreen.main.maximumFramesPerSecond); configuration: Release")
+    context.name = "Physical profiling context"; context.lifetime = .keepAlways; add(context)
+    var metrics: [XCTMetric] = [XCTCPUMetric(application: app), XCTMemoryMetric(application: app)]
+    if #available(iOS 26.0, *) { metrics.append(XCTHitchMetric(application: app)) }
+    let options = XCTMeasureOptions(); options.iterationCount = 3
+    measure(metrics: metrics, options: options) {
+      toggle.tap()
+      app.buttons["glass-action-heart"].tap()
+      toggle.tap()
+    }
+    // Raw metrics are a repeatable baseline, not a pass/fail frame-rate budget.
+    XCTAssertFalse(app.buttons["glass-action-heart"].exists)
+#endif
+  }
+
   /// Glass and the native UIKit selector only exist from iOS 26. Below it the package
   /// renders its React counterparts, which are ordinary views rather than UIKit controls,
   /// so element types and accessibility values differ and the checks branch accordingly.
@@ -170,7 +316,11 @@ final class GlassInteractionTests: XCTestCase {
     }
     button.tap()
     XCTAssertTrue(app.buttons["Share item"].waitForExistence(timeout: 5))
-    app.coordinate(withNormalizedOffset: CGVector(dx: 0.05, dy: 0.12)).tap()
+    // On iPad the centered React content has wide non-interactive margins.
+    // Dismiss through the content above the menu, not through that margin.
+    let outsideMenu = UIDevice.current.userInterfaceIdiom == .pad
+      ? CGVector(dx: 0.5, dy: 0.2) : CGVector(dx: 0.05, dy: 0.12)
+    app.coordinate(withNormalizedOffset: outsideMenu).tap()
     XCTAssertTrue(app.buttons["Share item"].waitForNonExistence(timeout: 5))
     XCTAssertTrue(app.staticTexts["Menu selected: remove"].exists, "Dismissal must not emit an action")
     let disable = app.switches["menu-disabled-toggle"]
@@ -692,4 +842,45 @@ final class GlassInteractionTests: XCTestCase {
     fallback.lifetime = .keepAlways
     add(fallback)
   }
+  func testSwiftUIClusterMergingAndRTL() throws {
+    guard glassEra else { throw XCTSkip("SwiftUI glass requires iOS 26") }
+    continueAfterFailure = false
+    let app = XCUIApplication()
+    app.launchArguments = ["-AppleLanguages", "(ar)", "-AppleLocale", "ar_SA"]
+    app.launch()
+    defer { app.terminate() }
+    let toggle = app.buttons["glass-cluster-toggle"]
+    XCTAssertTrue(toggle.waitForExistence(timeout: 45))
+    func reveal(_ element: XCUIElement, up: Bool) {
+      for _ in 0..<8 {
+        if element.isHittable { return }
+        if up { app.swipeUp() } else { app.swipeDown() }
+      }
+      XCTAssertTrue(element.isHittable)
+    }
+    let implementation = app.switches["swiftui-cluster-toggle"]
+    reveal(implementation, up: true); implementation.tap()
+    let merging = app.switches["merging-enabled-toggle"]
+    reveal(merging, up: true); merging.tap()
+    reveal(toggle, up: false)
+    for _ in 0..<2 {
+      toggle.tap()
+      let favorite = app.buttons["glass-action-heart"]
+      XCTAssertTrue(favorite.waitForExistence(timeout: 5))
+      XCTAssertGreaterThan(favorite.frame.midX, toggle.frame.midX)
+      for (id, title) in [("heart", "Favorite"), ("bookmark", "Save"), ("share", "Share")] {
+        let action = app.buttons["glass-action-" + id]
+        XCTAssertTrue(action.isHittable)
+        XCTAssertGreaterThanOrEqual(action.frame.width, 44)
+        XCTAssertGreaterThanOrEqual(action.frame.height, 44)
+        action.tap()
+        XCTAssertTrue(app.staticTexts[title + " selected"].waitForExistence(timeout: 5))
+      }
+      let capture = XCTAttachment(screenshot: app.screenshot())
+      capture.name = "SwiftUI merged RTL cluster"; capture.lifetime = .keepAlways; add(capture)
+      toggle.tap()
+      XCTAssertTrue(favorite.waitForNonExistence(timeout: 5))
+    }
+  }
+
 }

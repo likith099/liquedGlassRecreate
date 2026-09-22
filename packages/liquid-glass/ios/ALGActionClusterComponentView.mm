@@ -9,6 +9,7 @@ using namespace facebook::react;
 
 @implementation ALGActionClusterComponentView {
   ALGActionClusterView *_cluster;
+  ALGSwiftUIActionClusterView *_swiftUICluster;
 }
 + (ComponentDescriptorProvider)componentDescriptorProvider {
   return concreteComponentDescriptorProvider<ALGActionClusterComponentDescriptor>();
@@ -21,13 +22,13 @@ using namespace facebook::react;
     __weak ALGActionClusterComponentView *weakSelf = self;
     _cluster.onAction = ^(NSString *identifier) {
       ALGActionClusterComponentView *strongSelf = weakSelf;
-      if (!strongSelf || !strongSelf->_eventEmitter) return;
+      if (!strongSelf || !strongSelf->_eventEmitter || strongSelf.contentView != strongSelf->_cluster) return;
       auto emitter = std::static_pointer_cast<const ALGActionClusterEventEmitter>(strongSelf->_eventEmitter);
       emitter->onAction({std::string(identifier.UTF8String)});
     };
     _cluster.onExpandedChange = ^(BOOL expanded) {
       ALGActionClusterComponentView *strongSelf = weakSelf;
-      if (!strongSelf || !strongSelf->_eventEmitter) return;
+      if (!strongSelf || !strongSelf->_eventEmitter || strongSelf.contentView != strongSelf->_cluster) return;
       auto emitter = std::static_pointer_cast<const ALGActionClusterEventEmitter>(strongSelf->_eventEmitter);
       emitter->onExpandedChange({static_cast<bool>(expanded)});
     };
@@ -36,11 +37,40 @@ using namespace facebook::react;
 }
 - (void)updateProps:(Props::Shared const &)props oldProps:(Props::Shared const &)oldProps {
   const auto &p = *std::static_pointer_cast<const ALGActionClusterProps>(props);
-  [_cluster configure:[NSString stringWithUTF8String:p.actionsJSON.c_str()]
-             expanded:p.expanded mergingEnabled:p.mergingEnabled spacing:p.spacing tint:RCTUIColorFromSharedColor(p.glassTint)
-             material:p.material == ALGActionClusterMaterial::Clear ? @"clear" : @"regular"
-             interactive:p.interactive
-             duration:p.duration toggleLabel:[NSString stringWithUTF8String:p.toggleLabel.c_str()]];
+  BOOL useSwiftUI = NO;
+  if (@available(iOS 26.0, *)) {
+    useSwiftUI = p.iosImplementation == ALGActionClusterIosImplementation::Swiftui;
+  }
+  if (useSwiftUI) {
+    if (!_swiftUICluster) {
+      _swiftUICluster = [[ALGSwiftUIActionClusterView alloc] initWithFrame:CGRectZero];
+      __weak ALGActionClusterComponentView *weakSelf = self;
+      _swiftUICluster.onAction = ^(NSString *identifier) {
+        ALGActionClusterComponentView *strongSelf = weakSelf;
+        if (!strongSelf || !strongSelf->_eventEmitter || strongSelf.contentView != strongSelf->_swiftUICluster) return;
+        auto emitter = std::static_pointer_cast<const ALGActionClusterEventEmitter>(strongSelf->_eventEmitter);
+        emitter->onAction({std::string(identifier.UTF8String)});
+      };
+      _swiftUICluster.onExpandedChange = ^(BOOL expanded) {
+        ALGActionClusterComponentView *strongSelf = weakSelf;
+        if (!strongSelf || !strongSelf->_eventEmitter || strongSelf.contentView != strongSelf->_swiftUICluster) return;
+        auto emitter = std::static_pointer_cast<const ALGActionClusterEventEmitter>(strongSelf->_eventEmitter);
+        emitter->onExpandedChange({static_cast<bool>(expanded)});
+      };
+    }
+    [_swiftUICluster configure:[NSString stringWithUTF8String:p.actionsJSON.c_str()]
+                      expanded:p.expanded mergingEnabled:p.mergingEnabled spacing:p.spacing
+                      tint:RCTUIColorFromSharedColor(p.glassTint) duration:p.duration
+                      toggleLabel:[NSString stringWithUTF8String:p.toggleLabel.c_str()]];
+    if (self.contentView != _swiftUICluster) self.contentView = _swiftUICluster;
+  } else {
+    [_cluster configure:[NSString stringWithUTF8String:p.actionsJSON.c_str()]
+               expanded:p.expanded mergingEnabled:p.mergingEnabled spacing:p.spacing tint:RCTUIColorFromSharedColor(p.glassTint)
+               material:p.material == ALGActionClusterMaterial::Clear ? @"clear" : @"regular"
+               interactive:p.interactive
+               duration:p.duration toggleLabel:[NSString stringWithUTF8String:p.toggleLabel.c_str()]];
+    if (self.contentView != _cluster) self.contentView = _cluster;
+  }
   [super updateProps:props oldProps:oldProps];
 }
 + (BOOL)shouldBeRecycled { return NO; }

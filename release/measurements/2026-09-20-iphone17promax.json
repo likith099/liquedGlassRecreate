@@ -1,0 +1,59 @@
+{
+  "date": "2026-09-20",
+  "device": "iPhone 17 Pro Max",
+  "os": "iOS 27.0 (24A437)",
+  "configuration": "Release",
+  "maximumRefreshRateHz": 120,
+  "thermalStateAtStart": "nominal",
+  "sourceDigest": "5d9cf581868a3b9e72e3bb75bbf9c097b655534ffb4030ae5c5c1549a93dd044",
+  "workload": "Three measured iterations: expand action cluster, activate Favorite, collapse; after warmup. XCTest tap/idle waits are included.",
+  "metrics": [
+    {
+      "displayName": "Memory Peak Physical (LiquidGlassLab)",
+      "unitOfMeasurement": "kB",
+      "measurements": [
+        44959.632,
+        44599.184,
+        44648.336
+      ]
+    },
+    {
+      "displayName": "Hitch Time Ratio (LiquidGlassLab)",
+      "unitOfMeasurement": "ms per s",
+      "measurements": [
+        2.1099212883187675,
+        0,
+        0
+      ]
+    },
+    {
+      "displayName": "Hitches Total Duration (LiquidGlassLab)",
+      "unitOfMeasurement": "s",
+      "measurements": [
+        0.008334124,
+        0,
+        0
+      ]
+    },
+    {
+      "displayName": "Number of Hitches (LiquidGlassLab)",
+      "unitOfMeasurement": "hitches",
+      "measurements": [
+        1,
+        0,
+        0
+      ]
+    },
+    {
+      "displayName": "CPU Time (LiquidGlassLab)",
+      "unitOfMeasurement": "s",
+      "measurements": [
+        0.474450073,
+        0.485034387,
+        0.534429916
+      ]
+    }
+  ],
+  "acceptance": "Partial baseline only. No regression budget, opaque comparison, scrolling/GPU or long-run-memory acceptance.",
+  "localResultBundle": "artifacts/B5PhysicalReleaseRetry.xcresult"
+}

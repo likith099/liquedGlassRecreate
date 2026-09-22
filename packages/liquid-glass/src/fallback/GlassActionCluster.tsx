@@ -6,7 +6,7 @@ import type {GlassActionClusterProps} from '../types';
 export default function GlassActionCluster({actions, expanded, onExpandedChange, onAction,
   toggleLabel = 'Actions', style, spacing: _spacing, tintColor: _tint, material: _material,
   interactive: _interactive, animationDuration: _duration, forceFallback: _force,
-  mergingEnabled: _merging, pressFeedback: _pressFeedback, ...props}: GlassActionClusterProps) {
+  mergingEnabled: _merging, pressFeedback: _pressFeedback, iosImplementation: _implementation, ...props}: GlassActionClusterProps) {
   validateActions(actions);
   const dark = useColorScheme() === 'dark';
   const textStyle = {color: dark ? '#F5F5FA' : '#242630', fontWeight: '600' as const};

@@ -1,0 +1,241 @@
+{
+  "schemaVersion": 2,
+  "version": "0.1.2",
+  "sourceDigest": "72614124a7acbaa519d6d32c69ada7f6e0a62daae9a04d9198199adcf08090ca",
+  "checks": {
+    "ios-current-profile": {
+      "status": "deferred",
+      "reviewer": "Owner scope decision; recorded by Codex",
+      "device": "Not exercised for this candidate",
+      "os": "Not exercised for this candidate",
+      "date": "2026-09-21",
+      "configuration": "Release",
+      "summary": "Partial physical iPhone 17 Pro Max / iOS 27 Release action baseline recorded before RTL correction. Full final-candidate workload, opaque comparison and rendering/long-run traces pending. Full manual/device acceptance remains deferred for the iPhone-first release. The owner subsequently authorized simulator regression and Release build checks using installed runtimes; see the current verification report. No new runtimes or unavailable devices are required.",
+      "evidence": [
+        "release/verification-0.1.2.md",
+        "release/iphone-first-0.1.2.md"
+      ]
+    },
+    "ios-older-profile": {
+      "status": "deferred",
+      "reviewer": "Owner scope decision; recorded by Codex",
+      "device": "Not exercised for this candidate",
+      "os": "Not exercised for this candidate",
+      "date": "2026-09-21",
+      "configuration": "Release",
+      "summary": "Full manual/device acceptance remains deferred for the iPhone-first release. The owner subsequently authorized simulator regression and Release build checks using installed runtimes; see the current verification report. No new runtimes or unavailable devices are required.",
+      "evidence": [
+        "release/verification-0.1.2.md",
+        "release/iphone-first-0.1.2.md"
+      ]
+    },
+    "android-profile": {
+      "status": "deferred",
+      "reviewer": "Owner scope decision; recorded by Codex",
+      "device": "Not exercised for this candidate",
+      "os": "Not exercised for this candidate",
+      "date": "2026-09-21",
+      "configuration": "Release",
+      "summary": "Full manual/device acceptance remains deferred for the iPhone-first release. The owner subsequently authorized simulator regression and Release build checks using installed runtimes; see the current verification report. No new runtimes or unavailable devices are required.",
+      "evidence": [
+        "release/verification-0.1.2.md",
+        "release/iphone-first-0.1.2.md"
+      ]
+    },
+    "ios-15-17-runtime": {
+      "status": "deferred",
+      "reviewer": "Owner scope decision; recorded by Codex",
+      "device": "Not exercised for this candidate",
+      "os": "Not exercised for this candidate",
+      "date": "2026-09-21",
+      "configuration": "Release",
+      "summary": "Full manual/device acceptance remains deferred for the iPhone-first release. The owner subsequently authorized simulator regression and Release build checks using installed runtimes; see the current verification report. No new runtimes or unavailable devices are required.",
+      "evidence": [
+        "release/verification-0.1.2.md",
+        "release/iphone-first-0.1.2.md"
+      ]
+    },
+    "android-minimum-runtime": {
+      "status": "deferred",
+      "reviewer": "Owner scope decision; recorded by Codex",
+      "device": "Not exercised for this candidate",
+      "os": "Not exercised for this candidate",
+      "date": "2026-09-21",
+      "configuration": "Release",
+      "summary": "Full manual/device acceptance remains deferred for the iPhone-first release. The owner subsequently authorized simulator regression and Release build checks using installed runtimes; see the current verification report. No new runtimes or unavailable devices are required.",
+      "evidence": [
+        "release/verification-0.1.2.md",
+        "release/iphone-first-0.1.2.md"
+      ]
+    },
+    "voiceover": {
+      "status": "deferred",
+      "reviewer": "User report during guided acceptance",
+      "device": "iPhone 17 Pro Max",
+      "os": "iOS 27.0",
+      "date": "2026-09-20",
+      "configuration": "Release",
+      "summary": "User explicitly stopped and deferred VoiceOver testing/development on September 20, 2026. Not required for the next release. No spoken compatibility claim. Existing accessibility behavior is retained.",
+      "evidence": [
+        "release/review-2026-09-20.md"
+      ]
+    },
+    "talkback": {
+      "status": "deferred",
+      "reviewer": "Owner scope decision; recorded by Codex",
+      "device": "Not exercised for this candidate",
+      "os": "Not exercised for this candidate",
+      "date": "2026-09-21",
+      "configuration": "Release",
+      "summary": "Full manual/device acceptance remains deferred for the iPhone-first release. The owner subsequently authorized simulator regression and Release build checks using installed runtimes; see the current verification report. No new runtimes or unavailable devices are required.",
+      "evidence": [
+        "release/verification-0.1.2.md",
+        "release/iphone-first-0.1.2.md"
+      ]
+    },
+    "rtl-ios": {
+      "status": "deferred",
+      "reviewer": "Owner scope decision; recorded by Codex",
+      "device": "Not exercised for this candidate",
+      "os": "Not exercised for this candidate",
+      "date": "2026-09-21",
+      "configuration": "Release",
+      "summary": "Arabic-locale action/selector runtime, native LTR/RTL frame and identity checks passed. Remaining navigation/menu/slider RTL acceptance pending. Full manual/device acceptance remains deferred for the iPhone-first release. The owner subsequently authorized simulator regression and Release build checks using installed runtimes; see the current verification report. No new runtimes or unavailable devices are required.",
+      "evidence": [
+        "release/verification-0.1.2.md",
+        "release/iphone-first-0.1.2.md"
+      ]
+    },
+    "rtl-android": {
+      "status": "deferred",
+      "reviewer": "Owner scope decision; recorded by Codex",
+      "device": "Not exercised for this candidate",
+      "os": "Not exercised for this candidate",
+      "date": "2026-09-21",
+      "configuration": "Release",
+      "summary": "API 37 Release English\u2192Arabic\u2192English direction, selector/disabled option/action checks passed; original locale restored. Broader navigation/menu/slider RTL acceptance pending. Full manual/device acceptance remains deferred for the iPhone-first release. The owner subsequently authorized simulator regression and Release build checks using installed runtimes; see the current verification report. No new runtimes or unavailable devices are required.",
+      "evidence": [
+        "release/verification-0.1.2.md",
+        "release/iphone-first-0.1.2.md"
+      ]
+    },
+    "ipad": {
+      "status": "deferred",
+      "reviewer": "Owner scope decision; recorded by Codex",
+      "device": "Not exercised for this candidate",
+      "os": "Not exercised for this candidate",
+      "date": "2026-09-21",
+      "configuration": "Release",
+      "summary": "iOS 26.5 simulator rotation/tab selection, largest text and menus/toolbars passed. Narrow multitasking acceptance pending. Full manual/device acceptance remains deferred for the iPhone-first release. The owner subsequently authorized simulator regression and Release build checks using installed runtimes; see the current verification report. No new runtimes or unavailable devices are required.",
+      "evidence": [
+        "release/verification-0.1.2.md",
+        "release/iphone-first-0.1.2.md"
+      ]
+    },
+    "ios-accessibility-settings": {
+      "status": "deferred",
+      "reviewer": "Owner scope decision; recorded by Codex",
+      "device": "Not exercised for this candidate",
+      "os": "Not exercised for this candidate",
+      "date": "2026-09-21",
+      "configuration": "Release",
+      "summary": "Full manual/device acceptance remains deferred for the iPhone-first release. The owner subsequently authorized simulator regression and Release build checks using installed runtimes; see the current verification report. No new runtimes or unavailable devices are required.",
+      "evidence": [
+        "release/verification-0.1.2.md",
+        "release/iphone-first-0.1.2.md"
+      ]
+    },
+    "android-accessibility-settings": {
+      "status": "deferred",
+      "reviewer": "Owner scope decision; recorded by Codex",
+      "device": "Not exercised for this candidate",
+      "os": "Not exercised for this candidate",
+      "date": "2026-09-21",
+      "configuration": "Release",
+      "summary": "Full manual/device acceptance remains deferred for the iPhone-first release. The owner subsequently authorized simulator regression and Release build checks using installed runtimes; see the current verification report. No new runtimes or unavailable devices are required.",
+      "evidence": [
+        "release/verification-0.1.2.md",
+        "release/iphone-first-0.1.2.md"
+      ]
+    },
+    "ios-distribution": {
+      "status": "deferred",
+      "reviewer": "Owner scope decision; recorded by Codex",
+      "device": "Not exercised for this candidate",
+      "os": "Not exercised for this candidate",
+      "date": "2026-09-21",
+      "configuration": "Release",
+      "summary": "Unsigned Release archive with embedded JavaScript passed. Distribution signing, export and install acceptance pending. Full manual/device acceptance remains deferred for the iPhone-first release. The owner subsequently authorized simulator regression and Release build checks using installed runtimes; see the current verification report. No new runtimes or unavailable devices are required.",
+      "evidence": [
+        "release/verification-0.1.2.md",
+        "release/iphone-first-0.1.2.md"
+      ]
+    },
+    "android-distribution": {
+      "status": "deferred",
+      "reviewer": "Owner scope decision; recorded by Codex",
+      "device": "Not exercised for this candidate",
+      "os": "Not exercised for this candidate",
+      "date": "2026-09-21",
+      "configuration": "Release",
+      "summary": "Release APK/AAB built and emulator launch passed with the example debug key. Real distribution signing/install acceptance pending. Full manual/device acceptance remains deferred for the iPhone-first release. The owner subsequently authorized simulator regression and Release build checks using installed runtimes; see the current verification report. No new runtimes or unavailable devices are required.",
+      "evidence": [
+        "release/verification-0.1.2.md",
+        "release/iphone-first-0.1.2.md"
+      ]
+    },
+    "packed-consumer": {
+      "status": "passed",
+      "reviewer": "Codex",
+      "device": "Independent React Native 0.87.1 consumer",
+      "os": "iOS and Android native Release builds",
+      "date": "2026-09-21",
+      "configuration": "Release",
+      "summary": "78-file archive SHA-256 5d744294ec57048bb4a435f6cb4efabc4e79cccbf49b5fada9b006377161cdbf passed consumer TypeScript, both production bundles and both native Release builds. Example selects the SwiftUI renderer.",
+      "evidence": [
+        "release/verification-0.1.2.md",
+        "release/iphone-first-0.1.2.md"
+      ]
+    },
+    "ios-source-review": {
+      "status": "passed",
+      "reviewer": "Codex source review",
+      "device": "Source review",
+      "os": "iOS guarded APIs",
+      "date": "2026-09-21",
+      "configuration": "Source review",
+      "summary": "Reviewed host sizing, availability guards, controller containment, equal-prop updates, stock SwiftUI buttons and Fabric selection. Default UIKit behavior retained. Subsequent compilation/runtime evidence is separately recorded.",
+      "evidence": [
+        "release/verification-0.1.2.md",
+        "release/iphone-first-0.1.2.md"
+      ]
+    },
+    "ios-swiftui-runtime": {
+      "status": "passed",
+      "reviewer": "Codex",
+      "device": "iPhone 17 Pro simulator; iPad Pro 13-inch simulator",
+      "os": "iOS 26.5",
+      "date": "2026-09-21",
+      "configuration": "Debug",
+      "summary": "Four focused iPhone SwiftUI/RTL checks passed; four iPad checks passed. Renderer switching retains expansion; merged actions activate and RTL order mirrors. Captures inspected. Broader iPhone regression: 14 passed, two older-runtime cases skipped.",
+      "evidence": [
+        "release/verification-0.1.2.md",
+        "release/iphone-first-0.1.2.md"
+      ]
+    },
+    "ios-fallback-runtime": {
+      "status": "passed",
+      "reviewer": "Codex",
+      "device": "iPhone 16 Pro simulator",
+      "os": "iOS 18.6",
+      "date": "2026-09-21",
+      "configuration": "Debug",
+      "summary": "Eight fallback checks passed: blur material/reuse, surface interaction, adaptive controls, largest text, native button/segments, tabs, slider, toolbar/menu. iOS 15\u201317 remains unexecuted.",
+      "evidence": [
+        "release/verification-0.1.2.md",
+        "release/iphone-first-0.1.2.md"
+      ]
+    }
+  },
+  "scope": "iphone-first"
+}

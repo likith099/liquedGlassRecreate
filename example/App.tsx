@@ -21,6 +21,7 @@ function Lab({onOpenTabs, onOpenAccessibility}: {onOpenTabs: () => void; onOpenA
   const [fallback, setFallback] = useState(false);
   const [merged, setMerged] = useState(false);
   const [mergingEnabled, setMergingEnabled] = useState(false);
+  const [swiftUICluster, setSwiftUICluster] = useState(false);
   const [tinted, setTinted] = useState(false);
   const [lastAction, setLastAction] = useState('Tap a control to explore');
   const [presses, setPresses] = useState(0);
@@ -59,7 +60,6 @@ function Lab({onOpenTabs, onOpenAccessibility}: {onOpenTabs: () => void; onOpenA
   const material = clear ? 'clear' : 'regular';
   const tintColor = tinted ? '#A5A2FF60' : undefined;
   return <SafeAreaView style={[styles.safe, {backgroundColor: dark ? '#11141B' : '#F7F8FC'}]}>
-    <StatusBar barStyle={dark ? 'light-content' : 'dark-content'} />
     <ScrollView contentContainerStyle={styles.page}>
       <Pressable testID="open-tabs-demo" accessibilityRole="button" onPress={onOpenTabs} style={{paddingVertical: 12}}>
         <Text style={{color: foreground, fontWeight: '600'}}>Open tab navigation →</Text>
@@ -88,6 +88,7 @@ function Lab({onOpenTabs, onOpenAccessibility}: {onOpenTabs: () => void; onOpenA
             <Text style={{color: glassForeground, fontWeight: '600'}}>Touch the glass  ↗ {presses > 0 ? ` ${presses}` : ''}</Text>
           </GlassButton>
           <GlassActionCluster forceFallback={fallback} mergingEnabled={mergingEnabled} actions={actions} expanded={expanded}
+            iosImplementation={swiftUICluster ? 'swiftui' : 'uikit'}
             onExpandedChange={setExpanded} onAction={id => setLastAction(`${actions.find(action => action.id === id)?.title} selected`)}
             interactive={interactive} material={material} tintColor={tintColor} style={styles.cluster} />
         </View>
@@ -98,6 +99,9 @@ function Lab({onOpenTabs, onOpenAccessibility}: {onOpenTabs: () => void; onOpenA
       <Text accessibilityLiveRegion="polite" testID="action-status" style={[styles.feedback, {color: foreground}]}>{lastAction}</Text>
       <View style={styles.sectionHeading}><Text style={[styles.sectionTitle, {color: foreground}]}>Make it yours</Text><Text style={[styles.sectionIndex, {color: secondary}]}>01 — LIVE PROPERTIES</Text></View>
       <View style={[styles.settings, {backgroundColor: dark ? '#1C2029' : '#FFFFFF'}]}>
+        {Platform.OS === 'ios' && <Setting title="SwiftUI action buttons"
+          detail="Use Apple's standard glass button appearance" value={swiftUICluster} onChange={setSwiftUICluster}
+          color={foreground} muted={secondary} id="swiftui-cluster-toggle" />}
         <Setting title="Touch response" detail="Native interactive material" value={interactive} onChange={setInteractive} color={foreground} muted={secondary} id="interactive-toggle" />
         <Setting title="Clear material" detail="Let more of the backdrop through" value={clear} onChange={setClear} color={foreground} muted={secondary} id="clear-toggle" />
         <Setting title="Violet tint" detail="Color blended into the glass" value={tinted} onChange={setTinted} color={foreground} muted={secondary} id="tint-toggle" />
@@ -186,7 +190,8 @@ function Setting({title, detail, value, onChange, color, muted, id}: {title: str
 export default function App() {
   const [tabsOpen, setTabsOpen] = useState(false);
   const [accessibilityOpen, setAccessibilityOpen] = useState(false);
-  return <SafeAreaProvider>{accessibilityOpen ? <AccessibilityDemo onClose={() => setAccessibilityOpen(false)} /> : tabsOpen ? <TabNavigationDemo onClose={() => setTabsOpen(false)} /> : <Lab onOpenTabs={() => setTabsOpen(true)} onOpenAccessibility={() => setAccessibilityOpen(true)} />}</SafeAreaProvider>;
+  const dark = useColorScheme() === 'dark';
+  return <SafeAreaProvider><StatusBar barStyle={dark ? 'light-content' : 'dark-content'} />{accessibilityOpen ? <AccessibilityDemo onClose={() => setAccessibilityOpen(false)} /> : tabsOpen ? <TabNavigationDemo onClose={() => setTabsOpen(false)} /> : <Lab onOpenTabs={() => setTabsOpen(true)} onOpenAccessibility={() => setAccessibilityOpen(true)} />}</SafeAreaProvider>;
 }
 const styles = StyleSheet.create({
   safe: {flex: 1}, page: {padding: 24, paddingBottom: 40, maxWidth: 620, width: '100%', alignSelf: 'center'},

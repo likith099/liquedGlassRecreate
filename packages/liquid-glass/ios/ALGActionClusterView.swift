@@ -105,6 +105,7 @@ public final class ALGActionClusterView: UIView {
   private var toggleLabel = "Actions"
   private var duration = 0.45
   private var lastSize = CGSize.zero
+  private var lastLayoutDirection: UIUserInterfaceLayoutDirection?
   private var animationGeneration = 0
   private var configured = false
   @objc public var onAction: ((String) -> Void)?
@@ -187,10 +188,12 @@ public final class ALGActionClusterView: UIView {
     }
   }
   private var toggleFrame: CGRect {
-    CGRect(x: bounds.width - 12 - 52, y: (bounds.height - 52) / 2, width: 52, height: 52)
+    let x: CGFloat = effectiveUserInterfaceLayoutDirection == .rightToLeft ? 12 : bounds.width - 12 - 52
+    return CGRect(x: x, y: (bounds.height - 52) / 2, width: 52, height: 52)
   }
   private func actionFrame(at index: Int) -> CGRect {
-    toggleFrame.offsetBy(dx: -CGFloat(actions.count - index) * 64, dy: 0)
+    let direction: CGFloat = effectiveUserInterfaceLayoutDirection == .rightToLeft ? 1 : -1
+    return toggleFrame.offsetBy(dx: direction * CGFloat(actions.count - index) * 64, dy: 0)
   }
   private func updatePositions(animated: Bool) {
     guard bounds.width > 0, bounds.height > 0 else { setNeedsLayout(); return }
@@ -243,7 +246,12 @@ public final class ALGActionClusterView: UIView {
   public override func layoutSubviews() {
     super.layoutSubviews()
     container.frame = bounds
-    if lastSize != bounds.size { lastSize = bounds.size; updatePositions(animated: false) }
+    let direction = effectiveUserInterfaceLayoutDirection
+    if lastSize != bounds.size || lastLayoutDirection != direction {
+      lastSize = bounds.size
+      lastLayoutDirection = direction
+      updatePositions(animated: false)
+    }
   }
   public override func didMoveToWindow() {
     super.didMoveToWindow()
