@@ -67,3 +67,13 @@ merged RTL checks used the same existing binary; a simultaneous direct
 shows the complete controls without that clipping. Both repeated tests passed, exit 0 (`artifacts/RC012IPadCapture.xcresult`). The demo's RTL content column
 is right-aligned. This resolves the capture concern, not narrow multitasking
 acceptance. No product workaround was added for the screenshot behavior.
+
+## Hosted runner correction
+
+The first tagged [workflow](https://github.com/likith099/liquedGlassRecreate/actions/runs/35685101630)
+passed shared checks but Android setup requested the retired SDK `tools` package
+through the action's default. It failed before compilation, so publication did
+not run. The native workflow now explicitly requests `platform-tools`, following
+[the setup action's documented package input](https://github.com/android-actions/setup-android#additional-packages).
+No package source changed; the verified tarball remains identical. The corrected
+workflow is checked on main before replacing the unpublished release tag.
