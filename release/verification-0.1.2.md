@@ -76,4 +76,10 @@ through the action's default. It failed before compilation, so publication did
 not run. The native workflow now explicitly requests `platform-tools`, following
 [the setup action's documented package input](https://github.com/android-actions/setup-android#additional-packages).
 No package source changed; the verified tarball remains identical. The corrected
-workflow is checked on main before replacing the unpublished release tag.
+workflow then passed both native Release jobs on main at `df4cb48`
+([run 35685728604](https://github.com/likith099/liquedGlassRecreate/actions/runs/35685728604)).
+With the owner's approval, the unpublished `v0.1.2` tag was moved from `e0b3655`
+to the commit carrying this record. A re-run could not help, because it would
+reuse the tagged commit's broken workflow. Before re-tagging, the local gate
+passed with `GITHUB_REF=refs/tags/v0.1.2` (digest `00e93061…b8e0`), and a fresh
+`npm pack` again produced SHA-256 `5d744294…cdbf`.
