@@ -1,7 +1,7 @@
 # Next-release acceptance
 
-The public 0.1.0 and 0.1.1 releases exist. This matrix defines acceptance for the
-0.1.2 candidate, without claiming that earlier releases passed it.
+The public 0.1.0, 0.1.1 and 0.1.2 releases exist. This matrix defined acceptance for
+0.1.2, without claiming that earlier releases passed it.
 The source of truth for publish eligibility is the tracked
 [`release/acceptance.json`](../release/acceptance.json), not local agent notes.
 
@@ -21,8 +21,8 @@ results are in [0.1.2 verification](../release/verification-0.1.2.md).
 
 Shared CI checks and both native Release build jobs must still succeed before OIDC
 publishing starts. They run on GitHub after a tag push, following local candidate verification. Branch workflow dispatch cannot publish. The
-trusted-publisher identity and workflow filename remain unchanged. These workflow
-changes are local until committed and pushed; no hosted run is claimed yet.
+trusted-publisher identity and workflow filename remain unchanged. 0.1.2 passed
+these hosted gates and was published on September 22, 2026; see the verification report.
 
 Use `node scripts/check-release-acceptance.mjs --print-digest` after final source
 changes and update the acceptance record. This identifies reviewed source, not

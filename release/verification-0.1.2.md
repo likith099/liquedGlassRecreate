@@ -5,7 +5,8 @@ The owner authorized a broad regression pass and publication on September 21,
 Use installed runtimes only; VoiceOver and unavailable older physical devices
 remain deferred. No claim of exhaustive bug freedom or universal performance.
 
-Local verification completed. Hosted workflow and registry verification remain the final publication steps.
+Local verification, the hosted release workflow and registry verification all passed.
+0.1.2 was published on September 22, 2026 and is the npm `latest` tag.
 
 | Scope | Current result |
 | --- | --- |
@@ -20,7 +21,7 @@ Local verification completed. Hosted workflow and registry verification remain t
 | Android Release | APK/AAB build passed, exit 0; `artifacts/release-android-build.json` (example debug signing) |
 | iOS Release archive | Passed, exit 0; unsigned archive embeds JavaScript (`artifacts/release-ios-build.json`) |
 | Independent packed consumer | TypeScript, both production JS bundles and both native Release builds passed, exit 0 (`artifacts/package-smoke.json`) |
-| GitHub release workflow / registry artifact | Pending |
+| GitHub release workflow / registry artifact | Passed: [run 35686526291](https://github.com/likith099/liquedGlassRecreate/actions/runs/35686526291) at `e5559ad` (checks, iOS and Android Release, OIDC publish). Registry copy matches the local pack; see below |
 
 The first Debug link failed with missing Hermes debugger symbols. Pods had lost
 their last-configuration markers while containing cached Release frameworks, and
@@ -83,3 +84,16 @@ to the commit carrying this record. A re-run could not help, because it would
 reuse the tagged commit's broken workflow. Before re-tagging, the local gate
 passed with `GITHUB_REF=refs/tags/v0.1.2` (digest `00e93061…b8e0`), and a fresh
 `npm pack` again produced SHA-256 `5d744294…cdbf`.
+
+## Published registry copy
+
+The tagged workflow passed shared checks, the tag-gated acceptance, both native
+Release jobs and the publish job. npm lists `0.1.2` as `latest` with 78 files,
+164,310 bytes unpacked, shasum `98a7b8e6f881a06f6bdae82e090de3317a4baee4`, integrity
+`sha512-VNsyX+mES3ut+…GClPSqXGj4WaMQ==`, `gitHead` `e5559ad` and SLSA v1 provenance
+([transparency log entry](https://search.sigstore.dev/?logIndex=2907947043)). These
+match the local `npm pack` whose SHA-256 is `5d744294…cdbf`, the archive the independent
+consumer verified. A clean install reported a verified registry signature and a verified
+attestation through `npm audit signatures`. The registry took about two minutes after the
+publish step to list the version, and a local npm cache that had seen the earlier 404
+needed `--prefer-online`.

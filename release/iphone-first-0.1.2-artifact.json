@@ -9,5 +9,13 @@
   "method": "npm pack; independent consumer TypeScript, production bundles and native Release builds on iOS/Android",
   "testsRun": true,
   "nativeBuildRun": true,
-  "published": false
+  "published": true,
+  "registry": {
+    "shasum": "98a7b8e6f881a06f6bdae82e090de3317a4baee4",
+    "integrity": "sha512-VNsyX+mES3ut+lBFWb+qvmjJz9txRids0L694EZjbmzFMs4u9DolnO6Mga0cnDqM5vpRi3wSGClPSqXGj4WaMQ==",
+    "gitHead": "e5559adec40bfe396ae65be98c6b2dcc34d08895",
+    "workflowRun": "https://github.com/likith099/liquedGlassRecreate/actions/runs/35686526291",
+    "provenance": "https://slsa.dev/provenance/v1",
+    "date": "2026-09-22"
+  }
 }
