@@ -1,6 +1,7 @@
 import React, {useEffect, useRef, useState} from 'react';
 import {Pressable, Switch, Text, View} from 'react-native';
-import {GlassMenuButton, GlassToolbar, type GlassMenuElement, type GlassToolbarItem} from '@likith99/react-native-adaptive-liquid-glass';
+import {GlassIconButton, GlassMenuButton, GlassToolbar, type GlassMenuElement, type GlassMenuHandle,
+  type GlassToolbarItem} from '@likith99/react-native-adaptive-liquid-glass';
 
 export default function ToolbarDemo({foreground, secondary}: {foreground: string; secondary: string}) {
   const [selected, setSelected] = useState('name');
@@ -11,6 +12,8 @@ export default function ToolbarDemo({foreground, secondary}: {foreground: string
   const [merging, setMerging] = useState(false);
   const [replaced, setReplaced] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const iconMenu = useRef<GlassMenuHandle>(null);
+  const [menuEvents, setMenuEvents] = useState({opened: 0, closed: 0});
   useEffect(() => () => {if (timer.current) clearTimeout(timer.current);}, []);
   const groups: readonly GlassMenuElement[] = [
     {kind: 'section', id: 'order', title: 'Order', items: [
@@ -47,6 +50,20 @@ export default function ToolbarDemo({foreground, secondary}: {foreground: string
       {kind: 'submenu', id: 'locked-group', title: 'Locked group', disabled: true,
         items: [{id: 'locked-child', title: 'Locked child'}]},
     ]} onAction={onAction} testID="hierarchy-menu" forceFallback={standard} disabled={disabled} />
+    <View style={{flexDirection: 'row', alignItems: 'center', gap: 16, marginTop: 12}}>
+      <GlassIconButton testID="icon-close" systemImage="xmark" androidIcon="demo_close"
+        accessibilityLabel="Close" size={40} disabled={disabled} forceFallback={standard}
+        onPress={() => setStatus('Icon pressed: close')} />
+      <GlassIconButton ref={iconMenu} testID="icon-more" systemImage="ellipsis" androidIcon="demo_more"
+        accessibilityLabel="More options" disabled={disabled} forceFallback={standard}
+        menu={{items: [{id: 'share', title: 'Share'}, {id: 'duplicate', title: 'Duplicate'}], onAction}}
+        onOpen={() => setMenuEvents(value => ({...value, opened: value.opened + 1}))}
+        onClose={() => setMenuEvents(value => ({...value, closed: value.closed + 1}))} />
+      <Pressable testID="icon-open-from-code" accessibilityRole="button" onPress={() => iconMenu.current?.open()}>
+        <Text style={{color: foreground}}>Open menu from code</Text>
+      </Pressable>
+    </View>
+    <Text testID="icon-menu-events" style={{color: secondary}}>Menu opened {menuEvents.opened}, closed {menuEvents.closed}</Text>
     <Text testID="toolbar-status" accessibilityLiveRegion="polite" style={{color: secondary}}>{status}</Text>
     <Text testID="toolbar-selection" style={{color: secondary}}>Order: {selected}</Text>
     {toggle('Disable toolbar and menus', 'toolbar-disabled-toggle', disabled, setDisabled)}

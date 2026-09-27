@@ -6,9 +6,13 @@ import {parsePackResult} from './lib/pack-result.mjs';
 
 const PACKAGE = '@likith99/react-native-adaptive-liquid-glass';
 
+// Build lib/ explicitly, then pack without lifecycle scripts: prepack's build log would
+// otherwise share stdout with the JSON parsed below.
+execFileSync('npm', ['run', 'build', '--workspace', PACKAGE], {stdio: ['ignore', 'inherit', 'inherit']});
+
 let raw;
 try {
-  raw = execFileSync('npm', ['pack', '--workspace', PACKAGE, '--dry-run', '--json'], {
+  raw = execFileSync('npm', ['pack', '--workspace', PACKAGE, '--dry-run', '--json', '--ignore-scripts'], {
     encoding: 'utf8',
     maxBuffer: 64 * 1024 * 1024,
   });
@@ -23,8 +27,10 @@ const entry = parsePackResult(raw, PACKAGE);
 
 const paths = entry.files.map(file => file.path);
 const forbidden = paths.filter(p =>
-  /^android\/(build|\.gradle)\//.test(p) || p.split('/').includes('node_modules'));
-const required = ['package.json', 'README.md', 'LICENSE'];
+  /^android\/(build|\.gradle)\//.test(p) || p.split('/').includes('node_modules') ||
+  p.split('/').includes('__tests__') || p.endsWith('.tsbuildinfo'));
+const required = ['package.json', 'README.md', 'LICENSE', 'CHANGELOG.md', 'lib/module/index.js',
+  'lib/typescript/index.d.ts', 'src/index.ts', 'src/specs/ALGMenuNativeComponent.ts'];
 const missing = required.filter(name => !paths.includes(name));
 
 console.log(`package:  ${entry.name}@${entry.version}`);

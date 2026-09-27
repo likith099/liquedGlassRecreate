@@ -17,5 +17,9 @@ react {
 }
 dependencies {
     implementation 'com.facebook.react:react-android'
-    implementation 'com.google.android.material:material:1.13.0'
+    // Apps may pin their own Material Components version with
+    // ext.adaptiveGlassMaterialVersion in the root build.gradle.
+    def materialVersion = rootProject.ext.has('adaptiveGlassMaterialVersion') ?
+        rootProject.ext.get('adaptiveGlassMaterialVersion') : '1.13.0'
+    implementation "com.google.android.material:material:${materialVersion}"
 }

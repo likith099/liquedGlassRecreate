@@ -1,0 +1,60 @@
+name: iOS device tests
+
+# Device lifecycle and visual-tier UI tests on an iOS simulator. They need a full native build,
+# so they run on demand and on pull requests that change native, source or example code.
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'packages/liquid-glass/ios/**'
+      - 'packages/liquid-glass/src/**'
+      - 'example/**'
+      - 'scripts/run-ios-ui-tests.mjs'
+      - '.github/workflows/device-tests.yml'
+permissions:
+  contents: read
+concurrency:
+  group: device-tests-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  ios:
+    name: iOS lifecycle and visual tiers
+    runs-on: macos-26
+    timeout-minutes: 90
+    env:
+      RCT_USE_PREBUILT_RNCORE: '0'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - name: Install iOS pods
+        working-directory: example/ios
+        run: pod install
+      - name: Start Metro on port 8093
+        run: |
+          nohup npm start > "$RUNNER_TEMP/metro.log" 2>&1 &
+          for attempt in $(seq 1 60); do
+            curl -sf http://localhost:8093/status && exit 0
+            sleep 2
+          done
+          cat "$RUNNER_TEMP/metro.log"
+          exit 1
+      # Cold-launch first taps, tab rebuilds before and after attach, per-tab artwork and colours,
+      # icon buttons and programmatic menus, and the surface tiers in light and dark.
+      - name: Run UI tests
+        env:
+          ALG_DERIVED_DATA: ${{ runner.temp }}/DerivedData
+        run: >
+          node scripts/run-ios-ui-tests.mjs --result artifacts/DeviceTests.xcresult --log artifacts/device-tests.log
+          testTabBarLifecycleAndFirstTap testTabBarArtworkAndTints testIconButtonsAndProgrammaticMenu testVisualTiers
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: device-tests-${{ github.sha }}
+          path: |
+            artifacts/DeviceTests.xcresult
+            artifacts/device-tests.log
+          retention-days: 14

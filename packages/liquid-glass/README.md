@@ -31,6 +31,10 @@ Then rebuild both native apps; a JS-only reload is not enough the first time. Au
 
 The host app must run **React Native 0.81 or newer with the New Architecture (Fabric)** and React 19; these are Fabric codegen components and will not build on the old architecture. Builds are verified on 0.81.5, 0.86.3 and 0.87.1. The peer range has no upper bound: it controls what npm will install, while the tested versions are listed here. iOS needs Xcode 26+ and a **deployment target of iOS 15.1 or higher** — below that CocoaPods refuses to resolve the pod — with native glass on iOS 26+ and standard controls below it.
 
+It is a native module, so it does not run in Expo Go; use a development build. Coming from `expo-glass-effect`: `glassEffectStyle` is `material`, `isInteractive` is `interactive`, and `GlassContainer` needs `mergingEnabled` alongside `spacing`.
+
+The package ships compiled JavaScript (`lib/module`) and type definitions (`lib/typescript`), along with its TypeScript source for codegen. Android apps can pin Material Components with `ext.adaptiveGlassMaterialVersion` in the root `build.gradle` (default 1.13.0).
+
 On React Native 0.81 specifically, the app must consume React Native's **prebuilt** iOS dependencies, which is the default (`RCT_USE_RN_DEP=1`) and what Expo SDK 54 does. Building React Native from source on 0.81 fails under Xcode 26 inside `Pods/fmt`, independently of this package. On **React Native 0.87** two defects in React Native itself affect any Fabric library, including this one. React's own `ReactCodegen` target fails to compile in 0.87's default prebuilt mode because its header search path misses the `React_RCTFabric` subdirectory; run `RCT_USE_PREBUILT_RNCORE=0 pod install` to build React from source instead. In an npm workspace, `@react-native/metro-config` nests inside the app rather than hoisting, and `@react-native/community-cli-plugin` cannot `require()` it, so Metro will not start until you declare it in the workspace root.
 
 On **iOS 27 the host app must adopt the UIScene lifecycle**, otherwise iOS traps during scene creation before any UI appears; add a `UIApplicationSceneManifest` and a scene delegate that owns the window. Android needs no extra setup. Expo Modules are not used and no router is required.
@@ -50,9 +54,13 @@ import {GlassView, GlassButton, GlassContainer, GlassActionCluster} from '@likit
 />
 ```
 
-`GlassView` accepts material (`regular`, `clear`, `none`), interactive, tintColor, cornerRadius, colorScheme, animationDuration (seconds), fallbackStyle, and forceFallback. Use cornerRadius instead of style.borderRadius. `GlassPressable` adds custom React children, press semantics and Android ripple. `GlassButton` with a `title` uses a fully native SwiftUI button on iOS 26+. Existing children-based GlassButton calls remain compatible. `GlassContainer.mergingEnabled` defaults to false. Set it to true to allow nearby surfaces to join; `spacing` then controls the merging threshold, independently of layout gap. The action cluster also defaults to `mergingEnabled={false}`; enable it to opt into native glass merging during expansion and collapse. For a GlassContainer, place participating GlassViews inside it.
+`GlassView` accepts material (`regular`, `clear`, `none`), interactive, tintColor, cornerRadius, colorScheme, animationDuration (seconds), fallbackStyle, and forceFallback. Use cornerRadius instead of style.borderRadius. `GlassPressable` adds custom React children, press semantics and Android ripple. Its `interactive` prop (default true, always off while disabled) controls whether the glass deforms under touch; set it false for large tappable cards and rows. `colorScheme` pins the surface's material, for example dark glass over media. `GlassButton` with a `title` uses a fully native SwiftUI button on iOS 26+. Existing children-based GlassButton calls remain compatible. `GlassContainer.mergingEnabled` defaults to false. Set it to true to allow nearby surfaces to join; `spacing` then controls the merging threshold, independently of layout gap. The action cluster also defaults to `mergingEnabled={false}`; enable it to opt into native glass merging during expansion and collapse. For a GlassContainer, place participating GlassViews inside it. Passing `spacing` without `mergingEnabled` logs a one-time development warning, because nothing merges.
 
-The UIKit action cluster retains controls by stable IDs and uses the same UIGlassEffect material host as GlassView. The toggle keeps its material, bounds, and opacity unchanged during expansion. UIKit owns the native finger-localized highlight and deformation whenever `interactive` is enabled. There is no custom press overlay, scale, or finger-follow animation. SF Symbols remain inside the effect content view, so UIKit deforms the icon and glass together. A tap recognizer observes activation without cancelling or delaying native glass touches. There is no separate UIControl or forced hit-test target. Default dark-mode actions apply a neutral black native material tint at 0.65 alpha to reduce lightness. This also darkens the resting material; it is not a highlight-strength percentage. Light mode uses transparent tint. An explicit tintColor overrides the default. UIKit still owns the highlight and provides no separate intensity setting. The old `pressFeedback` prop is deprecated and ignored. `interactive={false}` disables native press visuals without disabling callbacks. Android keeps its normal ripple. Opt-in merging uses UIGlassContainerEffect and animated UIKit geometry; The default UIKit branch does not use SwiftUI matched-geometry transitions. Supply unique nonempty action IDs; `__toggle` is reserved. Keep expanded controlled. iOS renders SF Symbols with accessible titles, while Android displays titles on ordinary buttons. Allow approximately `24 + 52 * (actions.length + 1) + 12 * actions.length` points of width and at least 80 of height. On iOS, a narrower measured host automatically uses wrapping standard controls, then returns to native glass when it fits. Controlled state and callbacks are retained. Allow height to grow in narrow layouts rather than forcing a fixed height. Arbitrary React children are supported by the surface, but not the action cluster.
+`useGlassTier()` returns the live material tier: `'glass'` (iOS 26), `'blur'` (iOS 15–25) or `'solid'` (Android and Reduce Transparency). It follows the Reduce Transparency setting as it changes, and assumes it is off until the first read returns. `fallbackMaterial="solid"` on `GlassView` or `GlassPressable` uses the opaque surface below iOS 26 instead of system blur, which is cheaper in long lists. Wrap your app in `GlassFallbackThemeProvider value={{surface: {light, dark}, foreground: {light, dark}}}` to theme the opaque fallback surfaces (Android, `forceFallback`, solid fallbacks); unset colours keep the defaults.
+
+Every component accepts a `ref` (typed `GlassHostRef`) that resolves to its outermost native host view, for `measure` and similar calls. React 19 passes `ref` as an ordinary prop, so no `forwardRef` wrapper is involved.
+
+The UIKit action cluster retains controls by stable IDs and uses the same UIGlassEffect material host as GlassView. The toggle keeps its material, bounds, and opacity unchanged during expansion. UIKit owns the native finger-localized highlight and deformation whenever `interactive` is enabled. There is no custom press overlay, scale, or finger-follow animation. SF Symbols remain inside the effect content view, so UIKit deforms the icon and glass together. A tap recognizer observes activation without cancelling or delaying native glass touches. There is no separate UIControl or forced hit-test target. Default dark-mode actions apply a neutral black native material tint at 0.65 alpha to reduce lightness. This also darkens the resting material; it is not a highlight-strength percentage. Light mode uses transparent tint. An explicit tintColor overrides the default. UIKit still owns the highlight and provides no separate intensity setting. The old `pressFeedback` prop is deprecated and ignored. `interactive={false}` disables native press visuals without disabling callbacks. Android keeps its normal ripple. Opt-in merging uses UIGlassContainerEffect and animated UIKit geometry; The default UIKit branch does not use SwiftUI matched-geometry transitions. Supply unique nonempty action IDs. Keep expanded controlled. iOS renders SF Symbols with accessible titles, while Android displays titles on ordinary buttons. Allow approximately `24 + 52 * (actions.length + 1) + 12 * actions.length` points of width and at least 80 of height. On iOS, a narrower measured host automatically uses wrapping standard controls, then returns to native glass when it fits. Controlled state and callbacks are retained. Allow height to grow in narrow layouts rather than forcing a fixed height. Arbitrary React children are supported by the surface, but not the action cluster.
 
 Reduce Transparency replaces our glass surface/cluster materials with opaque backgrounds. Reduce Motion suppresses our native property/morph transitions. Use semantic text colors for your children; the package does not recolor arbitrary content. `forceFallback` previews the standard implementation on surfaces, buttons, selectors, and action clusters. The native slider has no `forceFallback` prop.
 
@@ -86,7 +94,7 @@ interaction checks on iOS 26.5. The older-iOS fallback passed on iOS 18.6.
 
 `GlassButton` accepts `title`, optional `systemImage` (iOS), `variant="regular" | "prominent"`, `disabled`, `loading`, `onPress: () => void`, tintColor, colorScheme, forceFallback, and view layout props. Loading prevents activation. Default native host height: 64 points. For custom children/material/shape, use GlassPressable.
 
-`GlassSegmentedControl` accepts `options: {value, label, disabled?}[]`, controlled `value: string | null`, `onValueChange`, disabled, tintColor, colorScheme, forceFallback, and view layout props. Values must be unique and nonempty; a non-null selection must be present. It uses UISegmentedControl on iOS 26+ and selectable ripple buttons on Android. Default native host height: 52 points. Provide enough width for short labels, and larger heights for large accessibility text. Neither control enables shared glass merging.
+`GlassSegmentedControl` accepts `options: {value, label, disabled?, count?, tintColor?}[]`, controlled `value: string | null`, `onValueChange`, disabled, tintColor, colorScheme, forceFallback, and view layout props. Values must be unique and nonempty; a non-null selection must be present. It uses UISegmentedControl on iOS 26+ and selectable ripple buttons on Android. Default native host height: 52 points. Provide enough width for short labels, and larger heights for large accessibility text. Neither control enables shared glass merging.
 
 ## Native slider
 
@@ -123,6 +131,28 @@ iOS uses UIKit's native menu and glass button; older iOS, Reduce Transparency, o
 
 `GlassMenuElement` extends the existing action type with `{kind: 'section', id, title, items}` and `{kind: 'submenu', id, title, items, disabled?, systemImage?}`. Sections may have an empty title. Groups must contain items; IDs are unique across all groups and leaves. Only enabled leaf actions emit callbacks; a disabled submenu blocks its descendants. UIKit displays inline sections; Android uses native groups and disabled title rows. One submenu level is supported on both platforms, with at most 8 total tree levels including sections and 256 elements. Submenus inside submenus are rejected. Existing flat arrays remain compatible.
 
+`GlassBadge` is a small label on material that reads the same over bright and dark photos: `<GlassBadge tintColor="#F57C0080" solidColor="#F57C00">New</GlassBadge>`. `tintColor` tints the older-iOS blur, and the iOS 26 glass too with `tintGlass`. `solidColor` fills it on Android, under Reduce Transparency, and with `forceFallback`.
+
+A segment's `count` is shown after its label ("Saved 3", "99+" above 99), and its `tintColor` becomes the selected-segment colour while it is selected.
+
+`GlassIconButton variant="prominent"` fills the button with `tintColor` and draws a white glyph: prominent glass on iOS 26, a filled button below it. With `size={56}` it serves as a floating action button.
+
+`GlassExpandingTabs` is a scrollable row of icon pills in which the selected pill opens to show its label. `<GlassExpandingTabs options={[{value, label, systemImage, tintColor?}]} value={filter} onValueChange={setFilter} />`.
+- **Animation:** each pill animates one progress value. Its width, the label revealed from the icon outwards, and the colour of the icon, label and wash all follow that value; the label appears only after halfway. The spring has no overshoot. The content never outgrows the pill, so the icon stays centred.
+- **iOS:** SwiftUI draws Liquid Glass pills on iOS 26, with the colour as a wash beneath the content, and neutral fills below iOS 26. Glass pills merge only with `mergingEnabled`.
+- **Behaviour:** labels are measured before the first draw, so a preselected pill does not pop open. The selected pill scrolls into view, and the pill height grows with text size. Reduce Motion changes selection instantly.
+- **Accessibility:** every label, and its position ("2 of 5"), is read even while its pill is collapsed.
+- **Options:** `onReselect` reports a tap on the selected pill. `material="tinted"` uses neutral plates instead of glass, and `contentInset` insets the row.
+- **Android:** the same model on React Native Animated.
+
+`GlassSearchField` is a controlled `UISearchTextField` on glass (blur on iOS 15–25, opaque under Reduce Transparency): `<GlassSearchField value={query} onChangeText={setQuery} onSubmitEditing={run} />`. Its ref has `focus()` / `blur()`. A stale `value` never overwrites text typed after it, using the same event counting as React Native's TextInput. Android uses a React Native TextInput with the same props.
+
+`GlassToastProvider` + `useGlassToast().show('Copied')` shows a short confirmation on glass. It is announced to screen readers, replaces any toast on screen, fades (instantly under Reduce Motion), and hides after `duration` (default 2000 ms).
+
+`GlassScrollEdge` wraps a bar floating over a ScrollView edge: `<GlassScrollEdge scrollViewRef={listRef} edge="bottom">…</GlassScrollEdge>`. On iOS 26 UIKit draws its scroll-edge effect beneath it (`effectStyle`: `automatic`, `soft` or `hard`) through `UIScrollEdgeElementContainerInteraction`. Elsewhere, `fallbackColor` draws a gradient scrim.
+
+`GlassIconButton` is a round, symbol-only glass button (`onPress`) or menu button (`menu`), with `size`, `symbolPointSize` and `colorScheme`. Menu buttons accept `onOpen` / `onClose`, and their `ref` exposes `open()` (iOS 17.4+ and Android). `open()` does nothing on older iOS, while disabled or without items, and the system chooses where the menu appears. `onClose` fires after the closing animation.
+
 ## Native toolbars
 
 ```tsx
@@ -138,9 +168,9 @@ import {GlassToolbar} from '@likith99/react-native-adaptive-liquid-glass';
 ]} maxVisibleItems={2} onAction={id => console.log(id)} />
 ```
 
-`GlassToolbar` uses UIKit UIToolbar / Android Toolbar. Root items are actions or submenus; their menus use the same tree contract above. `maxVisibleItems` defaults to 3 and is an upper bound; 0 places everything in overflow. `placement="overflow"` always hides a root item in the native overflow menu. Other items move there as space becomes limited; platforms may show different visible counts. The host defaults to height 64, minimum width 64. The screen owns safe-area insets and placement. Long titles should be allowed to move to overflow; provide explicit width/flex in horizontal layouts.
+`GlassToolbar` uses UIKit glass buttons on iOS 26 (UIToolbar on older iOS, with `forceFallback`, or with Reduce Transparency) and Android Toolbar. Root items are actions or submenus; their menus use the same tree contract above. `maxVisibleItems` defaults to 3 and is an upper bound; 0 places everything in overflow. `placement="overflow"` always hides a root item in the native overflow menu. Other items move there as space becomes limited; platforms may show different visible counts. The host defaults to height 64, minimum width 64. The screen owns safe-area insets and placement. Long titles should be allowed to move to overflow; provide explicit width/flex in horizontal layouts.
 
-On iOS 26, `mergingEnabled` (default false) lets bar items share native glass backgrounds. `forceFallback` and Reduce Transparency use an opaque bar with hidden shared item backgrounds. Android uses its standard appearance and title actions; iOS uses SF Symbols when supplied, retaining titles as accessibility labels. `disabled` blocks all actions; individual items/submenus can also be disabled. Checkmarks remain controlled. `tintColor` sets a foreground accent; destructive actions use the native error color. Changing items or toolbar width dismisses open menus. Rebuild native apps for the extended Fabric bridge. No custom press animation or navigation-library dependency is introduced.
+On iOS 26, `mergingEnabled` (default false) places the visible controls in one shared glass capsule. `forceFallback` and Reduce Transparency use an opaque bar with hidden shared item backgrounds. Android uses its standard appearance and title actions; iOS uses SF Symbols when supplied, retaining titles as accessibility labels. `disabled` blocks all actions; individual items/submenus can also be disabled. Checkmarks remain controlled. `tintColor` sets a foreground accent; destructive actions use the native error color. Changing items or toolbar width dismisses open menus. Rebuild native apps for the extended Fabric bridge. No custom press animation or navigation-library dependency is introduced.
 
 ## Native tabs
 
@@ -154,11 +184,11 @@ const [tab, setTab] = useState('home');
 
 `GlassTabBar` uses a contained UITabBarController on iOS and Material BottomNavigationView 1.13.0 on Android. UIKit owns Liquid Glass on iOS 26+ and the standard tab appearance on earlier supported versions. Android resolves a consuming Material theme or falls back to Material 3 DayNight. No Expo or navigation library is required by the package. Rebuild both apps after installation.
 
-Supply 1–5 items with unique nonempty IDs/titles and a `value` present in the list. Empty items require `value={null}`. Items accept icon presets (`home`, `search`, `library`, `favorites`, `inbox`, `settings`), iOS `systemImage`/`selectedSystemImage`, Android app drawable name `androidIcon`, numeric or `'dot'` badge, `disabled`, and `accessibilityLabel`. Numeric badges are nonnegative 32-bit integers; native display caps at 999+. Omitting a badge removes it.
+Supply 1–5 items with unique nonempty IDs/titles and a `value` present in the list. Empty items require `value={null}`. Items accept icon presets (`home`, `search`, `library`, `favorites`, `inbox`, `settings`), iOS `systemImage`/`selectedSystemImage`, Android app drawable name `androidIcon`, `image`/`selectedImage` artwork (an iOS asset name, or `require()`/`{uri}` on both platforms, loaded at runtime and kept in memory), per-tab `selectedTintColor`/`inactiveTintColor`, numeric or `'dot'` badge, `disabled`, and `accessibilityLabel`. The bar takes `inactiveTintColor` for every tab, and Android `androidBackgroundColor`/`androidIndicatorColor`. See [tabs](../../docs/tabs.md) for rendering modes and the iOS 26 drag lens. Numeric badges are nonnegative 32-bit integers; native display caps at 999+. Omitting a badge removes it.
 
 Selection is controlled: update `value` in `onValueChange` to accept a tap. Rejected changes restore the supplied value after the React transaction; tapping the current tab calls only `onTabReselect`. Programmatic values emit no callbacks and may select disabled tabs. Global `disabled` blocks user taps. On the iOS 26.5 simulator, XCTest still reports disabled tabs as enabled despite native dimming and blocked activation; spoken VoiceOver acceptance is deferred by the owner. `tintColor` changes the selected foreground accent. Stable IDs preserve tab identity across reorder/replacement; native controls own press and selection animations.
 
-Default host height is 80 points, minimum width 180. Supply sufficient width/height for your labels. The screen owns safe-area spacing outside the host and the content above it. This primitive does not own a navigation stack, React screens, automatic scroll minimization, or an iPad sidebar. It does not accept React children or `forceFallback`; the native system determines its appearance. The repository demo shows a React Navigation 7 custom tab-bar adapter using route keys, preventable `tabPress`, reselection, retained screen state, and back history.
+Default host height is 80 points, minimum width 180. Supply sufficient width/height for your labels. On iOS, extend the host to the screen's bottom edge and add the bottom safe-area inset to its height; UIKit keeps items above the home indicator. On Android, apply the bottom inset outside the host. This primitive does not own a navigation stack, React screens, automatic scroll minimization, or an iPad sidebar. It does not accept React children or `forceFallback`; the native system determines its appearance. The repository demo shows a React Navigation 7 custom tab-bar adapter using route keys, preventable `tabPress`, reselection, retained screen state, and back history.
 
 ## Older iOS surfaces and performance
 
@@ -176,3 +206,68 @@ fallback/control cases passed. These results do not establish iOS 15–17 execut
 spoken VoiceOver/TalkBack compatibility, narrow iPad multitasking or a frame-rate
 guarantee. The package needs no new runtime dependency. Full release evidence is
 maintained in the repository's `release/verification-0.1.2.md`.
+
+## Long-press content menus (0.1.3)
+
+`GlassContextMenu` wraps a message, image, or other noninteractive content:
+
+```tsx
+import {Text, View} from 'react-native';
+import {GlassContextMenu} from '@likith99/react-native-adaptive-liquid-glass';
+
+<GlassContextMenu accessibilityLabel="Message from Alex"
+  previewCornerRadius={20}
+  items={[
+    {id: 'edit', title: 'Edit', systemImage: 'pencil'},
+    {id: 'forward', title: 'Forward', systemImage: 'arrowshape.turn.up.right'},
+    {id: 'delete', title: 'Delete', systemImage: 'trash', destructive: true},
+  ]}
+  onAction={id => handleMessageAction(id)}>
+  <View style={{padding: 20, borderRadius: 20, backgroundColor: '#D9EAF7'}}>
+    <Text>See you at the park</Text>
+  </View>
+</GlassContextMenu>
+```
+
+On iOS, a native `UIContextMenuInteraction` lifts a preview of the wrapped content
+and presents the actions alongside it. The message remains visible in the preview
+and returns to its original layout on dismissal. iOS 26 uses the system's current
+menu appearance; older supported iOS versions use their standard context menu.
+Android opens a native anchored `PopupMenu` on a long press anywhere over the content
+and leaves the content in place; once the menu opens, touches inside the content are
+cancelled so their `onPress` does not also fire. It does not reproduce the iOS lift animation. Placement is system controlled:
+menus can appear above the content when space below is limited.
+
+`items`, `onAction`, sections, submenus, checkmarks and disabled/destructive actions
+follow the same contract as `GlassMenuButton`. A regular tap does not open the menu.
+`disabled` or empty items suppress it. Replacing items, disabling or unmounting the
+wrapper dismisses the menu; obsolete native actions cannot fire. `onAction` only
+reports a selection: edit/delete/forward behavior belongs to your application.
+
+The wrapper sizes from its React children and accepts normal View layout props.
+Use a single noninteractive content root for a coherent preview; nested buttons,
+selectable text and scrolling controls own their gestures and can compete with long
+press. `previewCornerRadius` (default 16, finite and nonnegative) shapes only the iOS
+preview outline; style your child's background and corners separately. No custom
+press physics, merging, trigger replacement, or forced menu-material tint is added.
+The existing `GlassMenuButton` keeps its tap presentation.
+
+Set a meaningful `accessibilityLabel` on the wrapper to expose the content as one
+target; iOS also exposes enabled leaf actions as accessibility custom actions.
+Android exposes native long-click. Native menus own menu-item focus and settings
+adaptation. Spoken VoiceOver/TalkBack testing remains separate from automated tests.
+Rebuild both native apps after upgrading; this feature extends the Fabric spec.
+
+### Plain menu fallback preview
+
+Set `forceFallback` on `GlassContextMenu` to use the same plain anchored React Native
+popup on iOS or Android. The original content stays in place, with no lifting or
+glass transition. It supports the same action tree, disabled/destructive items,
+controlled checkmarks, submenus, outside-tap dismissal and Android back dismissal.
+The popup chooses below or above its anchor and scrolls when space is limited.
+Changing items, disabling, rotating, resizing or unmounting dismisses it.
+
+The example's **Message actions → Plain menu fallback** switch lets you inspect
+this behavior on an iOS simulator. This previews the shared fallback interaction;
+it does not emulate or verify Android's native PopupMenu renderer. With
+`forceFallback={false}` (the default), each platform still uses its native menu.

@@ -67,6 +67,8 @@ Requires Node 22.11+, Xcode 26+, CocoaPods, and a native development build. iOS 
 
 For the local 0.1.2 candidate and an iPhone-focused setup, see [iPhone integration](docs/iphone-integration.md). See [release verification](release/verification-0.1.2.md) for candidate test evidence.
 
+It is a native module, so it does not run in Expo Go; use a development build. Moving from `expo-glass-effect`? See the [migration guide](docs/migrating-from-expo-glass-effect.md).
+
 To install the published version in another React Native app:
 
 ```sh
@@ -151,7 +153,14 @@ See [action-cluster options](docs/action-clusters.md) for details.
 | `GlassPressable` | Custom React children and press semantics over interactive glass | Ordinary pressable surface, Android ripple |
 | `GlassSegmentedControl` | Native `UISegmentedControl`, including the system glass selection thumb | Controlled selectable button group with ripple |
 | `GlassMenuButton` | Native glass UIButton and UIMenu with checked, disabled, and destructive actions | Android native Button/PopupMenu; standard UIKit menu button on older iOS |
-| `GlassToolbar` | Native UIToolbar with action/menu items, overflow, and optional shared glass backgrounds | Standard Android Toolbar and older-iOS UIToolbar |
+| `GlassIconButton` | Round glass icon button, plain or with a native menu; `prominent` for floating actions | Android ripple circle and PopupMenu; gray or filled UIKit button on older iOS |
+| `GlassBadge` | Label on glass, optionally tinted | Tinted blur on older iOS; solid colour on Android and under Reduce Transparency |
+| `GlassSearchField` | System search field on glass | Search field on blur on older iOS; TextInput on Android |
+| `GlassExpandingTabs` | SwiftUI glass pills; the selected one shows its label | Material pills on older iOS; Pressable pills on Android |
+| `GlassToastProvider` | Glass confirmation toasts, announced to screen readers | Blur or solid surface |
+| `GlassScrollEdge` | UIKit scroll-edge effect under floating bars | Gradient scrim |
+| `GlassContextMenu` | Long-press native menu with a lifted preview of React content | Android anchored PopupMenu retains content in place; standard older-iOS context menu |
+| `GlassToolbar` | Native glass action/menu buttons, overflow, and an optional shared glass capsule | Standard Android Toolbar and older-iOS UIToolbar |
 | `GlassTabBar` | Contained UITabBarController with native Liquid Glass | Material BottomNavigationView; standard UIKit tab bar on older iOS |
 | `GlassSlider` | Native `UISlider`, with system-owned thumb interaction | Android native `SeekBar`; standard `UISlider` on older iOS |
 | `GlassActionCluster` | Stable UIKit controls using the same `UIGlassEffect` host as surfaces; opt-in `UIGlassContainerEffect` merging | Buttons showing action titles; same action IDs and callbacks |
@@ -160,9 +169,9 @@ See [the typed API](packages/liquid-glass/src/types.ts) and [native architecture
 
 `GlassView` accepts `material` (`regular`, `clear`, `none`), `interactive`, `tintColor`, `cornerRadius`, `colorScheme`, `animationDuration` (seconds), `fallbackStyle`, and `forceFallback`, plus ordinary view props. Use `cornerRadius` to define the native material shape, rather than `style.borderRadius`. Use `PlatformColor('labelColor')` for native semantic labels; the package cannot automatically recolor arbitrary React children.
 
-`GlassContainer.mergingEnabled` defaults to **false**: nearby surfaces remain independent. Set `mergingEnabled={true}` to allow them to join. `GlassContainer.spacing` is the **merging threshold when enabled**, not CSS gap. Place `GlassView` descendants inside it and change their layout or transforms to move them together. Avoid nesting glass surfaces inside other glass surfaces. The demo's position animation uses React Native's native animation driver; UIKit renders the material merging.
+See the [surfaces reference](docs/surfaces.md) for every surface prop, the material tiers and theming. `GlassContainer.mergingEnabled` defaults to **false**: nearby surfaces remain independent. Set `mergingEnabled={true}` to allow them to join. `GlassContainer.spacing` is the **merging threshold when enabled**, not CSS gap. Place `GlassView` descendants inside it and change their layout or transforms to move them together. Avoid nesting glass surfaces inside other glass surfaces. The demo's position animation uses React Native's native animation driver; UIKit renders the material merging.
 
-`GlassActionCluster` is controlled: update `expanded` in `onExpandedChange`. It accepts typed actions, material, tint, interaction, animation duration, and merging spacing. Its `mergingEnabled` also defaults to false; opt in to shared UIKit glass merging during expansion/collapse. Buttons still expand, respond to touch, and deliver callbacks with merging off. IDs must be unique, nonempty, stable, and must not equal `__toggle`. iOS uses SF Symbols with accessible titles; Android displays those titles. Give the native cluster enough horizontal space: approximately `24 + 52 * (actions.length + 1) + 12 * actions.length` points, and at least 80 points of height. Its native controls do not accept arbitrary React children. The toggle uses the same UIKit material host as GlassView; expansion does not animate its glass opacity or replace its material. Merging uses UIKit geometry and compositing, not SwiftUI matched geometry. On iOS, a narrower measured host automatically selects the existing wrapping standard controls and returns to native glass when it fits. Controlled state is retained; allow height to grow instead of assigning a fixed height. The Android fallback can also wrap.
+`GlassActionCluster` is controlled: update `expanded` in `onExpandedChange`. It accepts typed actions, material, tint, interaction, animation duration, and merging spacing. Its `mergingEnabled` also defaults to false; opt in to shared UIKit glass merging during expansion/collapse. Buttons still expand, respond to touch, and deliver callbacks with merging off. IDs must be unique, nonempty and stable. iOS uses SF Symbols with accessible titles; Android displays those titles. Give the native cluster enough horizontal space: approximately `24 + 52 * (actions.length + 1) + 12 * actions.length` points, and at least 80 points of height. Its native controls do not accept arbitrary React children. The toggle uses the same UIKit material host as GlassView; expansion does not animate its glass opacity or replace its material. Merging uses UIKit geometry and compositing, not SwiftUI matched geometry. On iOS, a narrower measured host automatically selects the existing wrapping standard controls and returns to native glass when it fits. Controlled state is retained; allow height to grow instead of assigning a fixed height. The Android fallback can also wrap.
 
 `GlassActionCluster` uses the same native interactive material as `GlassView`: UIKit owns finger-localized lighting and deformation, with SF Symbols inside the effect content so they stretch with it. There is no custom press overlay, movement animation, or detached icon. By default, dark-mode actions use a neutral black native material tint at 0.65 alpha to reduce lightness; it darkens the glass **at rest as well as during a press**. Light mode uses a transparent tint, and an explicit `tintColor` overrides this default. This is material tinting, not a 65% highlight-strength setting: UIKit has no separate intensity control ([Apple API](https://developer.apple.com/documentation/uikit/uiglasseffect)). `interactive={false}` disables native press visuals without disabling activation. The former `pressFeedback` prop is deprecated and ignored; the demo has one **Touch response** switch. Android retains its standard ripple response.
 
@@ -204,6 +213,8 @@ The title button defaults to a 64-point host at standard text sizes. Native butt
 Existing `<GlassButton><Text>...</Text></GlassButton>` calls continue to use the custom-children implementation. Prefer its explicit name, `GlassPressable`, in new code. This preserves the original API while making the native ownership boundary clear.
 
 ## Native menus
+
+`GlassContextMenu` adds a long-press menu around messages, images, or other content. iOS lifts a visible content preview; Android keeps the content in place beside its native popup. See [usage and platform behavior](docs/menus.md#long-press-content-menus-013).
 
 `GlassMenuButton` adds a native menu trigger with stable action IDs, controlled checkmarks, disabled and destructive items, sections, one submenu level, and native dismissal. Android uses its system popup menu. See [menu usage and behavior](docs/menus.md).
 
@@ -256,11 +267,15 @@ xcodebuild -workspace example/ios/LiquidGlassLab.xcworkspace \
 
 Metro must be running for the Debug UI tests. They exercise glass/action callbacks, opt-in merging, native buttons and segmented selection, and slider snapping, rejected changes, reset, and disablement. Screenshots are attached to Xcode's test result.
 
+To run a chosen set of UI tests, use `node scripts/run-ios-ui-tests.mjs testName…`. It picks the newest iPhone simulator (or `--simulator <udid>`), turns off the multi-gigabyte failure diagnostics, and stops `xcodebuild` if it lingers after the run. CI runs the same script in `.github/workflows/device-tests.yml`, on demand and on pull requests that change native, source or example code. That job covers cold-launch first taps, tab rebuilds, tab artwork and colours, icon buttons and menus, and `testVisualTiers`. `testVisualTiers` screenshots each surface tier in light and dark, and checks that each tier follows the appearance and the opaque surface keeps its default colours. Jest's `TierSnapshots` test pins what each tier renders.
+
 `python3 scripts/verify-android-slider.py` checks the slider in a running Android demo using adb and saves screenshots/results under `artifacts`. It defaults to `emulator-5554`; override `ANDROID_SERIAL` and `ADB` as needed. This drives the demo UI, so leave that emulator idle during the test.
 
 `python3 scripts/verify-android-toolbar.py` checks the toolbar/menu batch, including the existing flat-menu regression. Start from a freshly launched demo. The corresponding iOS test is `GlassInteractionTests/testToolbarAndMenuBatch` and includes both the flat-menu regression and toolbar/hierarchy scenarios. These focused batch checks avoid rerunning unrelated surface/slider tests.
 
 `python3 scripts/verify-android-tabs.py` exercises the native tab navigation demo. The corresponding iOS test is `GlassInteractionTests/testNativeTabNavigationBatch`. These checks cover rejected selection, reselection, retained screen state, disabled tabs, programmatic navigation, reordering, replacement, badges, and remounting; Android also checks back history.
+
+`python3 scripts/verify-android-features.py` covers the 0.1.3 additions on Android: icon buttons, `open()` and menu open/close events, segment counts, badges and the prominent icon button, expanding pills, the search field, toast and `focus()`, and tab image sources with per-tab, bar and indicator colours (checked in the screenshot's pixels). `python3 scripts/verify-android-context-menu.py` covers `GlassContextMenu`. Both expect a freshly installed debug demo with Metro on 8093; screenshots go to `artifacts/`.
 
 `python3 scripts/verify-android-accessibility.py` exercises button/loading/disabled states, controlled selectors, action groups, large text, themes, in the adaptive lab (RTL remains manual). It restores emulator settings in a `finally` block. iOS counterparts are `testAdaptiveControlAccessibility` and `testAdaptiveLargeText`. These inspect semantics and layout; they do not verify spoken screen-reader output.
 

@@ -1,6 +1,7 @@
 {
   "extends": "@react-native/typescript-config",
-  "compilerOptions": {"strict": true, "types": ["jest"]},
+  "compilerOptions": {"strict": true, "types": ["jest"],
+    "paths": {"@likith99/react-native-adaptive-liquid-glass": ["./packages/liquid-glass/src/index.ts"]}},
   "include": ["packages/**/*.ts", "packages/**/*.tsx", "example/App.tsx", "example/__tests__/**/*.tsx"],
   "exclude": ["node_modules", "research", "example/ios/Pods"]
 }

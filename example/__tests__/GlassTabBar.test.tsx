@@ -1,7 +1,8 @@
 import React from 'react';
 import Renderer, {act} from 'react-test-renderer';
 import Tabs from '../../packages/liquid-glass/src/GlassTabBar';
-import {validateTabs} from '../../packages/liquid-glass/src/validateTabs';
+import {PixelRatio, processColor} from 'react-native';
+import {resolveTabImage, validateTabs} from '../../packages/liquid-glass/src/validateTabs';
 const items = [{id: 'home', title: 'Home'}, {id: 'inbox', title: 'Inbox', badge: 3}, {id: 'disabled', title: 'Disabled', disabled: true}];
 function native(tree: Renderer.ReactTestRenderer) {return tree.root.findAll(n => n.props.onSelectionChange && n.props.itemsJSON)[0];}
 
@@ -48,5 +49,37 @@ test('programmatic changes emit nothing and disabled, replaced and empty tabs ca
   act(() => tree.update(<Tabs items={[]} value={null} onValueChange={onValueChange} />));
   expect(native(tree).props.disabled).toBe(true);
   expect(onValueChange).not.toHaveBeenCalled();
+  act(() => tree.unmount());
+});
+
+test('tab images accept asset names and image sources, resolved once for native code', () => {
+  expect(resolveTabImage('BrandMark', 'image')).toEqual({name: 'BrandMark'});
+  expect(resolveTabImage({uri: 'https://example.com/tab.png'}, 'image'))
+    .toEqual({source: {uri: 'https://example.com/tab.png', scale: 1}});
+  jest.spyOn(PixelRatio, 'get').mockReturnValue(3);
+  expect(resolveTabImage([{uri: 'a1', scale: 1}, {uri: 'a3', scale: 3}, {uri: 'a2', scale: 2}], 'image').source?.uri).toBe('a3');
+  jest.restoreAllMocks();
+  expect(() => resolveTabImage(' ', 'image')).toThrow('asset name');
+  expect(() => resolveTabImage({} as never, 'selectedImage')).toThrow('selectedImage');
+  expect(() => validateTabs([{id: 'home', title: 'Home', imageRenderingMode: 'tinted' as never}], 'home')).toThrow('imageRenderingMode');
+});
+
+test('tab artwork, bar-wide inactive colour and Android bar colours reach the native view', () => {
+  let tree!: Renderer.ReactTestRenderer;
+  act(() => {tree = Renderer.create(<Tabs value="home" onValueChange={() => {}} inactiveTintColor="#8A8F98"
+    androidBackgroundColor="#F4F1EA" androidIndicatorColor="#E3DCCB" items={[
+      {id: 'home', title: 'Home', image: {uri: 'https://example.com/home.png', scale: 2},
+        selectedImage: {uri: 'https://example.com/home-filled.png', scale: 2}, imageRenderingMode: 'original'},
+      {id: 'mark', title: 'Mark', image: 'BrandMark', inactiveTintColor: '#FF0000', selectedTintColor: '#00FF00'},
+    ]} />);});
+  const props = native(tree).props;
+  const [home, mark] = JSON.parse(props.itemsJSON);
+  expect(home).toMatchObject({imageSource: {uri: 'https://example.com/home.png', scale: 2},
+    selectedImageSource: {uri: 'https://example.com/home-filled.png', scale: 2}, imageRenderingMode: 'original',
+    inactiveTint: processColor('#8A8F98')});
+  expect(home.image).toBeUndefined();
+  expect(mark).toMatchObject({image: 'BrandMark', inactiveTint: processColor('#FF0000'), selectedTint: processColor('#00FF00')});
+  expect(props.androidBackgroundColor).toBe('#F4F1EA');
+  expect(props.androidIndicatorColor).toBe('#E3DCCB');
   act(() => tree.unmount());
 });

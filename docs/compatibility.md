@@ -4,13 +4,13 @@ What this package can run on, what sets each limit, and what is still unverified
 
 ## React Native versions
 
-The peer range is `react-native >=0.81.0` with **no upper bound**. That range says what npm will let you install; it is not a claim that every future release is tested. What has actually been built and exercised is this:
+The peer ranges are `react-native >=0.81.0` and `react >=19.0.0`, with **no upper bound**. That range says what npm will let you install; it is not a claim that every future release is tested. What has actually been built and exercised is this:
 
 | React Native | Status |
 | --- | --- |
 | 0.81.5 | Built and exercised |
 | 0.86.3 | Built and exercised |
-| 0.87.1 | Built and exercised — typecheck, 32 JS tests, Fabric codegen, native compile, and five native UI batches (surface/live props, menus, tabs, buttons/segmented, toolbars) all pass |
+| 0.87.1 (React 19.2.3) | Built and exercised for 0.1.3 — typecheck, 92 JS tests and tier snapshots, Fabric codegen, native compile on both platforms, iOS UI tests on iOS 26.5 and 18.6, and the Android emulator scripts (menus, toolbar, tabs, context menu, slider, accessibility, RTL and the 0.1.3 features) all pass |
 | below 0.81 | Not supported. These are Fabric codegen components and need the New Architecture |
 
 An upper bound was tried and removed. Capping the range at the last tested version makes every new React Native release an install-time `ERESOLVE` failure for everyone, including on versions that work perfectly well. Without the cap, a genuinely incompatible release fails at build time with a real diagnostic instead. Tested versions belong in this table, not in the peer range.

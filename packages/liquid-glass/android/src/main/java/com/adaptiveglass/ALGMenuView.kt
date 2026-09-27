@@ -1,16 +1,24 @@
 package com.adaptiveglass
 
 import android.content.res.ColorStateList
+import android.content.res.Configuration
 import android.graphics.Color
+import android.graphics.drawable.GradientDrawable
+import android.graphics.drawable.RippleDrawable
 import android.text.SpannableString
 import android.text.Spanned
 import android.text.style.ForegroundColorSpan
 import android.util.TypedValue
+import android.view.GestureDetector
+import android.view.HapticFeedbackConstants
 import android.view.Menu
 import android.view.MenuItem
+import android.view.MotionEvent
 import android.view.View
 import android.widget.Button
+import android.view.Gravity
 import android.widget.FrameLayout
+import android.widget.ImageView
 import android.widget.PopupMenu
 import android.widget.Toolbar
 import com.facebook.react.bridge.Arguments
@@ -19,6 +27,8 @@ import com.facebook.react.uimanager.ReactAccessibilityDelegate
 import com.facebook.react.uimanager.ThemedReactContext
 import com.facebook.react.uimanager.UIManagerHelper
 import com.facebook.react.uimanager.events.Event
+import com.facebook.react.uimanager.events.NativeGestureUtil
+import com.facebook.react.views.view.ReactViewGroup
 import org.json.JSONArray
 
 private data class MenuEntry(val id: String, val title: String, val kind: String,
@@ -32,10 +42,21 @@ private class MenuActionEvent(surfaceId: Int, tag: Int, private val itemId: Stri
   override fun getEventData(): WritableMap = Arguments.createMap().apply { putString("id", itemId) }
 }
 
+/** Payload-free lifecycle events: topButtonPress, topMenuOpen, topMenuClose. */
+private class MenuLifecycleEvent(surfaceId: Int, tag: Int, private val name: String) : Event<MenuLifecycleEvent>(surfaceId, tag) {
+  override fun getEventName() = name
+  override fun canCoalesce() = false
+  override fun getEventData(): WritableMap = Arguments.createMap()
+}
+
 class ALGMenuView(private val reactContext: ThemedReactContext) : FrameLayout(reactContext) {
+  val reactContent = ReactViewGroup(reactContext)
+  var contextMenu = false
   private val button = Button(reactContext)
   private val bar = Toolbar(reactContext)
+  private val icon = ImageView(reactContext)
   private val defaultTextColors = button.textColors
+  private val defaultBackground = button.background
   var title = ""
   var itemsJSON = "[]"
   var disabled = false
@@ -45,6 +66,12 @@ class ALGMenuView(private val reactContext: ThemedReactContext) : FrameLayout(re
   var controlLabel: String? = null
   var controlHint: String? = null
   var controlTestID: String? = null
+  var iconMode = false
+  var colorScheme = "system"
+  var androidIcon = ""
+  var iconProminent = false
+  /** Icon mode without items is a plain button. */
+  private val isPlainButton get() = iconMode && entries.isEmpty()
   private var appliedConfiguration: List<Any?>? = null
   private var appliedJSON: String? = null
   private var entries = emptyList<MenuEntry>()
@@ -52,15 +79,43 @@ class ALGMenuView(private val reactContext: ThemedReactContext) : FrameLayout(re
   private var popup: PopupMenu? = null
   private var nextItemId = 1
   private var lastBarWidth = -1
+  /**
+   * Context menus open on a long press anywhere over the React content. React Native's views claim
+   * every touch they receive, so a long-click listener on this view never fires for touches on the
+   * content; the gesture is observed in dispatchTouchEvent instead, without taking it from the content.
+   */
+  private val longPress = GestureDetector(reactContext, object : GestureDetector.SimpleOnGestureListener() {
+    override fun onLongPress(event: MotionEvent) {
+      if (!contextMenu || disabled || entries.isEmpty()) return
+      performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+      // The native gesture now owns the touch: JavaScript responders are cancelled, so a pressable
+      // inside the content does not also fire when the finger lifts.
+      NativeGestureUtil.notifyNativeGestureStarted(this@ALGMenuView, event)
+      showMenu()
+    }
+  }).apply { setIsLongpressEnabled(true) }
 
   init {
     button.isAllCaps = false
     button.maxLines = 1
     button.ellipsize = android.text.TextUtils.TruncateAt.END
     addView(button, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
+    // The glyph sits over the button; the button keeps the touch, ripple and accessibility.
+    icon.isClickable = false
+    icon.importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+    icon.visibility = View.GONE
+    addView(icon, LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT, Gravity.CENTER))
     addView(bar, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
+    addView(reactContent, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
+    reactContent.visibility = View.GONE
+    // Accessibility long-press actions (TalkBack) arrive here rather than as touches.
+    setOnLongClickListener {
+      if (contextMenu && !disabled && entries.isNotEmpty()) { if (popup == null) showMenu(); true } else false
+    }
     bar.visibility = View.GONE
-    button.setOnClickListener { showMenu() }
+    button.setOnClickListener {
+      if (isPlainButton) { if (!disabled && isAttachedToWindow) dispatchLifecycle("topButtonPress") } else showMenu()
+    }
   }
   private fun decode(array: JSONArray): List<MenuEntry> = (0 until array.length()).map { index ->
     val item = array.getJSONObject(index)
@@ -70,17 +125,26 @@ class ALGMenuView(private val reactContext: ThemedReactContext) : FrameLayout(re
       item.optJSONArray("items")?.let { decode(it) } ?: emptyList(), item.optString("placement", "automatic"))
   }
   fun applyConfiguration() {
-    val configuration = listOf(itemsJSON, disabled, toolbar, maxVisibleItems, glassTint, controlTestID)
+    val configuration = listOf(itemsJSON, disabled, toolbar, maxVisibleItems, glassTint, controlTestID, contextMenu,
+      iconMode, colorScheme, androidIcon, iconProminent)
     val changed = configuration != appliedConfiguration
     if (appliedJSON != itemsJSON) {
       appliedJSON = itemsJSON
       entries = try { decode(JSONArray(itemsJSON)) } catch (_: Exception) { emptyList() }
     }
     if (changed) { revision += 1; dismissMenus(); appliedConfiguration = configuration }
-    button.visibility = if (toolbar) View.GONE else View.VISIBLE
-    bar.visibility = if (toolbar) View.VISIBLE else View.GONE
-    button.text = title
-    button.isEnabled = !disabled && entries.isNotEmpty()
+    button.visibility = if (toolbar || contextMenu) View.GONE else View.VISIBLE
+    bar.visibility = if (toolbar && !contextMenu) View.VISIBLE else View.GONE
+    reactContent.visibility = if (contextMenu) View.VISIBLE else View.GONE
+    isLongClickable = contextMenu && !disabled && entries.isNotEmpty()
+    if (contextMenu) {
+      contentDescription = controlLabel
+      setTag(com.facebook.react.R.id.react_test_id, controlTestID)
+      ReactAccessibilityDelegate.setDelegate(this, isFocusable, importantForAccessibility)
+    }
+    button.text = if (iconMode) "" else title
+    button.isEnabled = !disabled && (isPlainButton || entries.isNotEmpty())
+    applyIconAppearance()
     button.contentDescription = controlLabel?.takeIf { it.isNotEmpty() } ?: title
     if (android.os.Build.VERSION.SDK_INT >= 26) button.tooltipText = controlHint
     button.setTag(com.facebook.react.R.id.react_test_id, controlTestID)
@@ -91,6 +155,45 @@ class ALGMenuView(private val reactContext: ThemedReactContext) : FrameLayout(re
     if (toolbar && changed && width > 0) {
       updateToolbar()
     }
+  }
+  /** An oval surface with a ripple and a centered drawable, or the standard button. */
+  private fun applyIconAppearance() {
+    icon.visibility = if (iconMode && !toolbar && !contextMenu) View.VISIBLE else View.GONE
+    if (!iconMode) {
+      button.background = defaultBackground
+      return
+    }
+    val dark = when (colorScheme) {
+      "dark" -> true
+      "light" -> false
+      else -> (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
+    }
+    val fill = GradientDrawable().apply {
+      shape = GradientDrawable.OVAL
+      setColor(if (iconProminent) glassTint ?: Color.parseColor("#6159B7")
+        else if (dark) Color.parseColor("#25272D") else Color.parseColor("#F0F1F5"))
+    }
+    val mask = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(Color.WHITE) }
+    button.background = RippleDrawable(ColorStateList.valueOf(Color.parseColor("#40808080")), fill, mask)
+    button.minWidth = 0
+    button.minimumWidth = 0
+    button.minHeight = 0
+    button.minimumHeight = 0
+    button.stateListAnimator = null
+    val resource = if (androidIcon.isEmpty()) 0 else resources.getIdentifier(androidIcon, "drawable", context.packageName)
+    icon.setImageResource(resource)
+    val foreground = if (iconProminent) Color.WHITE else glassTint ?: if (dark) Color.WHITE else Color.parseColor("#1C1C1E")
+    icon.imageTintList = ColorStateList.valueOf(foreground)
+    icon.alpha = if (button.isEnabled) 1f else 0.4f
+  }
+  /** Presents the menu as if tapped; the command from ref.open(). */
+  fun openMenu() {
+    if (toolbar || contextMenu || isPlainButton || !button.isEnabled) return
+    showMenu()
+  }
+  private fun dispatchLifecycle(name: String) {
+    UIManagerHelper.getEventDispatcherForReactTag(reactContext, id)?.dispatchEvent(
+      MenuLifecycleEvent(UIManagerHelper.getSurfaceId(reactContext), id, name))
   }
   private fun updateToolbar() {
     bar.dismissPopupMenus()
@@ -173,11 +276,19 @@ class ALGMenuView(private val reactContext: ThemedReactContext) : FrameLayout(re
   private fun showMenu() {
     if (disabled || entries.isEmpty() || !isAttachedToWindow) return
     dismissMenus()
-    val menu = PopupMenu(reactContext, button)
+    val menu = PopupMenu(reactContext, if (contextMenu) this else button)
     fill(menu.menu, entries, revision)
-    menu.setOnDismissListener { if (popup === menu) popup = null }
+    menu.setOnDismissListener {
+      if (popup === menu) popup = null
+      dispatchLifecycle("topMenuClose")
+    }
     popup = menu
     menu.show()
+    dispatchLifecycle("topMenuOpen")
+  }
+  override fun dispatchTouchEvent(event: MotionEvent): Boolean {
+    if (contextMenu) longPress.onTouchEvent(event)
+    return super.dispatchTouchEvent(event)
   }
   private fun dismissMenus() { popup?.dismiss(); bar.dismissPopupMenus() }
   override fun onDetachedFromWindow() { dismissMenus(); super.onDetachedFromWindow() }

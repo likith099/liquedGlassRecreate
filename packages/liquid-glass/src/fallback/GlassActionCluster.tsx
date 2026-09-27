@@ -1,5 +1,6 @@
 import React from 'react';
-import {Text, View, useColorScheme} from 'react-native';
+import {Text, View} from 'react-native';
+import {useFallbackColors} from '../fallbackTheme';
 import GlassButton from '../GlassButton';
 import {validateActions} from '../validateActions';
 import type {GlassActionClusterProps} from '../types';
@@ -8,8 +9,8 @@ export default function GlassActionCluster({actions, expanded, onExpandedChange,
   interactive: _interactive, animationDuration: _duration, forceFallback: _force,
   mergingEnabled: _merging, pressFeedback: _pressFeedback, iosImplementation: _implementation, ...props}: GlassActionClusterProps) {
   validateActions(actions);
-  const dark = useColorScheme() === 'dark';
-  const textStyle = {color: dark ? '#F5F5FA' : '#242630', fontWeight: '600' as const};
+  const {dark, foreground} = useFallbackColors();
+  const textStyle = {color: foreground ?? (dark ? '#F5F5FA' : '#242630'), fontWeight: '600' as const};
   return <View {...props} accessible={false} style={[{minHeight: 80, flexDirection: 'row', flexWrap: 'wrap', gap: 12,
     alignItems: 'center', justifyContent: 'flex-end', padding: 12}, style]}>
     {expanded && actions.map(action => <GlassButton key={action.id} forceFallback
