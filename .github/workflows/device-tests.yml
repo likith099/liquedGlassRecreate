@@ -40,11 +40,13 @@ jobs:
         run: |
           nohup npm start > "$RUNNER_TEMP/metro.log" 2>&1 &
           for attempt in $(seq 1 60); do
-            curl -sf http://localhost:8093/status && exit 0
+            curl -sf http://localhost:8093/status && break
             sleep 2
           done
-          cat "$RUNNER_TEMP/metro.log"
-          exit 1
+          # Build the iOS bundle once before the tests. On a fresh runner the first build takes
+          # minutes, longer than a test waits for the app's first screen.
+          curl -sf -o /dev/null --max-time 900 "http://localhost:8093/index.bundle?platform=ios&dev=true&minify=false" ||
+            { cat "$RUNNER_TEMP/metro.log"; exit 1; }
       # Cold-launch first taps, tab rebuilds before and after attach, per-tab artwork and colours,
       # icon buttons and programmatic menus, and the surface tiers in light and dark.
       - name: Run UI tests
