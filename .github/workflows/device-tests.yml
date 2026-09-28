@@ -87,21 +87,14 @@ jobs:
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
-      - name: Build the debug demo
+      # A release build carries its JavaScript (Hermes bytecode), so the emulator needs no Metro
+      # connection and starts quickly under software rendering. It is signed with the demo's debug
+      # key. It also exercises release asset resolution for require() tab images.
+      - name: Build the release demo
         working-directory: example/android
-        run: ./gradlew :app:assembleDebug -PreactNativeArchitectures=x86_64 -PreactNativeDevServerPort=8093 --no-daemon
+        run: ./gradlew :app:assembleRelease -PreactNativeArchitectures=x86_64 --no-daemon
       - name: Install Pillow for the screenshot checks
         run: python3 -m pip install --user pillow
-      - name: Start Metro on port 8093
-        run: |
-          nohup npm start > "$RUNNER_TEMP/metro.log" 2>&1 &
-          for attempt in $(seq 1 60); do
-            curl -sf http://localhost:8093/status && break
-            sleep 2
-          done
-          # Build the Android bundle once, so the first launch on the emulator is not the slow one.
-          curl -sf -o /dev/null "http://localhost:8093/index.bundle?platform=android&dev=true&minify=false" ||
-            { cat "$RUNNER_TEMP/metro.log"; exit 1; }
       # Menus, toolbar, tabs, context menu, the 0.1.3 features (icon buttons, segments, badges,
       # pills, search, toast, tab images and colours), slider, accessibility and RTL.
       - name: Run the Android checks
@@ -115,14 +108,14 @@ jobs:
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot-save -camera-back none
           disable-animations: false
           script: |
-            adb install -r example/android/app/build/outputs/apk/debug/app-debug.apk
-            ANDROID_LAUNCH_WAIT=15 bash scripts/run-android-checks.sh
+            adb install -r example/android/app/build/outputs/apk/release/app-release.apk
+            ANDROID_LAUNCH_WAIT=10 bash scripts/run-android-checks.sh
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: android-checks-${{ github.sha }}
           path: |
-            artifacts/android-*.log
+            artifacts/android-*
             artifacts/*android*.png
             artifacts/*android*.json
           retention-days: 14

@@ -277,7 +277,7 @@ To run a chosen set of UI tests, use `node scripts/run-ios-ui-tests.mjs testName
 
 `python3 scripts/verify-android-features.py` covers the 0.1.3 additions on Android: icon buttons, `open()` and menu open/close events, segment counts, badges and the prominent icon button, expanding pills, the search field, toast and `focus()`, and tab image sources with per-tab, bar and indicator colours (checked in the screenshot's pixels). `python3 scripts/verify-android-context-menu.py` covers `GlassContextMenu`. Both expect a freshly installed debug demo with Metro on 8093; screenshots go to `artifacts/`.
 
-`scripts/run-android-checks.sh [check…]` runs these Android scripts in order, each from a fresh launch, with one reported retry per check (default: all eight). The Android job of `device-tests.yml` builds the debug demo and runs it on an API 35 emulator.
+`scripts/run-android-checks.sh [check…]` runs these Android scripts in order, each from a fresh launch, with one reported retry per check (default: all eight). The Android job of `device-tests.yml` builds the release demo, which carries its JavaScript and needs no Metro, and runs it on an API 35 emulator. A failed attempt saves a screenshot, the UI tree and the error log lines to `artifacts/`.
 
 `python3 scripts/verify-android-accessibility.py` exercises button/loading/disabled states, controlled selectors, action groups, large text, themes, in the adaptive lab (RTL remains manual). It restores emulator settings in a `finally` block. iOS counterparts are `testAdaptiveControlAccessibility` and `testAdaptiveLargeText`. These inspect semantics and layout; they do not verify spoken screen-reader output.
 
