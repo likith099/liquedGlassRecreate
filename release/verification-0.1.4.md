@@ -1,6 +1,6 @@
 # 0.1.4 verification
 
-**Status (September 28, 2026): release candidate verified. Not yet published.**
+**Status: published to npm on September 28, 2026** from tag `v0.1.4` (`5e7c694`) by the release workflow ([run 36456696206](https://github.com/likith099/liquedGlassRecreate/actions/runs/36456696206)), with provenance. The registry tarball (shasum `1c0e87654130ebb8e1e784f86feec508725ccf23`, 318 files) has contents identical to the tarball that passed the Release packed-consumer check.
 
 ## Candidate
 
