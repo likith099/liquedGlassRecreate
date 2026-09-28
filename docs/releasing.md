@@ -1,6 +1,6 @@
 # Publishing and consuming the package
 
-`@likith99/react-native-adaptive-liquid-glass` is MIT licensed and published to the public npm registry. **0.1.2** is the current release; 0.1.0 was the first, released on September 20, 2026. From 0.1.1 onward releases are published by the [release workflow](../.github/workflows/release.yml) on a `v*` tag, using npm trusted publishing, and carry a signed provenance attestation. This is the process for cutting a release and for installing it in another app and its pipelines.
+`@likith99/react-native-adaptive-liquid-glass` is MIT licensed and published to the public npm registry. **0.1.3** is the current release (September 28, 2026); 0.1.0 was the first, released on September 20, 2026. From 0.1.1 onward releases are published by the [release workflow](../.github/workflows/release.yml) on a `v*` tag, using npm trusted publishing, and carry a signed provenance attestation. This is the process for cutting a release and for installing it in another app and its pipelines.
 
 The organization scope is `@likith99` and the publishing account is `likithnmp`, an `owner` of that organization. The login username and organization scope correctly differ. `npm access get status` reports the package `public`.
 
@@ -17,19 +17,19 @@ now use the tag workflow; an interactive publish would bypass its checks.
 
 ## Cutting the next release
 
-1. Review the [iPhone-first candidate](../release/iphone-first-0.1.2.md) and
-   [release policy](release-acceptance.md). Run the SwiftUI/current-iOS, older-iOS fallback and packed Release consumer
+1. Review the [release policy](release-acceptance.md) and the previous release's
+   [verification report](../release/verification-0.1.3.md). Run the SwiftUI/current-iOS, older-iOS fallback and packed Release consumer
    checks. The owner authorized testing and publishing; remaining manual/device
    deferrals are coverage limits and must not be relabeled as passes.
 2. Keep the package version, example dependency and npm lockfile synchronized.
-   They are already set to **0.1.2** for this candidate. Screenshot URLs can stay
-   pinned to the version from which the captures came.
+   Screenshot and doc URLs in the package README are pinned to a tag; point new
+   ones at the version being released.
 3. Record source review and documented deferrals in `release/acceptance.json`.
    After final source edits, get the digest with
    `node scripts/check-release-acceptance.mjs --print-digest`. A digest identifies
    reviewed source; it does not mean tests passed. Commit the candidate and its
    durable review report together so the evidence survives a clean clone.
-4. Push the candidate commit and its matching `v0.1.2` tag when proceeding with
+4. Push the candidate commit and its matching `v<version>` tag when proceeding with
    publication. The tag triggers shared checks, both native Release builds, then
    OIDC publishing with provenance. Do not bypass a CI failure with manual publish.
    Push only the intended tag. A branch dispatch cannot publish, and published
@@ -37,7 +37,7 @@ now use the tag workflow; an interactive publish would bypass its checks.
 5. Inspect Actions results and verify the registry artifact as described below.
 
 The earlier source-review pass did not execute tests. The subsequent
-[release verification](../release/verification-0.1.2.md) records actual candidate execution. The
+release verification reports (latest: [0.1.3](../release/verification-0.1.3.md)) record actual candidate execution. The
 unsigned iOS archive and demo-signed Android bundle are build checks. Signing and
 store delivery belong to the host app; they are not prerequisites for publishing
 this native source package under the agreed scope.
@@ -89,5 +89,4 @@ The [acceptance record](../release/acceptance.json) uses schema 2 and the
 `iphone-first` scope. Documented owner deferrals do not block publication. Source
 review, SwiftUI/fallback runtime evidence, the packed Release consumer, exact
 source/version/tag matching, shared CI and native Release builds
-remain required. Current local changes still need commit/push; 0.1.2 is not yet
-published. To use these changes now, follow [iPhone integration](iphone-integration.md).
+remain required.
