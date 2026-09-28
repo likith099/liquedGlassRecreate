@@ -36,24 +36,14 @@ jobs:
       - name: Install iOS pods
         working-directory: example/ios
         run: pod install
-      - name: Start Metro on port 8093
-        run: |
-          nohup npm start > "$RUNNER_TEMP/metro.log" 2>&1 &
-          for attempt in $(seq 1 60); do
-            curl -sf http://localhost:8093/status && break
-            sleep 2
-          done
-          # Build the iOS bundle once before the tests. On a fresh runner the first build takes
-          # minutes, longer than a test waits for the app's first screen.
-          curl -sf -o /dev/null --max-time 900 "http://localhost:8093/index.bundle?platform=ios&dev=true&minify=false" ||
-            { cat "$RUNNER_TEMP/metro.log"; exit 1; }
       # Cold-launch first taps, tab rebuilds before and after attach, per-tab artwork and colours,
-      # icon buttons and programmatic menus, and the surface tiers in light and dark.
+      # icon buttons and programmatic menus, and the surface tiers in light and dark. A Release build
+      # carries its JavaScript: a Debug launch fails when a busy Metro misses the app's startup check.
       - name: Run UI tests
         env:
           ALG_DERIVED_DATA: ${{ runner.temp }}/DerivedData
         run: >
-          node scripts/run-ios-ui-tests.mjs --result artifacts/DeviceTests.xcresult --log artifacts/device-tests.log
+          node scripts/run-ios-ui-tests.mjs --configuration Release --result artifacts/DeviceTests.xcresult --log artifacts/device-tests.log
           testTabBarLifecycleAndFirstTap testTabBarArtworkAndTints testIconButtonsAndProgrammaticMenu testVisualTiers
       - uses: actions/upload-artifact@v4
         if: always()
