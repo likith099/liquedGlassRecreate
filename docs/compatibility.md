@@ -27,6 +27,21 @@ The following build and workspace integration issues surfaced while verifying 0.
 
 - **Android RTL locale detection.** The installed RN 0.87.1 source and Maven Release bytecode use `Locale.getAvailableLocales()[0]` to detect direction, which does not select the active app locale. The demo explicitly aligns React's RTL flag with Android's current configuration before the React host starts. This is a host-only workaround; the library does not set global locale or direction. See [RTL notes](accessibility.md#rtl-layout).
 
+## Host app setup
+
+- **New Architecture only.** These are Fabric codegen components; they do not build on the old
+  architecture. It is a native module, so Expo Go cannot load it: use a development build.
+- **React Native 0.81:** consume React Native's prebuilt iOS dependencies, the default
+  (`RCT_USE_RN_DEP=1`) and what Expo SDK 54 does. Building React Native from source on 0.81 fails
+  under Xcode 26 inside `Pods/fmt`, independently of this package.
+- **React Native 0.87:** run `RCT_USE_PREBUILT_RNCORE=0 pod install`, and in an npm workspace declare
+  `@react-native/metro-config` in the root. See the 0.87 issues above.
+- **iOS 27:** the host app must adopt the UIScene lifecycle, or iOS traps during scene creation
+  before any UI appears. Add a `UIApplicationSceneManifest` and a scene delegate that owns the
+  window; see `example/ios/LiquidGlassLab`.
+- **Android:** no extra setup. Pin Material Components with `ext.adaptiveGlassMaterialVersion` in the
+  root `build.gradle` (default 1.13.0).
+
 ## What actually sets the floor
 
 | Constraint | Value | Set by |

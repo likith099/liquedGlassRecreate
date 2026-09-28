@@ -1,6 +1,6 @@
 # Glass surfaces
 
-`GlassView`, `GlassContainer`, `GlassPressable` and `GlassBadge` put React content on a native material. The material depends on the platform tier: glass on iOS 26, system blur on iOS 15–25, and an opaque surface on Android, under Reduce Transparency, and with `forceFallback`. `useGlassTier()` reports the tier, and it follows Reduce Transparency as it changes.
+`GlassView`, `GlassContainer`, `GlassPressable`, `GlassBadge`, `GlassToastProvider` and `GlassScrollEdge` put React content on a native material. The material depends on the platform tier: glass on iOS 26, system blur on iOS 15–25, and an opaque surface on Android, under Reduce Transparency, and with `forceFallback`. `useGlassTier()` reports the tier, and it follows Reduce Transparency as it changes.
 
 | Tier | iOS 26 | iOS 15–25 | Android, Reduce Transparency, `forceFallback` |
 | --- | --- | --- | --- |
@@ -45,6 +45,37 @@ A one-line label on material that reads the same over bright and dark imagery.
 ```
 
 `tintColor` tints the older-iOS blur; `tintGlass` also tints the iOS 26 glass. `solidColor` fills the badge on the solid tier. `colorScheme`, `textColor`, `textStyle` and `cornerRadius` (default 12) adjust it, and non-text children render as given.
+
+## GlassToastProvider
+
+```tsx
+<GlassToastProvider bottomOffset={100}>
+  <App />
+</GlassToastProvider>
+
+const toast = useGlassToast();
+toast.show('Copied', {duration: 2000});
+```
+
+A short confirmation on a badge-style surface. A new toast replaces the one on screen, and each is
+announced to screen readers. It slides and scales in (instantly under Reduce Motion) rather than
+fading, because glass does not render inside a fading view. `colorScheme` defaults to dark.
+
+## GlassScrollEdge
+
+```tsx
+const list = useRef<ScrollView>(null);
+
+<ScrollView ref={list}>{rows}</ScrollView>
+<GlassScrollEdge scrollViewRef={list} edge="bottom" effectStyle="soft" style={styles.floatingBar}>
+  {bar}
+</GlassScrollEdge>
+```
+
+A container for a bar floating over a scroll view's edge, so content fades under the bar instead of
+colliding with it. iOS 26 applies UIKit's scroll-edge effect to the referenced scroll view
+(`effectStyle`: `automatic`, `soft` or `hard`). Older iOS and Android draw a gradient scrim from
+`fallbackColor` to clear under the container.
 
 ## Theming the opaque tier
 

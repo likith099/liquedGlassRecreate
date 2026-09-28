@@ -227,12 +227,21 @@ private struct ExpandingTabsContent: View {
           .frame(maxHeight: .infinity)
       }
       .modifier(NoHorizontalBounce())
+      .modifier(UnclippedScroll())
       // Keep the selected pill visible when the row overflows.
       .onChange(of: configuration.selected) { selected in
         if reduceMotion { proxy.scrollTo(selected) }
         else { withAnimation(.spring(response: 0.32, dampingFraction: 1)) { proxy.scrollTo(selected) } }
       }
     }
+  }
+}
+
+/// A clipping scroll view cuts the Liquid Glass shadow off at its frame, which draws a hard-edged
+/// band behind the row. Unclipped, the shadow fades naturally and pills scroll under the margins.
+private struct UnclippedScroll: ViewModifier {
+  func body(content: Content) -> some View {
+    if #available(iOS 17.0, *) { content.scrollClipDisabled() } else { content }
   }
 }
 
