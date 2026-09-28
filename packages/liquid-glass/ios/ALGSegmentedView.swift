@@ -4,6 +4,8 @@ private struct SegmentOption: Decodable {
   let value: String
   let label: String
   let disabled: Bool?
+  /// ARGB from processColor: the selected-segment colour while this option is selected.
+  let tint: Double?
 }
 
 /// Native segmented-control interaction and selected-thumb rendering belong to UIKit.
@@ -36,10 +38,18 @@ public final class ALGSegmentedView: UIView {
     self.selectedValue = selectedValue
     control.selectedSegmentIndex = options.firstIndex { $0.value == selectedValue } ?? UISegmentedControl.noSegment
     control.isEnabled = !disabled
-    control.selectedSegmentTintColor = tint
+    // UIKit has one selected-segment colour; follow the selected option's own tint.
+    let selected = options.first { $0.value == selectedValue }
+    control.selectedSegmentTintColor = selected?.tint.map(Self.color) ?? tint
     control.accessibilityLabel = label.isEmpty ? nil : label
     control.accessibilityIdentifier = identifier
     overrideUserInterfaceStyle = scheme == "dark" ? .dark : scheme == "light" ? .light : .unspecified
+  }
+
+  private static func color(_ argb: Double) -> UIColor {
+    let value = UInt32(truncatingIfNeeded: Int64(argb))
+    return UIColor(red: CGFloat((value >> 16) & 0xFF) / 255, green: CGFloat((value >> 8) & 0xFF) / 255,
+      blue: CGFloat(value & 0xFF) / 255, alpha: CGFloat((value >> 24) & 0xFF) / 255)
   }
 
   @objc private func selectionChanged() {

@@ -1,7 +1,104 @@
 import XCTest
+
+extension XCUIApplication {
+  /// Scrolls the page until `element` is hittable inside `band` (fractions of the screen height; the
+  /// default only requires it to be on screen). Each drag moves the page by the distance from the
+  /// element to the middle of the band, at most a third of the screen, and holds before lifting so no
+  /// fling carries it past the band. Drags start mid-screen, clear of switches in either layout
+  /// direction. It stops when two drags in a row leave the element where it was (the page is at its
+  /// end; the retry starts elsewhere in case a control caught the first) and after `maxDrags` at
+  /// most, so a test never keeps dragging a page that cannot move.
+  @discardableResult
+  func scrollIntoView(_ query: XCUIElement, band: ClosedRange<CGFloat> = 0.05...0.95, maxDrags: Int = 12) -> Bool {
+    // React Native text can match twice (a text and its nested run); act on the first match.
+    let element = query.firstMatch
+    let height = frame.height
+    let target = height * (band.lowerBound + band.upperBound) / 2
+    var stalls = 0
+    for _ in 0..<maxDrags {
+      // One position read per step; each query is a round trip to the app.
+      let position: CGRect? = element.exists ? element.frame : nil
+      if let position, position.minY >= height * band.lowerBound, position.maxY <= height * band.upperBound,
+        element.isHittable { return true }
+      // Positive moves content up, revealing what is below. Unknown positions reveal downward.
+      let wanted = position.map { $0.midY - target } ?? height / 3
+      let distance = max(-height / 3, min(height / 3, abs(wanted) < 24 ? (wanted < 0 ? -24 : 24) : wanted))
+      let x: CGFloat = stalls == 0 ? 0.5 : 0.35
+      let start = CGVector(dx: x, dy: 0.5 + distance / height / 2)
+      let end = CGVector(dx: x, dy: 0.5 - distance / height / 2)
+      coordinate(withNormalizedOffset: start).press(forDuration: 0.05,
+        thenDragTo: coordinate(withNormalizedOffset: end), withVelocity: .slow, thenHoldForDuration: 0.15)
+      if let position, element.frame == position {
+        stalls += 1
+        if stalls >= 2 { break }
+      } else {
+        stalls = 0
+      }
+    }
+    return element.exists && element.isHittable
+  }
+}
 import UIKit
 
 final class GlassInteractionTests: XCTestCase {
+  func testLongPressContextMenu() throws { exerciseContextMenu(fallback: false) }
+  func testLongPressContextMenuFallback() throws { exerciseContextMenu(fallback: true) }
+
+  private func exerciseContextMenu(fallback: Bool) {
+    continueAfterFailure = false
+    let app = XCUIApplication(); app.launch()
+    defer { app.terminate() }
+    let open = app.buttons["open-context-demo"]
+    XCTAssertTrue(open.waitForExistence(timeout: 45)); open.tap()
+    if fallback { app.switches["context-fallback"].tap() }
+    func action(_ title: String) -> XCUIElement {
+      if fallback { return app.descendants(matching: .any).matching(NSPredicate(format: "label == %@", title)).firstMatch }
+      return app.buttons[title]
+    }
+    let message = app.descendants(matching: .any).matching(identifier: "message-context").firstMatch
+    XCTAssertTrue(message.waitForExistence(timeout: 5))
+    let originalFrame = message.frame
+    XCTAssertGreaterThan(originalFrame.height, 80, "React children determine native host size")
+    message.tap()
+    XCTAssertFalse(action("Edit message").exists, "A regular tap must not open the menu")
+    message.press(forDuration: 1)
+    XCTAssertTrue(action("Edit message").waitForExistence(timeout: 5))
+    XCTAssertFalse(action("Unavailable message action").isEnabled)
+    let capture = XCTAttachment(screenshot: app.screenshot())
+    capture.name = fallback ? "Plain context menu with stationary message" : "Context menu with retained message preview"; capture.lifetime = .keepAlways; add(capture)
+    action("Edit message").tap()
+    XCTAssertTrue(app.staticTexts["Context selected: edit"].waitForExistence(timeout: 5))
+    XCTAssertEqual(message.frame, originalFrame, "Dismissal restores the original content layout")
+    message.press(forDuration: 1); action("Save message").tap()
+    XCTAssertTrue(app.staticTexts["Message saved: on"].waitForExistence(timeout: 5))
+    message.press(forDuration: 1); action("More message actions").tap()
+    let copy = action("Copy message")
+    XCTAssertTrue(copy.waitForExistence(timeout: 5)); copy.tap()
+    XCTAssertTrue(app.staticTexts["Context selected: copy"].waitForExistence(timeout: 5))
+    message.press(forDuration: 1)
+    if fallback { app.buttons["message-context-dismiss"].coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.85)).tap() }
+    else { app.coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.85)).tap() }
+    XCTAssertTrue(action("Edit message").waitForNonExistence(timeout: 5))
+    XCTAssertTrue(app.staticTexts["Context actions: 3"].exists)
+    app.switches["context-disabled"].tap(); message.press(forDuration: 1)
+    XCTAssertFalse(action("Edit message").exists)
+    app.switches["context-disabled"].tap()
+    app.buttons["context-replace"].tap(); message.press(forDuration: 1)
+    XCTAssertTrue(action("Edit message").waitForExistence(timeout: 5))
+    XCTAssertTrue(app.staticTexts["Context items replaced"].waitForExistence(timeout: 12))
+    XCTAssertTrue(action("Edit message").waitForNonExistence(timeout: 5))
+    message.press(forDuration: 1)
+    let newAction = action("New action")
+    XCTAssertTrue(newAction.waitForExistence(timeout: 5)); newAction.tap()
+    XCTAssertTrue(app.staticTexts["Context actions: 4"].waitForExistence(timeout: 5))
+    app.buttons["context-unmount"].tap(); message.press(forDuration: 1)
+    XCTAssertTrue(newAction.waitForExistence(timeout: 5))
+    XCTAssertTrue(app.staticTexts["Message removed"].waitForExistence(timeout: 12))
+    XCTAssertTrue(newAction.waitForNonExistence(timeout: 5))
+    XCTAssertFalse(message.exists)
+    XCTAssertTrue(app.staticTexts["Context actions: 4"].exists)
+  }
+
   // Deferred with the rest of candidate execution; covers the Fabric host swap.
   func testActionClusterImplementationSwitch() throws {
     guard glassEra else { throw XCTSkip("SwiftUI glass requires iOS 26") }
@@ -13,17 +110,15 @@ final class GlassInteractionTests: XCTestCase {
     let favorite = app.buttons["glass-action-heart"]
     XCTAssertTrue(favorite.waitForExistence(timeout: 5))
     let setting = app.switches["swiftui-cluster-toggle"]
+    // Short drags settle on the target; full swipes overshoot as the page grows.
+    func bringIntoView(_ element: XCUIElement) { app.scrollIntoView(element) }
     for implementation in ["SwiftUI", "UIKit"] {
-      for _ in 0..<5 {
-        if setting.isHittable { break }
-        app.swipeUp()
-      }
+      bringIntoView(setting)
       XCTAssertTrue(setting.isHittable); setting.tap()
-      for _ in 0..<5 {
-        if favorite.isHittable { break }
-        app.swipeDown()
-      }
+      bringIntoView(favorite)
       XCTAssertTrue(favorite.isHittable)
+      // Let the replacement cluster finish expanding before tapping one of its buttons.
+      Thread.sleep(forTimeInterval: 0.8)
       let capture = XCTAttachment(screenshot: app.screenshot())
       capture.name = "\(implementation) action cluster expanded"; capture.lifetime = .keepAlways; add(capture)
       favorite.tap()
@@ -285,14 +380,14 @@ final class GlassInteractionTests: XCTestCase {
     let app = XCUIApplication(); app.launch()
     let button = app.buttons["native-menu"]
     XCTAssertTrue(button.waitForExistence(timeout: 45))
-    for _ in 0..<7 { if button.isHittable { break }; app.swipeUp() }
+    app.scrollIntoView(button)
     XCTAssertTrue(button.isHittable)
     for standard in [false, true] {
       if standard {
         let setting = app.switches["menu-fallback-toggle"]
-        for _ in 0..<5 { if setting.isHittable { break }; app.swipeUp() }
+        app.scrollIntoView(setting)
         setting.tap()
-        for _ in 0..<5 { if button.isHittable { break }; app.swipeDown() }
+        app.scrollIntoView(button)
       }
       button.tap()
       let favorite = app.buttons["Favorite item"]
@@ -324,11 +419,201 @@ final class GlassInteractionTests: XCTestCase {
     XCTAssertTrue(app.buttons["Share item"].waitForNonExistence(timeout: 5))
     XCTAssertTrue(app.staticTexts["Menu selected: remove"].exists, "Dismissal must not emit an action")
     let disable = app.switches["menu-disabled-toggle"]
-    for _ in 0..<5 { if disable.isHittable { break }; app.swipeUp() }
+    app.scrollIntoView(disable)
     disable.tap()
     XCTAssertFalse(button.isEnabled)
     disable.tap()
     XCTAssertTrue(button.isEnabled)
+  }
+
+  // Drives each toolbar menu through open and dismissal in individual and
+  // shared-glass modes. XCUITest waits for idle, so screenshots miss the
+  // transient; record the simulator and run scripts/measure-dismissal-video.py
+  // on the ALG-FRAME lines to measure the glass after each dismissal.
+  func testToolbarDismissalMaterial() throws {
+    guard glassEra else { throw XCTSkip("Glass toolbar requires iOS 26") }
+    continueAfterFailure = false
+    let app = XCUIApplication(); app.launch()
+    let sort = app.buttons["native-toolbar-sort"]
+    XCTAssertTrue(sort.waitForExistence(timeout: 45))
+    func bringIntoBand(_ element: XCUIElement) {
+      app.scrollIntoView(element, band: 0.2...0.7)
+      XCTAssertTrue(element.isHittable)
+    }
+    func capture(_ name: String) {
+      let attachment = XCTAttachment(screenshot: app.screenshot())
+      attachment.name = name; attachment.lifetime = .keepAlways; add(attachment)
+    }
+    func exercise(_ mode: String, _ controls: [(String, String)]) {
+      bringIntoBand(sort)
+      for (id, title) in controls {
+        let control = app.buttons[id]
+        // The capsule menu button is sampled at a circular patch near its leading edge.
+        let frame = control.frame
+        let probeX = frame.width > 80 ? frame.minX + 30 : frame.midX
+        print("ALG-FRAME \(mode)-\(id) \(probeX) \(frame.midY) \(min(frame.width, 48))")
+        control.tap()
+        XCTAssertTrue(app.buttons[title].waitForExistence(timeout: 5))
+        app.coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.15)).tap()
+        XCTAssertTrue(app.buttons[title].waitForNonExistence(timeout: 5))
+        Thread.sleep(forTimeInterval: 3)
+        capture("\(mode)-\(id)-settled")
+        XCTAssertTrue(control.isHittable)
+        XCTAssertTrue(app.staticTexts["No toolbar action"].exists)
+      }
+    }
+    exercise("individual", [("native-toolbar-sort", "By name"), ("native-toolbar-overflow", "Export entire collection"),
+      ("hierarchy-menu", "Order options")])
+    let shared = app.switches["toolbar-merging-toggle"]
+    bringIntoBand(shared); shared.tap()
+    exercise("shared", [("native-toolbar-sort", "By name"), ("native-toolbar-overflow", "Export entire collection")])
+  }
+
+  // GlassIconButton: square native icon host, plain press, menu with typed open/close
+  // events, programmatic open (iOS 17.4+), and disabled state.
+  func testIconButtonsAndProgrammaticMenu() throws {
+    continueAfterFailure = false
+    let app = XCUIApplication(); app.launch()
+    let close = app.buttons["icon-close"]
+    let more = app.buttons["icon-more"]
+    XCTAssertTrue(close.waitForExistence(timeout: 45))
+    app.scrollIntoView(more, band: 0.2...0.7)
+    XCTAssertEqual(close.frame.width, 40, accuracy: 1)
+    XCTAssertEqual(close.frame.height, 40, accuracy: 1)
+    XCTAssertEqual(close.label, "Close")
+    func status(_ text: String) { XCTAssertTrue(app.staticTexts[text].waitForExistence(timeout: 5), text) }
+    func events(_ opened: Int, _ closed: Int) { status("Menu opened \(opened), closed \(closed)") }
+    close.tap(); status("Icon pressed: close")
+    // Tap opens the menu; an outside tap closes it without an action.
+    more.tap()
+    XCTAssertTrue(app.buttons["Share"].waitForExistence(timeout: 5)); events(1, 0)
+    app.coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.15)).tap()
+    XCTAssertTrue(app.buttons["Share"].waitForNonExistence(timeout: 5)); events(1, 1)
+    status("Icon pressed: close")
+    Thread.sleep(forTimeInterval: 2)
+    let settled = XCTAttachment(screenshot: app.screenshot())
+    settled.name = "Icon buttons settled after menu dismissal"; settled.lifetime = .keepAlways; add(settled)
+    // Opening from code presents the same native menu; choosing an action closes it.
+    let fromCode = app.buttons["icon-open-from-code"]
+    fromCode.tap()
+    XCTAssertTrue(app.buttons["Share"].waitForExistence(timeout: 5)); events(2, 1)
+    app.buttons["Share"].tap()
+    status("Toolbar selected: share"); events(2, 2)
+    // Disabled icon buttons neither press nor open, including from code.
+    let disable = app.switches["toolbar-disabled-toggle"]
+    app.scrollIntoView(disable)
+    disable.tap()
+    XCTAssertFalse(close.isEnabled); XCTAssertFalse(more.isEnabled)
+    app.scrollIntoView(fromCode)
+    fromCode.tap()
+    XCTAssertFalse(app.buttons["Share"].waitForExistence(timeout: 2))
+    events(2, 2)
+  }
+
+  // GlassBadge over imagery, the prominent FAB, and segment counts with per-segment colours.
+  func testBadgesSegmentsAndFab() throws {
+    continueAfterFailure = false
+    let app = XCUIApplication(); app.launch()
+    XCTAssertTrue(app.buttons["glass-counter"].waitForExistence(timeout: 45))
+    func bringIntoView(_ element: XCUIElement) { app.scrollIntoView(element, band: 0.15...0.8) }
+    // Counts and colours on the existing All/Saved/Shared control.
+    let counts = app.switches["segment-counts-toggle"]
+    bringIntoView(counts); counts.tap()
+    let saved = app.descendants(matching: .any)["Saved 3"].firstMatch
+    bringIntoView(saved)
+    XCTAssertTrue(saved.exists)
+    saved.tap()
+    XCTAssertTrue(app.staticTexts["Showing: saved"].waitForExistence(timeout: 5))
+    let segments = XCTAttachment(screenshot: app.screenshot())
+    segments.name = "Saved segment selected with counts"; segments.lifetime = .keepAlways; add(segments)
+    let fab = app.buttons["fab"]
+    bringIntoView(fab)
+    XCTAssertEqual(fab.frame.width, 56, accuracy: 1)
+    XCTAssertTrue(app.staticTexts["New"].exists)
+    XCTAssertTrue(app.staticTexts["Updating…"].exists)
+    let capture = XCTAttachment(screenshot: app.screenshot())
+    capture.name = "Badges and FAB"; capture.lifetime = .keepAlways; add(capture)
+    fab.tap()
+    XCTAssertTrue(app.staticTexts["FAB pressed"].waitForExistence(timeout: 5))
+  }
+
+  // GlassSearchField (controlled, fast typing, submit, clear, focus from code), GlassToast and the
+  // scroll-edge container over a list. The toast and edge effect are checked in captures.
+  func testSearchToastAndScrollEdge() throws {
+    continueAfterFailure = false
+    let app = XCUIApplication(); app.launch()
+    func capture(_ name: String) {
+      let attachment = XCTAttachment(screenshot: app.screenshot())
+      attachment.name = name; attachment.lifetime = .keepAlways; add(attachment)
+    }
+    let open = app.buttons["open-search-demo"]
+    XCTAssertTrue(open.waitForExistence(timeout: 45)); open.tap()
+    let field = app.descendants(matching: .any)["item-search"].firstMatch
+    XCTAssertTrue(field.waitForExistence(timeout: 10))
+    XCTAssertTrue(app.staticTexts["20 results"].exists)
+    field.tap()
+    field.typeText("ec")
+    XCTAssertTrue(app.staticTexts["2 results"].waitForExistence(timeout: 5))
+    field.typeText("h\n")
+    XCTAssertTrue(app.staticTexts["Submitted: ech"].waitForExistence(timeout: 5))
+    XCTAssertTrue(app.staticTexts["1 results"].exists)
+    // Clear, then type quickly: React's echoed values must not drop characters typed meanwhile.
+    field.tap()
+    let clear = field.buttons.firstMatch
+    XCTAssertTrue(clear.waitForExistence(timeout: 5)); clear.tap()
+    XCTAssertTrue(app.staticTexts["20 results"].waitForExistence(timeout: 5))
+    field.typeText("november")
+    XCTAssertTrue(app.staticTexts["1 results"].waitForExistence(timeout: 5))
+    XCTAssertEqual(field.value as? String, "november")
+    capture("Search field with results")
+    field.typeText("\n")
+    for _ in 0..<5 { if app.keyboards.count == 0 { break }; Thread.sleep(forTimeInterval: 0.5) }
+    // Clear the query through the search field so the list is long enough to scroll under the bar.
+    field.tap()
+    XCTAssertTrue(field.buttons.firstMatch.waitForExistence(timeout: 5)); field.buttons.firstMatch.tap()
+    field.typeText("\n")
+    XCTAssertTrue(app.staticTexts["20 results"].waitForExistence(timeout: 5))
+    app.descendants(matching: .any)["search-results"].firstMatch.swipeUp()
+    Thread.sleep(forTimeInterval: 1)
+    capture("List scrolled under the scroll-edge bar")
+    app.buttons["copy-action"].tap()
+    Thread.sleep(forTimeInterval: 0.6)
+    capture("Toast after copy")
+    app.buttons["search-focus"].tap()
+    XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 5), "focus() did not raise the keyboard")
+  }
+
+  // GlassExpandingTabs: controlled selection, the selected pill opening, and every label exposed.
+  func testExpandingTabs() throws {
+    continueAfterFailure = false
+    let app = XCUIApplication(); app.launch()
+    let selection = app.staticTexts["Filter: overview"]
+    XCTAssertTrue(app.buttons["glass-counter"].waitForExistence(timeout: 45))
+    app.scrollIntoView(selection, band: 0.15...0.8)
+    func pill(_ value: String) -> XCUIElement { app.buttons["filter-tabs-\(value)"] }
+    // Collapsed pills still expose their labels to accessibility.
+    XCTAssertEqual(pill("recent").label, "Recent")
+    XCTAssertTrue(pill("overview").isSelected)
+    let collapsedWidth = pill("recent").frame.width
+    let capture = XCTAttachment(screenshot: app.screenshot())
+    capture.name = "Expanding tabs, Overview selected"; capture.lifetime = .keepAlways; add(capture)
+    pill("recent").tap()
+    XCTAssertTrue(app.staticTexts["Filter: recent"].waitForExistence(timeout: 5))
+    Thread.sleep(forTimeInterval: 0.6)
+    XCTAssertTrue(pill("recent").isSelected)
+    XCTAssertGreaterThan(pill("recent").frame.width, collapsedWidth + 20, "The selected pill did not open")
+    XCTAssertFalse(pill("overview").isSelected)
+    let selected = XCTAttachment(screenshot: app.screenshot())
+    selected.name = "Expanding tabs, Recent selected"; selected.lifetime = .keepAlways; add(selected)
+    let row = pill("overview").frame
+    print("ALG-PILLROW \(row.minY) \(row.maxY)")
+    // Step through the rest; the recording is checked for labels left behind by a closing pill.
+    for value in ["favorites", "shared", "archive", "overview"] {
+      print("ALG-PILL tap \(value)")
+      pill(value).tap()
+      XCTAssertTrue(app.staticTexts["Filter: \(value)"].waitForExistence(timeout: 5))
+      Thread.sleep(forTimeInterval: 1)
+    }
   }
 
   func testToolbarAndMenuBatch() throws {
@@ -336,11 +621,7 @@ final class GlassInteractionTests: XCTestCase {
     try testNativeMenuActionsAndFallback()
     let app = XCUIApplication(); app.launch()
     func reveal(_ element: XCUIElement) {
-      for _ in 0..<14 {
-        if element.exists && element.isHittable { return }
-        if element.exists && element.frame.midY < app.frame.midY { app.swipeDown() }
-        else { app.swipeUp() }
-      }
+      app.scrollIntoView(element)
       XCTAssertTrue(element.isHittable)
     }
     func select(_ title: String) {
@@ -394,6 +675,192 @@ final class GlassInteractionTests: XCTestCase {
     expectStatus("recent")
   }
 
+  // Lifecycle regressions from consumer review: selection on a controller that is not yet
+  // attached asserted inside UIKit's tab model, a tab kept its selected image after UIKit
+  // wrote it into tabBarItem, and the first tap on a fresh controller could be dropped.
+  func testTabBarLifecycleAndFirstTap() throws {
+    continueAfterFailure = false
+    let app = XCUIApplication()
+    func tab(_ name: String) -> XCUIElement { app.buttons["\(name) tab"] }
+    func screen(_ name: String) { XCTAssertTrue(app.staticTexts["\(name) screen"].waitForExistence(timeout: 8)) }
+    func capture(_ name: String) {
+      let attachment = XCTAttachment(screenshot: app.screenshot())
+      attachment.name = name; attachment.lifetime = .keepAlways; add(attachment)
+    }
+    func reveal(_ element: XCUIElement) {
+      app.scrollIntoView(element)
+      XCTAssertTrue(element.isHittable)
+    }
+    // First tap on a freshly built controller after each cold launch must reach JavaScript.
+    for launch in 0..<3 {
+      app.launch()
+      let open = app.buttons["open-tabs-demo"]
+      XCTAssertTrue(open.waitForExistence(timeout: 45)); open.tap()
+      screen("Home")
+      XCTAssertTrue(tab("Library").waitForExistence(timeout: 5))
+      tab("Library").tap()
+      screen("Library")
+      XCTAssertTrue(app.staticTexts["Tab pressed: Library"].exists, "First tap after cold launch \(launch) was dropped")
+      XCTAssertTrue(tab("Library").isSelected)
+      if launch == 0 {
+        // Home was selected when UIKit built the tabs; it must now show its unselected image.
+        capture("Home unselected after first switch")
+      }
+    }
+    // Rebuild before attach and reorder after attach, each with a selection change in the same commit.
+    for round in 0..<3 {
+      let expected = round % 2 == 0 ? "Settings" : "Home"
+      let rebuild = app.buttons["tabs-rebuild"]
+      reveal(rebuild); rebuild.tap()
+      screen(expected)
+      XCTAssertTrue(tab(expected).waitForExistence(timeout: 5))
+      XCTAssertTrue(tab(expected).isSelected, "Rebuilt tab bar did not select \(expected)")
+    }
+    let reorder = app.buttons["tabs-reorder-select"]
+    reveal(reorder); reorder.tap()
+    screen("Home")
+    XCTAssertTrue(tab("Home").isSelected)
+    reveal(reorder); reorder.tap()
+    screen("Settings")
+    XCTAssertTrue(tab("Settings").isSelected)
+    // Taps still reach JavaScript after rebuilds.
+    tab("Inbox").tap(); screen("Inbox")
+    XCTAssertTrue(app.staticTexts["Tab pressed: Inbox"].exists)
+    capture("Tabs after rebuilds")
+  }
+
+  // Per-tab colours and an asset-catalog image. Colours are checked in the captures.
+  func testTabBarArtworkAndTints() throws {
+    continueAfterFailure = false
+    let app = XCUIApplication(); app.launch()
+    func tab(_ name: String) -> XCUIElement { app.buttons["\(name) tab"] }
+    func screen(_ name: String) { XCTAssertTrue(app.staticTexts["\(name) screen"].waitForExistence(timeout: 8)) }
+    func capture(_ name: String) {
+      let attachment = XCTAttachment(screenshot: app.screenshot())
+      attachment.name = name; attachment.lifetime = .keepAlways; add(attachment)
+    }
+    let open = app.buttons["open-tabs-demo"]
+    XCTAssertTrue(open.waitForExistence(timeout: 45)); open.tap()
+    screen("Home")
+    let brand = app.switches["tabs-brand-toggle"]
+    app.scrollIntoView(brand)
+    brand.tap()
+    capture("Brand tabs, Home selected")
+    tab("Library").tap(); screen("Library")
+    XCTAssertTrue(tab("Library").isSelected)
+    // Library's artwork is a require() image pair, loaded at runtime: the filled diamond in the tab's
+    // colour while selected, the outline in the bar-wide inactive gray otherwise.
+    let library = tab("Library").frame
+    let iconBand = CGRect(x: library.minX, y: library.minY, width: library.width, height: library.height * 0.55)
+    let selectedPixels = waitForPixels(app, in: iconBand, near: (0x2E, 0x7D, 0x32), atLeast: 40)
+    capture("Brand tabs, Library selected")
+    tab("Settings").tap(); screen("Settings")
+    XCTAssertTrue(tab("Settings").isSelected)
+    let inactivePixels = waitForPixels(app, in: iconBand, near: (0x8A, 0x8F, 0x98), atLeast: 20)
+    XCTAssertGreaterThan(Double(selectedPixels), Double(inactivePixels) * 1.3,
+      "The selected image source (filled) should cover more than the outline (\(selectedPixels) vs \(inactivePixels))")
+    capture("Brand tabs, Settings selected with asset image")
+  }
+  /// Waits up to 5 s for `rect` to hold at least `minimum` pixels near `color`, and returns the count.
+  @discardableResult
+  private func waitForPixels(_ app: XCUIApplication, in rect: CGRect, near color: (Int, Int, Int), atLeast minimum: Int) -> Int {
+    var count = 0
+    for _ in 0..<10 {
+      count = pixels(app.screenshot(), in: rect, near: color)
+      if count >= minimum { return count }
+      Thread.sleep(forTimeInterval: 0.5)
+    }
+    XCTFail("Expected \(minimum) pixels near \(color) in \(rect), found \(count)")
+    return count
+  }
+  /// Pixels within `rect` (points) whose colour is within a small distance of `color`.
+  private func pixels(_ screenshot: XCUIScreenshot, in rect: CGRect, near color: (Int, Int, Int)) -> Int {
+    let image = screenshot.image
+    let area = CGRect(x: rect.minX * image.scale, y: rect.minY * image.scale,
+      width: rect.width * image.scale, height: rect.height * image.scale).integral
+    guard let crop = image.cgImage?.cropping(to: area) else { return 0 }
+    let width = crop.width, height = crop.height
+    var data = [UInt8](repeating: 0, count: width * height * 4)
+    let drawn: Bool = data.withUnsafeMutableBytes { buffer in
+      guard let context = CGContext(data: buffer.baseAddress, width: width, height: height, bitsPerComponent: 8,
+        bytesPerRow: width * 4, space: CGColorSpaceCreateDeviceRGB(),
+        bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return false }
+      context.draw(crop, in: CGRect(x: 0, y: 0, width: width, height: height))
+      return true
+    }
+    guard drawn else { return 0 }
+    var count = 0
+    for index in stride(from: 0, to: data.count, by: 4) {
+      let red = Int(data[index]) - color.0, green = Int(data[index + 1]) - color.1, blue = Int(data[index + 2]) - color.2
+      if red * red + green * green + blue * blue < 40 * 40 { count += 1 }
+    }
+    return count
+  }
+
+  // iOS 26 drag lens with per-tab colours. The lens exists only while a finger is down, so the
+  // holds below are inspected in a simulator recording, not in XCTest screenshots.
+  func testTabBarLensDrag() throws {
+    guard glassEra else { throw XCTSkip("The drag lens requires iOS 26") }
+    continueAfterFailure = false
+    let app = XCUIApplication(); app.launch()
+    func tab(_ name: String) -> XCUIElement { app.buttons["\(name) tab"] }
+    func screen(_ name: String) { XCTAssertTrue(app.staticTexts["\(name) screen"].waitForExistence(timeout: 8)) }
+    func capture(_ name: String) {
+      let attachment = XCTAttachment(screenshot: app.screenshot())
+      attachment.name = name; attachment.lifetime = .keepAlways; add(attachment)
+    }
+    func drag(_ from: String, to: String) {
+      let start = tab(from).coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+      let end = tab(to).coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+      print("ALG-LENS \(from)->\(to) hold begins")
+      start.press(forDuration: 0.6, thenDragTo: end, withVelocity: .slow, thenHoldForDuration: 3)
+      print("ALG-LENS \(from)->\(to) released")
+    }
+    let open = app.buttons["open-tabs-demo"]
+    XCTAssertTrue(open.waitForExistence(timeout: 45)); open.tap()
+    screen("Home")
+    // Default colours: UIKit swaps in the selected image (house.circle.fill) by itself.
+    capture("Default tabs, Home selected")
+    let brand = app.switches["tabs-brand-toggle"]
+    app.scrollIntoView(brand)
+    brand.tap()
+    tab("Inbox").tap(); screen("Inbox")
+    capture("Brand tabs, Inbox selected")
+    drag("Inbox", to: "Library"); screen("Library")
+    XCTAssertTrue(tab("Library").isSelected)
+    capture("Brand tabs, Library selected after lens")
+    drag("Library", to: "Home"); screen("Home")
+    XCTAssertTrue(tab("Home").isSelected)
+    capture("Brand tabs, Home selected after lens")
+    drag("Home", to: "Settings"); screen("Settings")
+    XCTAssertTrue(tab("Settings").isSelected)
+    capture("Brand tabs, Settings selected after lens")
+  }
+
+  // Tab bar placement: host above the home indicator versus extended to the bottom edge.
+  func testTabBarBottomPlacement() throws {
+    continueAfterFailure = false
+    let app = XCUIApplication(); app.launch()
+    let open = app.buttons["open-tabs-demo"]
+    XCTAssertTrue(open.waitForExistence(timeout: 45)); open.tap()
+    XCTAssertTrue(app.staticTexts["Home screen"].waitForExistence(timeout: 8))
+    func capture(_ name: String) {
+      let attachment = XCTAttachment(screenshot: app.screenshot())
+      attachment.name = name; attachment.lifetime = .keepAlways; add(attachment)
+    }
+    let home = app.buttons["Home tab"]
+    print("ALG-TAB above-indicator \(home.frame.maxY) of \(app.frame.height)")
+    capture("Tab host above the home indicator")
+    let edge = app.switches["tabs-edge-toggle"]
+    app.scrollIntoView(edge)
+    edge.tap()
+    Thread.sleep(forTimeInterval: 1)
+    print("ALG-TAB bottom-edge \(home.frame.maxY) of \(app.frame.height)")
+    capture("Tab host extended to the bottom edge")
+    home.tap(); XCTAssertTrue(app.staticTexts["Home screen"].waitForExistence(timeout: 5))
+    app.buttons["Inbox tab"].tap(); XCTAssertTrue(app.staticTexts["Inbox screen"].waitForExistence(timeout: 5))
+  }
+
   func testNativeTabNavigationBatch() throws {
     continueAfterFailure = false
     let app = XCUIApplication(); app.launch()
@@ -403,7 +870,7 @@ final class GlassInteractionTests: XCTestCase {
     func screen(_ name: String) { XCTAssertTrue(app.staticTexts["\(name) screen"].waitForExistence(timeout: 8)) }
     func toggle(_ id: String) {
       let control = app.switches[id]
-      for _ in 0..<5 { if control.isHittable { break }; app.swipeUp() }
+      app.scrollIntoView(control)
       XCTAssertTrue(control.isHittable); control.tap()
     }
     screen("Home")
@@ -436,7 +903,7 @@ final class GlassInteractionTests: XCTestCase {
     XCTAssertTrue(app.staticTexts["Tab events: 4"].exists)
     // Programmatic navigation remains available while user taps are disabled.
     let jump = app.buttons["tabs-go-inbox"]
-    for _ in 0..<5 { if jump.isHittable { break }; app.swipeDown() }
+    app.scrollIntoView(jump)
     jump.tap(); screen("Inbox"); XCTAssertTrue(tab("Inbox").isSelected)
     XCTAssertTrue(app.staticTexts["Tab events: 4"].exists)
     toggle("tabs-disabled-toggle")
@@ -479,11 +946,9 @@ final class GlassInteractionTests: XCTestCase {
       return app.frame.insetBy(dx: 0, dy: 40).contains(CGPoint(x: frame.midX, y: frame.midY))
     }
     func reveal(_ element: XCUIElement, up: Bool = true) {
-      for attempt in 0..<20 {
-        if onScreen(element) { return }
-        // Reverse after the first half so an overshoot can scroll back to the element.
-        if (attempt < 10) == up { app.swipeUp() } else { app.swipeDown() }
-      }
+      if onScreen(element) { return }
+      app.scrollIntoView(element)
+      if onScreen(element) { return }
       let hierarchy = XCTAttachment(string: app.debugDescription)
       hierarchy.name = "Hierarchy when an element could not be revealed"
       hierarchy.lifetime = .keepAlways; add(hierarchy)
@@ -548,7 +1013,7 @@ final class GlassInteractionTests: XCTestCase {
     let all = app.descendants(matching: .any)["adaptive-segments-all"].firstMatch
     let saved = app.descendants(matching: .any)["adaptive-segments-saved"].firstMatch
     XCTAssertTrue(app.staticTexts["Selected: all"].waitForExistence(timeout: 30))
-    for _ in 0..<12 { if saved.isHittable { break }; app.swipeUp() }
+    app.scrollIntoView(saved)
     XCTAssertTrue(saved.isHittable)
     // Options stay side by side at the largest text size. Compare with a tolerance because
     // UIKit reports subpixel frame origins that make exact edge comparisons unreliable.
@@ -574,6 +1039,67 @@ final class GlassInteractionTests: XCTestCase {
     capture.name = "Native tabs cleared badges fresh capture"; capture.lifetime = .keepAlways; add(capture)
   }
 
+  // Visual tiers (R18): the native tier (glass on 26, blur below) and the standard opaque surface, in
+  // light and dark. Screenshots are kept for review. The checks are that every tier follows the
+  // appearance and that the standard surface keeps its documented default colours. The appearance
+  // is pinned per launch with `-ALGAppearance` (see example/index.js); XCUIDevice.appearance did
+  // not reach the app on the iOS 18.6 simulator.
+  func testVisualTiers() throws {
+    continueAfterFailure = false
+    let app = XCUIApplication()
+    let native = glassEra ? "glass" : "blur"
+    var samples: [String: CGFloat] = [:]
+    for appearance in ["light", "dark"] {
+      app.launchArguments = ["-ALGAppearance", appearance]
+      app.launch()
+      let surface = app.descendants(matching: .any).matching(identifier: "adaptive-surface").firstMatch
+      XCTAssertTrue(surface.waitForExistence(timeout: 45))
+      let fallback = app.switches["fallback-toggle"]
+      for tier in [native, "standard"] {
+        if tier == "standard" {
+          XCTAssertTrue(app.scrollIntoView(fallback))
+          fallback.tap()
+        }
+        XCTAssertTrue(app.scrollIntoView(surface, band: 0.1...0.9))
+        let screenshot = app.screenshot()
+        let attachment = XCTAttachment(screenshot: screenshot)
+        attachment.name = "Tier \(tier) \(appearance)"; attachment.lifetime = .keepAlways; add(attachment)
+        samples["\(tier) \(appearance)"] = meanLuminance(screenshot, in: surface.frame.insetBy(dx: 3, dy: 3))
+      }
+    }
+    app.launchArguments = []
+    for tier in [native, "standard"] {
+      let light = try XCTUnwrap(samples["\(tier) light"]), dark = try XCTUnwrap(samples["\(tier) dark"])
+      XCTAssertLessThan(dark + 0.1, light, "The \(tier) surface must follow the appearance (light \(light), dark \(dark))")
+    }
+    // The standard surface is opaque #F0F1F5 / #25272D; its label lowers or raises the mean a little.
+    XCTAssertGreaterThan(try XCTUnwrap(samples["standard light"]), 0.8)
+    XCTAssertLessThan(try XCTUnwrap(samples["standard dark"]), 0.3)
+  }
+  /// Mean relative luminance, 0 to 1, of a rectangle in points of a screenshot.
+  private func meanLuminance(_ screenshot: XCUIScreenshot, in rect: CGRect) -> CGFloat {
+    let image = screenshot.image
+    let pixels = CGRect(x: rect.minX * image.scale, y: rect.minY * image.scale,
+      width: rect.width * image.scale, height: rect.height * image.scale)
+    guard let crop = image.cgImage?.cropping(to: pixels.integral) else { return -1 }
+    let side = 8
+    var data = [UInt8](repeating: 0, count: side * side * 4)
+    let drawn: Bool = data.withUnsafeMutableBytes { buffer in
+      guard let context = CGContext(data: buffer.baseAddress, width: side, height: side, bitsPerComponent: 8,
+        bytesPerRow: side * 4, space: CGColorSpaceCreateDeviceRGB(),
+        bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return false }
+      context.interpolationQuality = .high
+      context.draw(crop, in: CGRect(x: 0, y: 0, width: side, height: side))
+      return true
+    }
+    guard drawn else { return -1 }
+    var total: CGFloat = 0
+    for index in stride(from: 0, to: data.count, by: 4) {
+      total += 0.2126 * CGFloat(data[index]) + 0.7152 * CGFloat(data[index + 1]) + 0.0722 * CGFloat(data[index + 2])
+    }
+    return total / CGFloat(side * side) / 255
+  }
+
   func testGlassHighlightComparison() throws {
     let app = XCUIApplication()
     app.launch()
@@ -596,17 +1122,11 @@ final class GlassInteractionTests: XCTestCase {
     XCTAssertTrue(toggle.waitForExistence(timeout: 45))
     let setting = app.switches["interactive-toggle"]
     for expected in ["1", "0"] {
-      for _ in 0..<5 {
-        if setting.isHittable { break }
-        app.swipeUp()
-      }
+      app.scrollIntoView(setting)
       XCTAssertEqual(setting.value as? String, expected)
       setting.tap()
       XCTAssertEqual(setting.value as? String, expected == "0" ? "1" : "0")
-      for _ in 0..<5 {
-        if toggle.isHittable { break }
-        app.swipeDown()
-      }
+      app.scrollIntoView(toggle)
       toggle.press(forDuration: 0.5)
       XCTAssertTrue(app.buttons["glass-action-heart"].waitForExistence(timeout: 5))
       app.buttons["glass-action-heart"].tap()
@@ -652,17 +1172,11 @@ final class GlassInteractionTests: XCTestCase {
     for merging in [false, true] {
       if merging {
         let setting = app.switches["merging-enabled-toggle"]
-        for _ in 0..<5 {
-          if setting.isHittable { break }
-          app.swipeUp()
-        }
+        app.scrollIntoView(setting)
         XCTAssertTrue(setting.isHittable)
         XCTAssertEqual(setting.value as? String, "0")
         setting.tap()
-        for _ in 0..<5 {
-          if toggle.isHittable { break }
-          app.swipeDown()
-        }
+        app.scrollIntoView(toggle)
       }
       for _ in 0..<2 {
         toggle.press(forDuration: 0.25)
@@ -686,10 +1200,7 @@ final class GlassInteractionTests: XCTestCase {
     app.launch()
     XCTAssertTrue(app.buttons["glass-counter"].waitForExistence(timeout: 45))
     let slider = app.sliders["native-slider"]
-    for _ in 0..<8 {
-      if slider.isHittable { break }
-      app.swipeUp()
-    }
+    app.scrollIntoView(slider)
     XCTAssertTrue(slider.isHittable, app.debugDescription)
     XCTAssertEqual(slider.value as? String, "40")
     slider.adjust(toNormalizedSliderPosition: 0.81)
@@ -729,19 +1240,13 @@ final class GlassInteractionTests: XCTestCase {
     XCTAssertTrue(app.buttons["glass-counter"].waitForExistence(timeout: 45))
     if glassEra {
       let segments = app.segmentedControls["native-segments"]
-      for _ in 0..<5 {
-        if segments.isHittable { break }
-        app.swipeUp()
-      }
+      app.scrollIntoView(segments)
       XCTAssertTrue(segments.isHittable, app.debugDescription)
       XCTAssertFalse(segments.buttons["Shared"].isEnabled)
       segments.buttons["Saved"].tap()
     } else {
       let saved = app.descendants(matching: .any)["native-segments-saved"].firstMatch
-      for _ in 0..<5 {
-        if saved.isHittable { break }
-        app.swipeUp()
-      }
+      app.scrollIntoView(saved)
       XCTAssertTrue(saved.isHittable, app.debugDescription)
       XCTAssertFalse(app.descendants(matching: .any)["native-segments-shared"].firstMatch.isEnabled)
       saved.tap()
@@ -852,10 +1357,7 @@ final class GlassInteractionTests: XCTestCase {
     let toggle = app.buttons["glass-cluster-toggle"]
     XCTAssertTrue(toggle.waitForExistence(timeout: 45))
     func reveal(_ element: XCUIElement, up: Bool) {
-      for _ in 0..<8 {
-        if element.isHittable { return }
-        if up { app.swipeUp() } else { app.swipeDown() }
-      }
+      app.scrollIntoView(element)
       XCTAssertTrue(element.isHittable)
     }
     let implementation = app.switches["swiftui-cluster-toggle"]

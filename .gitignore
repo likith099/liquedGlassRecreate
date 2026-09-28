@@ -13,3 +13,6 @@ example/ios/.xcode.env.local
 
 # Agent working notes: local to the working copy, not part of the repository
 .agent/
+
+# Compiled package output (react-native-builder-bob), built on pack/publish.
+packages/liquid-glass/lib/

@@ -1,4 +1,4 @@
-import {codegenNativeComponent, type ViewProps, type ColorValue, type CodegenTypes} from 'react-native';
+import {codegenNativeComponent, type ViewProps, type ColorValue, type CodegenTypes, type HostComponent} from 'react-native';
 export interface NativeProps extends ViewProps {
   optionsJSON: string;
   selectedValue: string;
@@ -9,4 +9,4 @@ export interface NativeProps extends ViewProps {
   controlTestID?: string;
   onSelectionChange?: CodegenTypes.DirectEventHandler<Readonly<{value: string}>>;
 }
-export default codegenNativeComponent<NativeProps>('ALGSegmented', {excludedPlatforms: ['android']});
+export default codegenNativeComponent<NativeProps>('ALGSegmented', {excludedPlatforms: ['android']}) as HostComponent<NativeProps>;

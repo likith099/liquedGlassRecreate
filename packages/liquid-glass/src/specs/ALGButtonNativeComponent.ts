@@ -1,4 +1,4 @@
-import {codegenNativeComponent, type ViewProps, type ColorValue, type CodegenTypes} from 'react-native';
+import {codegenNativeComponent, type ViewProps, type ColorValue, type CodegenTypes, type HostComponent} from 'react-native';
 export interface NativeProps extends ViewProps {
   title: string;
   systemImage?: string;
@@ -12,4 +12,4 @@ export interface NativeProps extends ViewProps {
   controlTestID?: string;
   onActivate?: CodegenTypes.DirectEventHandler<Readonly<{activated: boolean}>>;
 }
-export default codegenNativeComponent<NativeProps>('ALGButton', {excludedPlatforms: ['android']});
+export default codegenNativeComponent<NativeProps>('ALGButton', {excludedPlatforms: ['android']}) as HostComponent<NativeProps>;

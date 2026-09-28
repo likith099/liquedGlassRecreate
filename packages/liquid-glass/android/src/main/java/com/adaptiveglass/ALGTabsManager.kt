@@ -17,6 +17,8 @@ class ALGTabsManager : SimpleViewManager<ALGTabsView>(), ALGTabsManagerInterface
   override fun setSelectionRevision(view: ALGTabsView, value: Int) { /* Reconcile in the transaction, including rejected taps. */ }
   override fun setDisabled(view: ALGTabsView, value: Boolean) { view.disabled = value }
   override fun setGlassTint(view: ALGTabsView, value: Int?) { view.glassTint = value }
+  override fun setAndroidBackgroundColor(view: ALGTabsView, value: Int?) { view.barBackgroundColor = value }
+  override fun setAndroidIndicatorColor(view: ALGTabsView, value: Int?) { view.barIndicatorColor = value }
   override fun setControlTestID(view: ALGTabsView, value: String?) { view.controlTestID = value }
   override fun onAfterUpdateTransaction(view: ALGTabsView) { super.onAfterUpdateTransaction(view); view.applyConfiguration() }
   override fun getExportedCustomDirectEventTypeConstants(): MutableMap<String, Any> = mutableMapOf(

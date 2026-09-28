@@ -14,6 +14,9 @@ type Controls = {
   reversed: boolean; setReversed: (value: boolean) => void;
   replaced: boolean; setReplaced: (value: boolean) => void;
   badges: boolean; setBadges: (value: boolean) => void;
+  brandColors: boolean; setBrandColors: (value: boolean) => void;
+  toBottomEdge: boolean; setToBottomEdge: (value: boolean) => void;
+  rebuild: () => void;
   event: string; events: number;
 };
 const Settings = createContext<Controls | null>(null);
@@ -42,6 +45,18 @@ function DemoScreen({route, navigation}: BottomTabScreenProps<Routes>) {
     {toggle('Reverse tab order', 'tabs-reverse-toggle', controls.reversed, controls.setReversed)}
     {toggle('Replace Library with Search', 'tabs-replace-toggle', controls.replaced, controls.setReplaced)}
     {toggle('Show badges', 'tabs-badges-toggle', controls.badges, controls.setBadges)}
+    {toggle('Brand colours and custom image', 'tabs-brand-toggle', controls.brandColors, controls.setBrandColors)}
+    {toggle('Extend tab bar to bottom edge', 'tabs-edge-toggle', controls.toBottomEdge, controls.setToBottomEdge)}
+    <Pressable testID="tabs-rebuild" accessibilityRole="button" style={styles.action} onPress={() => {
+      // One commit: a new native tab bar (not yet attached), new item order and new selection.
+      controls.rebuild(); controls.setReversed(!controls.reversed);
+      navigation.navigate(route.name === 'Settings' ? 'Home' : 'Settings');
+    }}><Text style={{color}}>Rebuild tab bar and change selection</Text></Pressable>
+    <Pressable testID="tabs-reorder-select" accessibilityRole="button" style={styles.action} onPress={() => {
+      // One commit on the attached tab bar: new item order and new selection.
+      controls.setReversed(!controls.reversed);
+      navigation.navigate(route.name === 'Settings' ? 'Home' : 'Settings');
+    }}><Text style={{color}}>Reorder tabs and change selection</Text></Pressable>
   </ScrollView>;
 }
 export default function TabNavigationDemo({onClose}: {onClose: () => void}) {
@@ -51,6 +66,9 @@ export default function TabNavigationDemo({onClose}: {onClose: () => void}) {
   const [reversed, setReversed] = useState(false);
   const [replaced, setReplaced] = useState(false);
   const [badges, setBadges] = useState(true);
+  const [brandColors, setBrandColors] = useState(false);
+  const [toBottomEdge, setToBottomEdge] = useState(false);
+  const [generation, setGeneration] = useState(0);
   const [event, setEvent] = useState('No tab press');
   const [events, setEvents] = useState(0);
   const dark = useColorScheme() === 'dark';
@@ -59,13 +77,14 @@ export default function TabNavigationDemo({onClose}: {onClose: () => void}) {
       <Text style={{color: dark ? '#F2F3F7' : '#222737'}}>‹ Back to component lab</Text>
     </Pressable>
     <Settings.Provider value={{reject,setReject,disabled,setDisabled,inboxDisabled,setInboxDisabled,
-      reversed,setReversed,replaced,setReplaced,badges,setBadges,event,events}}>
+      reversed,setReversed,replaced,setReplaced,badges,setBadges,brandColors,setBrandColors,toBottomEdge,setToBottomEdge,event,events,
+      rebuild: () => setGeneration(value => value + 1)}}>
       <NavigationIndependentTree>
         <NavigationContainer theme={dark ? DarkTheme : DefaultTheme}>
           <Tab.Navigator initialRouteName="Home" backBehavior="history"
             screenOptions={{headerShown: false, animation: 'none'}}
-            tabBar={props => <NativeNavigationTabBar {...props} disabled={disabled}
-              disabledRoutes={inboxDisabled ? ['Inbox'] : []} reversed={reversed} />}>
+            tabBar={props => <NativeNavigationTabBar key={generation} {...props} disabled={disabled}
+              disabledRoutes={inboxDisabled ? ['Inbox'] : []} reversed={reversed} brandColors={brandColors} toBottomEdge={toBottomEdge} />}>
             {(['Home', replaced ? 'Search' : 'Library', 'Inbox', 'Settings'] as const).map(name =>
               <Tab.Screen key={name} name={name} component={DemoScreen}
                 options={{tabBarBadge: badges ? (name === 'Inbox' ? 3 : name === 'Settings' ? 'dot' : undefined) : undefined}}

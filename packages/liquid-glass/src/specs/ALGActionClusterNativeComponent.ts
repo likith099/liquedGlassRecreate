@@ -1,4 +1,4 @@
-import {codegenNativeComponent, type ViewProps, type ColorValue, type CodegenTypes} from 'react-native';
+import {codegenNativeComponent, type ViewProps, type ColorValue, type CodegenTypes, type HostComponent} from 'react-native';
 export interface NativeProps extends ViewProps {
   iosImplementation?: CodegenTypes.WithDefault<'uikit' | 'swiftui', 'uikit'>;
   actionsJSON?: string;
@@ -13,4 +13,4 @@ export interface NativeProps extends ViewProps {
   onAction?: CodegenTypes.DirectEventHandler<Readonly<{id: string}>>;
   onExpandedChange?: CodegenTypes.DirectEventHandler<Readonly<{expanded: boolean}>>;
 }
-export default codegenNativeComponent<NativeProps>('ALGActionCluster', {excludedPlatforms: ['android']});
+export default codegenNativeComponent<NativeProps>('ALGActionCluster', {excludedPlatforms: ['android']}) as HostComponent<NativeProps>;

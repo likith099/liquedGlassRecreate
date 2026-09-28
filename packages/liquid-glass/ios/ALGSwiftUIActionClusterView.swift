@@ -34,7 +34,16 @@ private struct SwiftUIClusterContent: View {
 
   private var configuration: SwiftUIClusterConfiguration { model.configuration }
 
-  private func control(id: String, title: String, symbol: String, disabled: Bool,
+  /// Glass identity for matched merging. A typed toggle case means no action ID is reserved.
+  private enum ControlID: Hashable {
+    case toggle
+    case action(String)
+    var accessibilityIdentifier: String {
+      switch self { case .toggle: return "glass-cluster-toggle"; case .action(let id): return "glass-action-" + id }
+    }
+  }
+
+  private func control(id: ControlID, title: String, symbol: String, disabled: Bool,
     action: @escaping () -> Void) -> some View {
     Button(action: action) {
       Image(systemName: UIImage(systemName: symbol) == nil ? "circle" : symbol)
@@ -45,7 +54,7 @@ private struct SwiftUIClusterContent: View {
     .frame(width: 52, height: 52)
     .disabled(disabled)
     .accessibilityLabel(title)
-    .accessibilityIdentifier(id == "__toggle" ? "glass-cluster-toggle" : "glass-action-" + id)
+    .accessibilityIdentifier(id.accessibilityIdentifier)
     .glassEffectID(id, in: glassNamespace)
   }
 
@@ -53,11 +62,11 @@ private struct SwiftUIClusterContent: View {
     HStack(spacing: 12) {
       if configuration.expanded {
         ForEach(configuration.actions) { item in
-          control(id: item.id, title: item.title, symbol: item.systemImage ?? "circle",
+          control(id: .action(item.id), title: item.title, symbol: item.systemImage ?? "circle",
             disabled: item.disabled == true) { model.activate(item.id) }
         }
       }
-      control(id: "__toggle", title: configuration.toggleLabel,
+      control(id: .toggle, title: configuration.toggleLabel,
         symbol: configuration.expanded ? "xmark" : "plus", disabled: false) { model.toggle() }
         .accessibilityValue(configuration.expanded ? "Expanded" : "Collapsed")
     }

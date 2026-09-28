@@ -1,6 +1,8 @@
 # Native toolbars
 
-`GlassToolbar` hosts a UIKit `UIToolbar` on iOS and an Android `Toolbar`. Native bar items own taps, menu presentation, and feedback. iOS 26 supplies the system glass appearance; older iOS uses its standard toolbar. No navigation library or Expo Modules is required.
+`GlassToolbar` hosts native UIKit controls on iOS and an Android `Toolbar`. On iOS 26 each control is a UIKit glass button (`UIButton.Configuration.glass()`) that owns its taps, menu presentation, and feedback. Older iOS, `forceFallback`, and Reduce Transparency use a standard `UIToolbar` with bar items. No navigation library or Expo Modules is required.
+
+The iOS 26 glass buttons are not hosted inside a `UIToolbar`. On iOS 26.5, a standalone `UIToolbar` displays a bar item's menu-dismissal morph through a portal in its hosted item glass. That glass renders as an opaque disk for about a second after every menu closes. A navigation controller's toolbar uses a different floating-bar implementation and is unaffected. Glass buttons that own their menu use the direct morph, as `GlassMenuButton` does. Buttons hosted inside the toolbar are restyled by it, so they sit in a centered row instead.
 
 ```tsx
 import {GlassToolbar} from '@likith99/react-native-adaptive-liquid-glass';
@@ -30,14 +32,14 @@ Define `sort` and `setSort` in the consuming component. `onAction` receives only
 
 The default host height is 64 points and minimum width is 64. Give the toolbar an explicit width or flex inside horizontal layouts. `maxVisibleItems` defaults to 3 and is an upper bound, not a fixed count; 0 sends everything to overflow. `placement="overflow"` always places that root item in the native overflow menu. Automatic items can also move there when space is limited. Overflow keeps the original relative order of hidden items.
 
-UIKit uses native bar buttons and a native More actions menu; the host estimates the width of titles/SF Symbols to decide which items fit. Android uses its normal action-menu presenter, with an additional host-width budget because this toolbar may be narrower than the screen. The exact visible count can differ across platforms. A supplied iOS SF Symbol replaces the visible title on the bar, while the title remains the accessibility label and menu text. Android displays titles. Long labels remain available in overflow instead of being squeezed into the bar.
+UIKit uses native glass buttons (bar items in the fallback) and a native More actions menu; the host estimates the width of titles/SF Symbols to decide which items fit. On iOS 26, symbol controls are 48-point circles and title controls are 48-point-high capsules in a centered row. Android uses its normal action-menu presenter, with an additional host-width budget because this toolbar may be narrower than the screen. The exact visible count can differ across platforms. A supplied iOS SF Symbol replaces the visible title on the bar, while the title remains the accessibility label and menu text. Android displays titles. Long labels remain available in overflow instead of being squeezed into the bar.
 
 The component occupies its React layout frame. It does not attach itself to a navigation controller, pin itself to a screen edge, or add safe-area/keyboard insets; the consuming screen owns placement and insets. Larger text sizes and tight heights still need dedicated accessibility review.
 
 ## Appearance and state
 
-- `mergingEnabled` defaults to false. On iOS 26, setting it true lets neighboring native bar items share their system background. This is toolbar background grouping, not the action cluster's expansion animation or a configurable merging distance.
-- `forceFallback` uses an opaque toolbar background and hides shared glass item backgrounds on iOS 26; older iOS and Android keep their standard controls. Reduce Transparency also selects the opaque iOS appearance.
+- `mergingEnabled` defaults to false, giving each control its own glass. On iOS 26, setting it true places the visible controls in one shared interactive glass capsule. This is toolbar background grouping, not the action cluster's expansion animation or a configurable merging distance.
+- `forceFallback` uses the standard `UIToolbar` with an opaque background and hidden shared glass item backgrounds on iOS 26; older iOS and Android keep their standard controls. Reduce Transparency also selects the opaque iOS appearance.
 - `tintColor` changes the foreground accent. Destructive actions use the platform error color. It is not a press-highlight brightness control.
 - `disabled` blocks all action delivery; item-level `disabled` applies to an action or submenu and its descendants. Android may still allow opening the overflow list to inspect disabled entries.
 - `testID` identifies the native toolbar. iOS item identifiers append `-<id>` and overflow appends `-overflow`; Android exposes native action titles and its standard overflow accessibility label. The native item titles label individual controls; do not rely on a container accessibility label to replace them.
@@ -50,4 +52,6 @@ Rebuild native apps after installing this batch because the shared `ALGMenu` Fab
 
 The consolidated iOS test is `GlassInteractionTests/testToolbarAndMenuBatch`; Android uses `python3 scripts/verify-android-toolbar.py` after installing and launching a fresh demo.
 
-Platform references: [UIToolbar](https://developer.apple.com/documentation/uikit/uitoolbar), [UIBarButtonItem shared backgrounds](https://developer.apple.com/documentation/uikit/uibarbuttonitem/sharesbackground), [Android Toolbar](https://developer.android.com/reference/android/widget/Toolbar), [Android action placement](https://developer.android.com/develop/ui/views/components/appbar/actions).
+`GlassInteractionTests/testToolbarDismissalMaterial` opens and dismisses each toolbar menu in individual and shared-glass modes. XCUITest waits for the app to idle, so its screenshots miss the transient. Record the simulator (`xcrun simctl io <device> recordVideo`) while it runs. Then pass the recording and the test log to `python3 scripts/measure-dismissal-video.py`, which samples each control's glass on every recorded frame. Near-zero samples right after a dismissal indicate the opaque disk.
+
+Platform references: [UIToolbar](https://developer.apple.com/documentation/uikit/uitoolbar), [UIButton.Configuration.glass()](https://developer.apple.com/documentation/uikit/uibutton/configuration-swift.struct/glass()), [UIGlassEffect](https://developer.apple.com/documentation/uikit/uiglasseffect), [UIBarButtonItem shared backgrounds](https://developer.apple.com/documentation/uikit/uibarbuttonitem/sharesbackground), [Android Toolbar](https://developer.android.com/reference/android/widget/Toolbar), [Android action placement](https://developer.android.com/develop/ui/views/components/appbar/actions).

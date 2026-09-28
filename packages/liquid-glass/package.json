@@ -1,6 +1,6 @@
 {
   "name": "@likith99/react-native-adaptive-liquid-glass",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Native iOS Liquid Glass surfaces and controls with standard Android counterparts.",
   "license": "MIT",
   "author": "Likith Kanneganti",
@@ -29,11 +29,22 @@
     "menu",
     "accessibility"
   ],
-  "main": "src/index.ts",
-  "react-native": "src/index.ts",
-  "types": "src/index.ts",
+  "main": "./lib/module/index.js",
+  "types": "./lib/typescript/index.d.ts",
+  "source": "./src/index.ts",
+  "exports": {
+    ".": {
+      "source": "./src/index.ts",
+      "types": "./lib/typescript/index.d.ts",
+      "default": "./lib/module/index.js"
+    },
+    "./package.json": "./package.json"
+  },
   "files": [
     "src",
+    "lib",
+    "!**/__tests__",
+    "!**/*.tsbuildinfo",
     "ios",
     "android",
     "!android/build",
@@ -41,6 +52,7 @@
     "AdaptiveLiquidGlass.podspec",
     "react-native.config.js",
     "README.md",
+    "CHANGELOG.md",
     "LICENSE"
   ],
   "peerDependencies": {
@@ -62,12 +74,35 @@
         "ALGSlider": "ALGSliderComponentView",
         "ALGActionCluster": "ALGActionClusterComponentView",
         "ALGMenu": "ALGMenuComponentView",
-        "ALGTabs": "ALGTabsComponentView"
+        "ALGTabs": "ALGTabsComponentView",
+        "ALGScrollEdge": "ALGScrollEdgeComponentView",
+        "ALGSearchField": "ALGSearchFieldComponentView",
+        "ALGExpandingTabs": "ALGExpandingTabsComponentView"
       }
     }
   },
   "publishConfig": {
     "access": "public",
     "registry": "https://registry.npmjs.org/"
+  },
+  "devDependencies": {
+    "react-native-builder-bob": "^0.43.1"
+  },
+  "scripts": {
+    "build": "bob build",
+    "prepack": "bob build"
+  },
+  "react-native-builder-bob": {
+    "source": "src",
+    "output": "lib",
+    "targets": [
+      "module",
+      [
+        "typescript",
+        {
+          "project": "tsconfig.build.json"
+        }
+      ]
+    ]
   }
 }

@@ -40,7 +40,8 @@ test('fallback retains React children and strips native-only props', () => {
 
 test('rejects ambiguous SwiftUI morphing identities before crossing the native bridge', () => {
   expect(() => validateActions([{id: 'save', title: 'A'}, {id: 'save', title: 'B'}])).toThrow('unique');
-  expect(() => validateActions([{id: '__toggle', title: 'A'}])).toThrow('reserved');
+  // No action ID is reserved: the SwiftUI toggle uses its own typed identity.
+  expect(() => validateActions([{id: '__toggle', title: 'A'}])).not.toThrow();
   expect(() => validateActions([{id: '', title: 'A'}])).toThrow('nonempty');
   expect(() => validateActions(actions)).not.toThrow();
 });

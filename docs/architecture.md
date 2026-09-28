@@ -63,11 +63,25 @@ The UI-test runner compiles the production UIKit hosts and compares action inter
 
 ## Menu ownership
 
+`GlassContextMenu` uses an additive context mode in the same `ALGMenu` Fabric host.
+React children mount into a dedicated native content view and retain their Yoga
+layout. UIKit's UIContextMenuInteraction and UITargetedPreview own recognition,
+lifting, presentation and dismissal on every supported iOS version. Android's
+ViewGroupManager routes React children into a ReactViewGroup; the parent handles
+native long-click and anchors PopupMenu to its bounds. Native button/toolbar
+children remain separate from the React child list. Both modes reuse the menu tree
+and revision checks. iOS accessibility custom actions also validate revisions.
+`forceFallback` swaps only the context-menu wrapper to a shared React Native
+Pressable/Modal popup. It measures the content anchor, preserves the original
+children in place, and constrains long menus to a ScrollView. Changes to actions,
+disabled state or window dimensions close the popup and invalidate pending anchor
+measurements. This can be previewed on iOS without running Android.
+
 GlassMenuButton passes validated JSON items and direct ID events through Fabric. iOS owns a UIButton with UIMenu/UIAction entries; native glass configuration is guarded at iOS 26, with a tinted standard configuration for older iOS, Reduce Transparency, or forceFallback. Android owns a Button and PopupMenu. Each host tracks an item revision, dismisses on replacement/disable/detachment, and validates native selections against its current item list. React additionally rejects disabled and unknown IDs. Checkmarks remain controlled; selection never mutates the public items. No custom glass press effect or menu animation is introduced. See [menu API](menus.md).
 
-`GlassToolbar` reuses the `ALGMenu` Fabric transport with a toolbar mode, visible-item limit, and opt-in shared-background prop. It exposes a separate typed API while sharing tree validation, action identity, and platform menu construction. Native toolbar mode hosts UIToolbar or Android Toolbar, rather than wrapping a row of React buttons in another material. Sections render as inline UIMenus on iOS and native groups/title rows on Android. The public tree allows one submenu level to match Android's documented contract.
+`GlassToolbar` reuses the `ALGMenu` Fabric transport with a toolbar mode, visible-item limit, and opt-in shared-background prop. It exposes a separate typed API while sharing tree validation, action identity, and platform menu construction. Native toolbar mode hosts UIKit glass buttons (iOS 26), UIToolbar (fallback and older iOS), or Android Toolbar, rather than wrapping a row of React buttons in another material. iOS 26 avoids UIToolbar because its hosted item glass renders opaque for about a second after a menu-dismissal morph; see [toolbars](toolbars.md). Sections render as inline UIMenus on iOS and native groups/title rows on Android. The public tree allows one submenu level to match Android's documented contract.
 
-Both toolbar hosts budget actions against their React frame and move excess items to native overflow menus. UIKit estimates title/SF Symbol widths and sets native bar items; Android bounds action candidates before letting its native presenter lay them out. Android recalculates after the host's layout establishes its width and explicitly measures native children following Fabric updates. Neither host animates press feedback in JavaScript. Shared iOS bar backgrounds are off by default; this uses UIBarButtonItem.sharesBackground and is separate from UIGlassContainerEffect proximity merging. See [toolbar API](toolbars.md).
+Both toolbar hosts budget actions against their React frame and move excess items to native overflow menus. UIKit estimates title/SF Symbol widths and builds glass buttons or native bar items; Android bounds action candidates before letting its native presenter lay them out. Android recalculates after the host's layout establishes its width and explicitly measures native children following Fabric updates. Neither host animates press feedback in JavaScript. Shared iOS toolbar glass is off by default. When enabled, iOS 26 draws one interactive UIGlassEffect capsule behind plain buttons, and the fallback bar uses UIBarButtonItem.sharesBackground. Both are separate from UIGlassContainerEffect proximity merging. See [toolbar API](toolbars.md).
 
 ## Tab navigation ownership
 

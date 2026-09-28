@@ -1,0 +1,123 @@
+name: Device tests
+
+# UI tests of the example app on an iOS simulator and an Android emulator. They need full native
+# builds, so they run on demand and on pull requests that change native, source or example code.
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'packages/liquid-glass/ios/**'
+      - 'packages/liquid-glass/android/**'
+      - 'packages/liquid-glass/src/**'
+      - 'example/**'
+      - 'scripts/run-ios-ui-tests.mjs'
+      - 'scripts/run-android-checks.sh'
+      - 'scripts/verify-android-*.py'
+      - '.github/workflows/device-tests.yml'
+permissions:
+  contents: read
+concurrency:
+  group: device-tests-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  ios:
+    name: iOS lifecycle and visual tiers
+    runs-on: macos-26
+    timeout-minutes: 90
+    env:
+      RCT_USE_PREBUILT_RNCORE: '0'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - name: Install iOS pods
+        working-directory: example/ios
+        run: pod install
+      - name: Start Metro on port 8093
+        run: |
+          nohup npm start > "$RUNNER_TEMP/metro.log" 2>&1 &
+          for attempt in $(seq 1 60); do
+            curl -sf http://localhost:8093/status && break
+            sleep 2
+          done
+          # Build the iOS bundle once before the tests. On a fresh runner the first build takes
+          # minutes, longer than a test waits for the app's first screen.
+          curl -sf -o /dev/null --max-time 900 "http://localhost:8093/index.bundle?platform=ios&dev=true&minify=false" ||
+            { cat "$RUNNER_TEMP/metro.log"; exit 1; }
+      # Cold-launch first taps, tab rebuilds before and after attach, per-tab artwork and colours,
+      # icon buttons and programmatic menus, and the surface tiers in light and dark.
+      - name: Run UI tests
+        env:
+          ALG_DERIVED_DATA: ${{ runner.temp }}/DerivedData
+        run: >
+          node scripts/run-ios-ui-tests.mjs --result artifacts/DeviceTests.xcresult --log artifacts/device-tests.log
+          testTabBarLifecycleAndFirstTap testTabBarArtworkAndTints testIconButtonsAndProgrammaticMenu testVisualTiers
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: device-tests-${{ github.sha }}
+          path: |
+            artifacts/DeviceTests.xcresult
+            artifacts/device-tests.log
+          retention-days: 14
+  android:
+    name: Android emulator checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+        with:
+          # The action's v3 default includes the retired SDK `tools` package.
+          packages: platform-tools
+      - name: Install Android SDK components
+        run: sdkmanager 'platforms;android-36' 'build-tools;36.0.0' 'ndk;27.1.12297006' 'cmake;3.22.1'
+      - name: Enable KVM for the emulator
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      # A release build carries its JavaScript (Hermes bytecode), so the emulator needs no Metro
+      # connection and starts quickly under software rendering. It is signed with the demo's debug
+      # key. It also exercises release asset resolution for require() tab images.
+      - name: Build the release demo
+        working-directory: example/android
+        run: ./gradlew :app:assembleRelease -PreactNativeArchitectures=x86_64 --no-daemon
+      - name: Install Pillow for the screenshot checks
+        run: python3 -m pip install --user pillow
+      # Menus, toolbar, tabs, context menu, the 0.1.3 features (icon buttons, segments, badges,
+      # pills, search, toast, tab images and colours), slider, accessibility and RTL.
+      - name: Run the Android checks
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_7
+          ram-size: 4096M
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot-save -camera-back none
+          disable-animations: false
+          script: |
+            adb install -r example/android/app/build/outputs/apk/release/app-release.apk
+            ANDROID_LAUNCH_WAIT=10 bash scripts/run-android-checks.sh
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: android-checks-${{ github.sha }}
+          path: |
+            artifacts/android-*
+            artifacts/*android*.png
+            artifacts/*android*.json
+          retention-days: 14

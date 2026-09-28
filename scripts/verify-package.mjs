@@ -19,7 +19,9 @@ function run(command, args, cwd = consumer, env = {}) {
   return result.stdout;
 }
 console.log(`Consumer: ${consumer}`);
-const packed = parsePackResult(run('npm', ['pack', '--workspace', '@likith99/react-native-adaptive-liquid-glass', '--json', '--pack-destination', artifacts], root));
+// Build explicitly and pack without lifecycle scripts, keeping the JSON on stdout clean.
+run('npm', ['run', 'build', '--workspace', '@likith99/react-native-adaptive-liquid-glass'], root);
+const packed = parsePackResult(run('npm', ['pack', '--workspace', '@likith99/react-native-adaptive-liquid-glass', '--json', '--ignore-scripts', '--pack-destination', artifacts], root));
 if (packed.name !== '@likith99/react-native-adaptive-liquid-glass') throw new Error('Unexpected package scope');
 if (packed.files.some(file => file.path.includes('/build/') || file.path.includes('node_modules'))) throw new Error('Generated files leaked into package');
 const archive = path.join(artifacts, packed.filename);
@@ -49,21 +51,27 @@ writeFileSync(path.join(consumer, 'metro.config.js'), "const {getDefaultConfig} 
 writeFileSync(path.join(consumer, 'tsconfig.json'), JSON.stringify({extends: '@react-native/typescript-config', include: ['App.tsx']}));
 writeFileSync(path.join(consumer, 'App.tsx'), `import React, {useState} from 'react';
 import {Text, View} from 'react-native';
-import {GlassView, GlassContainer, GlassButton, GlassPressable, GlassSegmentedControl, GlassSlider, GlassActionCluster, GlassMenuButton, GlassToolbar, GlassTabBar} from '@likith99/react-native-adaptive-liquid-glass';
+import {GlassView, GlassContainer, GlassButton, GlassPressable, GlassSegmentedControl, GlassSlider, GlassActionCluster, GlassMenuButton, GlassContextMenu, GlassToolbar, GlassTabBar, GlassIconButton, GlassFallbackThemeProvider, useGlassTier, type GlassMenuHandle} from '@likith99/react-native-adaptive-liquid-glass';
 export default function App() {
   const [value, setValue] = useState(0.4);
   const [selected, setSelected] = useState<string | null>('a');
   const [expanded, setExpanded] = useState(false);
   const [tab, setTab] = useState('home');
+  const tier = useGlassTier();
+  const menu = React.useRef<GlassMenuHandle>(null);
   return <View style={{flex: 1, padding: 30, paddingTop: 100}}>
     <GlassContainer><GlassView style={{padding: 16}}><Text>Installed from tarball</Text></GlassView></GlassContainer>
     <GlassButton title="Native button" onPress={() => setValue(0.5)} />
     <GlassPressable onPress={() => setValue(0.2)}><Text>React children</Text></GlassPressable>
     <GlassSegmentedControl options={[{value: 'a', label: 'A'}, {value: 'b', label: 'B'}]} value={selected} onValueChange={setSelected} />
+    <GlassContextMenu accessibilityLabel="Message" items={[{id: 'edit', title: 'Edit'}]} onAction={() => {}}><View style={{padding: 20}}><Text>Long press this message</Text></View></GlassContextMenu>
     <GlassMenuButton title="Actions" items={[{id: 'save', title: 'Save'}]} onAction={() => {}} />
     <GlassToolbar items={[{id: 'save', title: 'Save'}, {kind: 'submenu', id: 'order', title: 'Order', items: [{id: 'name', title: 'Name', checked: true}]}]} onAction={() => {}} />
     <GlassTabBar items={[{id: 'home', title: 'Home', icon: 'home'}, {id: 'inbox', title: 'Inbox', icon: 'inbox', badge: 3}]} value={tab} onValueChange={setTab} />
     <GlassSlider value={value} onValueChange={setValue} />
+    <GlassFallbackThemeProvider value={{surface: {light: '#FFFFFF', dark: '#101820'}}}><GlassView fallbackMaterial="solid"><Text>Tier: {tier}</Text></GlassView></GlassFallbackThemeProvider>
+    <GlassIconButton ref={menu} systemImage="ellipsis" accessibilityLabel="More" menu={{items: [{id: 'share', title: 'Share'}], onAction: () => {}}} onOpen={() => {}} />
+    <GlassIconButton systemImage="xmark" accessibilityLabel="Close" onPress={() => menu.current?.open()} />
     <GlassActionCluster iosImplementation="swiftui" actions={[{id: 'save', title: 'Save', systemImage: 'bookmark'}]} expanded={expanded} onExpandedChange={setExpanded} onAction={() => {}} />
   </View>;
 }
@@ -86,7 +94,13 @@ for (const platform of ['ios', 'android']) {
 console.log('Both platform bundles and consumer typecheck passed; compiling the installed iOS source…');
 run('pod', ['install'], path.join(consumer, 'ios'));
 run('xcodebuild', ['-workspace', 'ios/LiquidGlassLab.xcworkspace', '-scheme', 'LiquidGlassLab', '-configuration', configuration, '-sdk', 'iphonesimulator', '-destination', 'generic/platform=iOS Simulator', '-derivedDataPath', path.join(artifacts, 'ConsumerDerivedData'), '-jobs', '2', 'COMPILER_INDEX_STORE_ENABLE=NO', 'ARCHS=arm64', 'ONLY_ACTIVE_ARCH=YES', 'CODE_SIGNING_ALLOWED=NO', 'build']);
-console.log('Compiling the installed Android source (requires ANDROID_HOME and JAVA_HOME)…');
-run('./gradlew', [`:app:assemble${configuration}`, '-PreactNativeArchitectures=arm64-v8a', '-PreactNativeDevServerPort=8093', '--console=plain'], path.join(consumer, 'android'));
-writeFileSync(path.join(artifacts, 'package-smoke.json'), JSON.stringify({configuration, consumer, tarball: archive, installedTarball: tarball, sha256, fileCount: packed.files.length, typecheck: 'passed', iosBundle: 'passed', androidBundle: 'passed', iosNativeBuild: 'passed', androidNativeBuild: 'passed', expoDependency: existsSync(path.join(consumer, 'node_modules/expo')), navigationDependency: existsSync(path.join(consumer, 'node_modules/@react-navigation/native'))}, null, 2));
+// ALG_SKIP_ANDROID_NATIVE=1 skips only the Gradle compile (the Android JS bundle above still runs),
+// for machines where Android builds are not permitted. The smoke record states it was skipped.
+const skipAndroidNative = process.env.ALG_SKIP_ANDROID_NATIVE === '1';
+if (skipAndroidNative) console.log('Skipping the Android native compile (ALG_SKIP_ANDROID_NATIVE=1).');
+else {
+  console.log('Compiling the installed Android source (requires ANDROID_HOME and JAVA_HOME)…');
+  run('./gradlew', [`:app:assemble${configuration}`, '-PreactNativeArchitectures=arm64-v8a', '-PreactNativeDevServerPort=8093', '--console=plain'], path.join(consumer, 'android'));
+}
+writeFileSync(path.join(artifacts, 'package-smoke.json'), JSON.stringify({configuration, consumer, tarball: archive, installedTarball: tarball, sha256, fileCount: packed.files.length, typecheck: 'passed', iosBundle: 'passed', androidBundle: 'passed', iosNativeBuild: 'passed', androidNativeBuild: skipAndroidNative ? 'skipped' : 'passed', expoDependency: existsSync(path.join(consumer, 'node_modules/expo')), navigationDependency: existsSync(path.join(consumer, 'node_modules/@react-navigation/native'))}, null, 2));
 console.log('Standalone package verification passed. See artifacts/package-smoke.json');

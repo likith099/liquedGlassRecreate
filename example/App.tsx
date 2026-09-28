@@ -3,7 +3,10 @@ import {AccessibilityInfo, Animated, Platform, PlatformColor, Pressable, ScrollV
   StyleSheet, Switch, Text, View, useColorScheme} from 'react-native';
 import {SafeAreaProvider, SafeAreaView} from 'react-native-safe-area-context';
 import AccessibilityDemo from './AccessibilityDemo';
+import ContextMenuDemo from './ContextMenuDemo';
 import ToolbarDemo from './ToolbarDemo';
+import BadgesDemo from './BadgesDemo';
+import SearchDemo from './SearchDemo';
 import TabNavigationDemo from './TabNavigationDemo';
 import {GlassActionCluster, GlassButton, GlassContainer, GlassView, GlassSegmentedControl, GlassSlider, GlassMenuButton, isLiquidGlassSupported} from '@likith99/react-native-adaptive-liquid-glass';
 
@@ -13,8 +16,12 @@ const actions = [
   {id: 'share', title: 'Share', systemImage: 'square.and.arrow.up'},
 ];
 const segments = [{value: 'all', label: 'All'}, {value: 'saved', label: 'Saved'}, {value: 'shared', label: 'Shared', disabled: true}];
+// The same options with counts and a selected colour per segment.
+const countedSegments = [{value: 'all', label: 'All', count: 12, tintColor: '#6159B7'},
+  {value: 'saved', label: 'Saved', count: 3, tintColor: '#2E7D32'}, {value: 'shared', label: 'Shared', count: 0, disabled: true}];
 
-function Lab({onOpenTabs, onOpenAccessibility}: {onOpenTabs: () => void; onOpenAccessibility: () => void}) {
+function Lab({onOpenTabs, onOpenAccessibility, onOpenContext, onOpenSearch}: {onOpenTabs: () => void; onOpenAccessibility: () => void;
+  onOpenContext: () => void; onOpenSearch: () => void}) {
   const [expanded, setExpanded] = useState(false);
   const [interactive, setInteractive] = useState(true);
   const [clear, setClear] = useState(false);
@@ -28,6 +35,7 @@ function Lab({onOpenTabs, onOpenAccessibility}: {onOpenTabs: () => void; onOpenA
   const [reduceMotion, setReduceMotion] = useState(false);
   const [selection, setSelection] = useState('all');
   const [controlsDisabled, setControlsDisabled] = useState(false);
+  const [segmentCounts, setSegmentCounts] = useState(false);
   const [buttonLoading, setButtonLoading] = useState(false);
   const [controlsFallback, setControlsFallback] = useState(false);
   const [nativePresses, setNativePresses] = useState(0);
@@ -66,6 +74,10 @@ function Lab({onOpenTabs, onOpenAccessibility}: {onOpenTabs: () => void; onOpenA
       </Pressable>
       <Pressable testID="open-accessibility-demo" accessibilityRole="button" onPress={onOpenAccessibility} style={{paddingVertical: 12}}>
         <Text style={{color: foreground, fontWeight: '600'}}>Open adaptive controls →</Text>
+      </Pressable>
+      <Pressable testID="open-context-demo" accessibilityRole="button" onPress={onOpenContext} style={{paddingVertical: 12}}><Text style={{color: foreground, fontWeight: '600'}}>Open message context menu →</Text></Pressable>
+      <Pressable testID="open-search-demo" accessibilityRole="button" onPress={onOpenSearch} style={{paddingVertical: 12}}>
+        <Text style={{color: foreground, fontWeight: '600'}}>Open search, toasts and scroll edge →</Text>
       </Pressable>
       <View style={styles.topline}><View style={styles.dot} /><Text style={[styles.eyebrow, {color: secondary}]}>NATIVE MATERIALS / 01</Text></View>
       <Text style={[styles.title, {color: foreground}]}>Liquid, by nature.</Text>
@@ -124,6 +136,7 @@ function Lab({onOpenTabs, onOpenAccessibility}: {onOpenTabs: () => void; onOpenA
       <Setting title="Standard menu button" detail="Preview the standard iOS appearance" value={menuFallback} onChange={setMenuFallback}
         color={foreground} muted={secondary} id="menu-fallback-toggle" />
       <ToolbarDemo foreground={foreground} secondary={secondary} />
+      <BadgesDemo foreground={foreground} secondary={secondary} />
       <View style={styles.sectionHeading}><Text style={[styles.sectionTitle, {color: foreground}]}>Better together</Text><Text style={[styles.sectionIndex, {color: secondary}]}>02 — MERGING</Text></View>
       <Setting title="Glass merging" detail="Allow nearby glass elements to join" value={mergingEnabled}
         onChange={setMergingEnabled} color={foreground} muted={secondary} id="merging-enabled-toggle" />
@@ -142,7 +155,7 @@ function Lab({onOpenTabs, onOpenAccessibility}: {onOpenTabs: () => void; onOpenA
       <View style={styles.sectionHeading}><Text style={[styles.sectionTitle, {color: foreground}]}>Built to respond</Text><Text style={[styles.sectionIndex, {color: secondary}]}>03 — CONTROLS</Text></View>
       <View style={[styles.controlsStage, {backgroundColor: dark ? '#3E414F' : '#E7E0F3'}]}>
         <View pointerEvents="none" style={styles.controlsStripe} />
-        <GlassSegmentedControl options={segments} value={selection} onValueChange={setSelection}
+        <GlassSegmentedControl options={segmentCounts ? countedSegments : segments} value={selection} onValueChange={setSelection}
           forceFallback={controlsFallback} disabled={controlsDisabled} testID="native-segments" accessibilityLabel="Library filter" />
         <Text testID="selection-status" style={{color: foreground, fontSize: 13, marginVertical: 12}}>Showing: {selection}</Text>
         <GlassButton title="Add to collection" systemImage="plus" variant="prominent" testID="native-primary-button"
@@ -152,6 +165,8 @@ function Lab({onOpenTabs, onOpenAccessibility}: {onOpenTabs: () => void; onOpenA
           disabled={controlsDisabled} forceFallback={controlsFallback} onPress={() => setSelection('all')} />
         <Text testID="native-press-status" style={{color: foreground, fontSize: 13, marginTop: 8}}>Added: {nativePresses}</Text>
       </View>
+      <Setting title="Segment counts and colours" detail="Show a count and a selected colour per segment" value={segmentCounts}
+        onChange={setSegmentCounts} color={foreground} muted={secondary} id="segment-counts-toggle" />
       <Setting title="Disable controls" detail="Block presses and selection changes" value={controlsDisabled}
         onChange={setControlsDisabled} color={foreground} muted={secondary} id="controls-disabled-toggle" />
       <Setting title="Loading button" detail="Show progress and prevent duplicate taps" value={buttonLoading}
@@ -188,10 +203,12 @@ function Setting({title, detail, value, onChange, color, muted, id}: {title: str
   </View>;
 }
 export default function App() {
+  const [contextOpen, setContextOpen] = useState(false);
   const [tabsOpen, setTabsOpen] = useState(false);
   const [accessibilityOpen, setAccessibilityOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
   const dark = useColorScheme() === 'dark';
-  return <SafeAreaProvider><StatusBar barStyle={dark ? 'light-content' : 'dark-content'} />{accessibilityOpen ? <AccessibilityDemo onClose={() => setAccessibilityOpen(false)} /> : tabsOpen ? <TabNavigationDemo onClose={() => setTabsOpen(false)} /> : <Lab onOpenTabs={() => setTabsOpen(true)} onOpenAccessibility={() => setAccessibilityOpen(true)} />}</SafeAreaProvider>;
+  return <SafeAreaProvider><StatusBar barStyle={dark ? 'light-content' : 'dark-content'} />{searchOpen ? <SearchDemo onClose={() => setSearchOpen(false)} /> : contextOpen ? <ContextMenuDemo onClose={() => setContextOpen(false)} /> : accessibilityOpen ? <AccessibilityDemo onClose={() => setAccessibilityOpen(false)} /> : tabsOpen ? <TabNavigationDemo onClose={() => setTabsOpen(false)} /> : <Lab onOpenSearch={() => setSearchOpen(true)} onOpenContext={() => setContextOpen(true)} onOpenTabs={() => setTabsOpen(true)} onOpenAccessibility={() => setAccessibilityOpen(true)} />}</SafeAreaProvider>;
 }
 const styles = StyleSheet.create({
   safe: {flex: 1}, page: {padding: 24, paddingBottom: 40, maxWidth: 620, width: '100%', alignSelf: 'center'},

@@ -1,0 +1,29 @@
+name: CI
+
+# Fast checks on every change. Native Release builds and publication stay in release.yml,
+# which runs on version tags.
+on:
+  push:
+    branches: [main]
+  pull_request:
+permissions:
+  contents: read
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  checks:
+    name: Types, unit tests and package contents
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: node --test scripts/__tests__/*.test.mjs
+      - run: npm run typecheck
+      - run: npm test
+      # Builds lib/ with react-native-builder-bob and inspects the tarball npm would publish.
+      - run: node scripts/check-pack.mjs

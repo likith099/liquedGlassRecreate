@@ -1,10 +1,24 @@
-import {codegenNativeComponent, type ViewProps, type ColorValue, type CodegenTypes} from 'react-native';
+import type * as React from 'react';
+import {codegenNativeCommands, codegenNativeComponent, type ViewProps, type ColorValue, type CodegenTypes,
+  type HostComponent} from 'react-native';
 export interface NativeProps extends ViewProps {
   title: string;
   itemsJSON: string;
+  contextMenu?: CodegenTypes.WithDefault<boolean, false>;
+  previewCornerRadius?: CodegenTypes.WithDefault<CodegenTypes.Float, 16>;
   toolbar?: CodegenTypes.WithDefault<boolean, false>;
   maxVisibleItems?: CodegenTypes.WithDefault<CodegenTypes.Int32, 3>;
   mergingEnabled?: CodegenTypes.WithDefault<boolean, false>;
+  /** Round icon-only control: SF Symbol alone, square frame, capsule corners. */
+  iconMode?: CodegenTypes.WithDefault<boolean, false>;
+  /** Icon-mode glyph size in points. */
+  symbolPointSize?: CodegenTypes.WithDefault<CodegenTypes.Float, 17>;
+  /** Icon-mode material appearance. */
+  colorScheme?: CodegenTypes.WithDefault<'system' | 'light' | 'dark', 'system'>;
+  /** Icon mode: prominent is filled with the tint colour, for floating action buttons. */
+  iconVariant?: CodegenTypes.WithDefault<'regular' | 'prominent', 'regular'>;
+  /** Android icon-mode drawable resource name. */
+  androidIcon?: string;
   systemImage?: string;
   disabled?: CodegenTypes.WithDefault<boolean, false>;
   forceFallback?: CodegenTypes.WithDefault<boolean, false>;
@@ -13,5 +27,15 @@ export interface NativeProps extends ViewProps {
   controlHint?: string;
   controlTestID?: string;
   onMenuAction?: CodegenTypes.DirectEventHandler<Readonly<{id: string}>>;
+  /** Icon mode without items: the button was activated. */
+  onButtonPress?: CodegenTypes.DirectEventHandler<Readonly<{}>>;
+  onMenuOpen?: CodegenTypes.DirectEventHandler<Readonly<{}>>;
+  onMenuClose?: CodegenTypes.DirectEventHandler<Readonly<{}>>;
 }
-export default codegenNativeComponent<NativeProps>('ALGMenu');
+type NativeMenuComponent = HostComponent<NativeProps>;
+interface NativeCommands {
+  /** Presents the button's menu. iOS 17.4+ and Android; a no-op on older iOS. */
+  open: (viewRef: React.ElementRef<NativeMenuComponent>) => void;
+}
+export const Commands: NativeCommands = codegenNativeCommands<NativeCommands>({supportedCommands: ['open']});
+export default codegenNativeComponent<NativeProps>('ALGMenu') as NativeMenuComponent;

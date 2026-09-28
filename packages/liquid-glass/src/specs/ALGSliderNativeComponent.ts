@@ -1,4 +1,4 @@
-import {codegenNativeComponent, type ViewProps, type ColorValue, type CodegenTypes} from 'react-native';
+import {codegenNativeComponent, type ViewProps, type ColorValue, type CodegenTypes, type HostComponent} from 'react-native';
 type SliderEvent = Readonly<{value: CodegenTypes.Double}>;
 export interface NativeProps extends ViewProps {
   value: CodegenTypes.Double;
@@ -16,4 +16,4 @@ export interface NativeProps extends ViewProps {
   onSliderComplete?: CodegenTypes.DirectEventHandler<SliderEvent>;
   onSliderCancel?: CodegenTypes.DirectEventHandler<SliderEvent>;
 }
-export default codegenNativeComponent<NativeProps>('ALGSlider');
+export default codegenNativeComponent<NativeProps>('ALGSlider') as HostComponent<NativeProps>;

@@ -56,6 +56,106 @@ Rebuild both native applications after upgrading to a package containing this co
 
 Implementation references: [Apple menu buttons](https://developer.apple.com/documentation/uikit/uicontrol/showsmenuasprimaryaction), [Android PopupMenu](https://developer.android.com/reference/android/widget/PopupMenu), [Android SubMenu limitations](https://developer.android.com/reference/android/view/SubMenu).
 
+## Icon-only buttons (0.1.3)
+
+`GlassIconButton` is a round, symbol-only control, such as a back, close or `⋯` button over content. With `onPress` it is a plain button; with `menu` it opens a native menu. Pass exactly one of them.
+
+```tsx
+import {GlassIconButton} from '@likith99/react-native-adaptive-liquid-glass';
+
+<GlassIconButton systemImage="xmark" accessibilityLabel="Close" onPress={close} />
+<GlassIconButton systemImage="ellipsis" accessibilityLabel="More options" size={40} colorScheme="dark"
+  menu={{items: [{id: 'share', title: 'Share'}], onAction: handle}} />
+```
+
+- **iOS 26:** `UIButton.Configuration.glass()` with capsule corners in a square frame, which draws a circle. UIKit owns the press highlight and the menu morph.
+- **Older iOS, Reduce Transparency and `forceFallback`:** the standard `.gray()` style.
+- **Android:** an oval surface with a ripple and the `androidIcon` drawable, opening a `PopupMenu`.
+- **Props:** `size` is the diameter (default 44 points, the minimum recommended touch target). `symbolPointSize` defaults to 40% of it. `colorScheme` (`system`, `light`, `dark`) pins the material, for example dark glass over a photo in both themes. `tintColor` colours the glyph.
+- **Accessibility:** `accessibilityLabel` is required because the control shows no text.
+
+## Opening a menu from code, and open/close events
+
+`GlassMenuButton` and `GlassIconButton` accept `onOpen` and `onClose`. `onClose` fires after UIKit's closing animation, whether or not an action was chosen. Their `ref` is a `GlassMenuHandle`: the host view's `measure`, `measureInWindow`, `measureLayout`, `focus` and `blur`, plus `open()`.
+
+```tsx
+const menu = useRef<GlassMenuHandle>(null);
+<GlassIconButton ref={menu} systemImage="ellipsis" accessibilityLabel="More" menu={{items, onAction}}
+  onOpen={() => setOpen(true)} onClose={() => setOpen(false)} />
+menu.current?.open();
+```
+
+`open()` uses `UIButton.performPrimaryAction()` on iOS 17.4 and later and `PopupMenu.show()` on Android. It does nothing on older iOS, while disabled, without items, or before the button is on screen. The system decides where the menu appears, so do not use it for precisely placed menus. The events are typed callbacks, not reserved action IDs.
+
 ## Verification
 
 The preceding flat-menu revision passed TypeScript checks, 19 JavaScript tests, and native UI tests on the iOS simulator, physical iPhone, and Android emulator. The earlier physical-iPhone result does not cover these additions. After building and opening a fresh Android demo, reproduce the flat regression with `python3 scripts/verify-android-menu.py`, or the consolidated batch with `python3 scripts/verify-android-toolbar.py`. Metro uses port 8093. Older iOS runtime testing and full VoiceOver/TalkBack review remain outstanding.
+
+## Long-press content menus (0.1.3)
+
+<table><tr>
+<td><img src="images/context-menu.png" width="250" alt="Native iOS context menu below a visible lifted message"><br>Native iOS</td>
+<td><img src="images/context-menu-fallback.png" width="250" alt="Plain fallback menu below the stationary message on iOS"><br>Plain fallback, previewed on iOS</td>
+</tr></table>
+
+`GlassContextMenu` wraps a message, image, or other noninteractive content:
+
+```tsx
+import {Text, View} from 'react-native';
+import {GlassContextMenu} from '@likith99/react-native-adaptive-liquid-glass';
+
+<GlassContextMenu accessibilityLabel="Message from Alex"
+  previewCornerRadius={20}
+  items={[
+    {id: 'edit', title: 'Edit', systemImage: 'pencil'},
+    {id: 'forward', title: 'Forward', systemImage: 'arrowshape.turn.up.right'},
+    {id: 'delete', title: 'Delete', systemImage: 'trash', destructive: true},
+  ]}
+  onAction={id => handleMessageAction(id)}>
+  <View style={{padding: 20, borderRadius: 20, backgroundColor: '#D9EAF7'}}>
+    <Text>See you at the park</Text>
+  </View>
+</GlassContextMenu>
+```
+
+On iOS, a native `UIContextMenuInteraction` lifts a preview of the wrapped content
+and presents the actions alongside it. The message remains visible in the preview
+and returns to its original layout on dismissal. iOS 26 uses the system's current
+menu appearance; older supported iOS versions use their standard context menu.
+Android opens a native anchored `PopupMenu` on long press and leaves the content in
+place. It does not reproduce the iOS lift animation. Placement is system controlled:
+menus can appear above the content when space below is limited.
+
+`items`, `onAction`, sections, submenus, checkmarks and disabled/destructive actions
+follow the same contract as `GlassMenuButton`. A regular tap does not open the menu.
+`disabled` or empty items suppress it. Replacing items, disabling or unmounting the
+wrapper dismisses the menu; obsolete native actions cannot fire. `onAction` only
+reports a selection: edit/delete/forward behavior belongs to your application.
+
+The wrapper sizes from its React children and accepts normal View layout props.
+Use a single noninteractive content root for a coherent preview; nested buttons,
+selectable text and scrolling controls own their gestures and can compete with long
+press. `previewCornerRadius` (default 16, finite and nonnegative) shapes only the iOS
+preview outline; style your child's background and corners separately. No custom
+press physics, merging, trigger replacement, or forced menu-material tint is added.
+The existing `GlassMenuButton` keeps its tap presentation.
+
+Set a meaningful `accessibilityLabel` on the wrapper to expose the content as one
+target; iOS also exposes enabled leaf actions as accessibility custom actions.
+Android exposes native long-click. Native menus own menu-item focus and settings
+adaptation. Spoken VoiceOver/TalkBack testing remains separate from automated tests.
+Rebuild both native apps after upgrading; this feature extends the Fabric spec.
+
+### Plain menu fallback preview
+
+Set `forceFallback` on `GlassContextMenu` to use the same plain anchored React Native
+popup on iOS or Android. The original content stays in place, with no lifting or
+glass transition. It supports the same action tree, disabled/destructive items,
+controlled checkmarks, submenus, outside-tap dismissal and Android back dismissal.
+The popup chooses below or above its anchor and scrolls when space is limited.
+Changing items, disabling, rotating, resizing or unmounting dismisses it.
+
+The example's **Message actions → Plain menu fallback** switch lets you inspect
+this behavior on an iOS simulator. This previews the shared fallback interaction;
+it does not emulate or verify Android's native PopupMenu renderer. With
+`forceFallback={false}` (the default), each platform still uses its native menu.
