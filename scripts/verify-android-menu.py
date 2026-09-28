@@ -47,25 +47,44 @@ def tap(value):
     time.sleep(.4)
 
 def reveal(value):
-    for _ in range(10):
+    """Scroll until the element is wholly on screen, clear of the edges, and return it. Works on any
+    screen size: positions are fractions of the screen, the search runs toward the element, and it
+    reverses once when the page stops moving without finding it. Slow drags avoid flinging past."""
+    direction, reversed_once, previous = 1, False, None
+    for _ in range(16):
         root = tree()
+        _, _, width, height = bounds(root.find('node'))
         try:
             node = find(root, value)
-            if bounds(node)[3] > bounds(node)[1]: return node
+            x1, y1, x2, y2 = bounds(node)
+            if y2 > y1 and y1 > height * .06 and y2 < height * .94:
+                return node
+            direction = 1 if y2 >= height * .94 else -1
         except AssertionError:
-            pass
-        _, _, width, height = bounds(root.find('node'))
-        adb('shell', 'input', 'swipe', width//2, int(height*.75), width//2, int(height*.4), 350)
+            node = None
+        screen = [(n.get('text'), n.get('bounds')) for n in root.iter('node') if n.get('text')]
+        if screen == previous:
+            if node is not None or reversed_once:
+                break
+            direction, reversed_once = -direction, True
+        previous = screen
+        start, end = (.7, .45) if direction > 0 else (.45, .7)
+        adb('shell', 'input', 'swipe', width // 2, int(height * start), width // 2, int(height * end), 600)
+        time.sleep(.4)
     raise AssertionError(f'Could not reveal {value}')
+
+def text(value):
+    """The text of a status line, scrolled into view first; statuses can sit below a small screen."""
+    return reveal(value).get('text')
 
 def verify():
     reveal('native-menu')
     tap('native-menu')
     assert menu_row(tree(), 'Unavailable action').get('enabled') == 'false'
     tap('Favorite item')
-    assert find(tree(), 'menu-status').get('text') == 'Menu selected: favorite'
-    assert find(tree(), 'menu-checked').get('text') == 'Favorite: on'
-    tap('native-menu')
+    assert text('menu-status') == 'Menu selected: favorite'
+    assert text('menu-checked') == 'Favorite: on'
+    reveal('native-menu'); tap('native-menu')
     root = tree()
     rows = [node for node in root.iter('node') if node.get('class') == 'android.widget.ListView']
     assert rows, 'Expected a native popup list'
@@ -73,16 +92,16 @@ def verify():
     assert any(n.get('checked') == 'true' for row in checked_rows for n in row.iter('node')), 'Expected controlled checkmark'
     (ROOT/'artifacts/menu-android-open.png').write_bytes(adb('exec-out', 'screencap', '-p'))
     tap('Share item')
-    assert find(tree(), 'menu-status').get('text') == 'Menu selected: share'
-    tap('native-menu')
+    assert text('menu-status') == 'Menu selected: share'
+    reveal('native-menu'); tap('native-menu')
     adb('shell', 'input', 'keyevent', 4)
-    assert find(tree(), 'menu-status').get('text') == 'Menu selected: share', 'Dismissal must not select'
-    tap('native-menu'); tap('Remove item')
-    assert find(tree(), 'menu-status').get('text') == 'Menu selected: remove'
+    assert text('menu-status') == 'Menu selected: share', 'Dismissal must not select'
+    reveal('native-menu'); tap('native-menu'); tap('Remove item')
+    assert text('menu-status') == 'Menu selected: remove'
     reveal('menu-disabled-toggle'); tap('menu-disabled-toggle')
-    assert find(tree(), 'native-menu').get('enabled') == 'false'
-    tap('menu-disabled-toggle')
-    assert find(tree(), 'native-menu').get('enabled') == 'true'
+    assert reveal('native-menu').get('enabled') == 'false'
+    reveal('menu-disabled-toggle'); tap('menu-disabled-toggle')
+    assert reveal('native-menu').get('enabled') == 'true'
     (ROOT/'artifacts/menu-android-verification.json').write_text(json.dumps({'nativePopup': 'passed', 'selection': 'passed', 'checked': 'passed', 'disabled': 'passed', 'dismissal': 'passed'}, indent=2)+'\n')
     print('Android native menu checks passed.')
 
