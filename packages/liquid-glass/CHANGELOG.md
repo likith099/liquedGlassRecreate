@@ -13,7 +13,7 @@ change the API.
   step with the layout the other pills are placed from. The pills now animate with transforms and
   opacity only, on the native driver, so every pill moves in the same frame.
 
-## 0.1.3 — unreleased
+## 0.1.3 — September 28, 2026
 
 Rebuild both native apps after upgrading: the menu and tab Fabric components gained props.
 
