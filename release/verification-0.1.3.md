@@ -7,7 +7,7 @@ something is untested or open, this summary supersedes them.
 ## Candidate
 
 - Source: version 0.1.3 as merged in pull request #1 (`8f59ce5`), plus the acceptance branch: the README rewrite, new docs pages and the expanding-pill shadow fix.
-- Reviewed source digest: `d0aa22f786aa398366847dcf863e3f9909ebae1db53fd156d30a4f4ffa834f8a`.
+- Reviewed source digest: `bc1da733afea027bf53dcdb14ba918b837dd4091970a2e66ace84222d6dadb7b`.
 - Contents: the consumer review (R1–R21 in the shared review tracker), new components
   (`GlassIconButton`, `GlassContextMenu`, `GlassExpandingTabs`, `GlassSearchField`,
   `GlassScrollEdge`, `GlassToast`, `GlassBadge`), tab image sources and per-tab colours on both

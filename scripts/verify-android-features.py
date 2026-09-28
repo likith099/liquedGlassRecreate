@@ -141,9 +141,10 @@ reveal('Saved 3'); tap('Saved 3'); wait('Showing: saved')
 screenshot('b11-android-segments')
 reveal('fab')
 assert abs(width_dp('fab') - 56) < 2, f'fab is {width_dp("fab")} dp wide'
-wait('New'); wait('Updating…')
+# The badges sit above the button; on a short screen they can be scrolled off the top.
+reveal('New'); reveal('Updating…')
 screenshot('b11-android-badges-fab')
-tap('fab'); wait('FAB pressed')
+reveal('fab'); tap('fab'); wait('FAB pressed')
 results['segmentsBadgesFab'] = 'passed'
 print('Segment counts, badges and the prominent icon button passed.', flush=True)
 
