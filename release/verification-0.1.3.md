@@ -1,7 +1,47 @@
 # 0.1.3 verification
 
-Implementation and scoped iOS simulator verification are complete. Version 0.1.3
-is prepared but not published; the release acceptance record is not yet refreshed.
+**Status (September 28, 2026): release candidate verified on `main`. Not yet published.** The
+sections after this summary are the dated history of how the candidate was built; where they say
+something is untested or open, this summary supersedes them.
+
+## Candidate
+
+- Source: `main` at the merge of pull request #1 (`8f59ce5`), version 0.1.3.
+- Reviewed source digest: `e3cdf59e49fea3f0851158696bfd2c12050b13c483fee1a239aa55c7071767fc`.
+- Contents: the consumer review (R1–R21 in the shared review tracker), new components
+  (`GlassIconButton`, `GlassContextMenu`, `GlassExpandingTabs`, `GlassSearchField`,
+  `GlassScrollEdge`, `GlassToast`, `GlassBadge`), tab image sources and per-tab colours on both
+  platforms, and the iOS 26 toolbar dismissal fix. See `packages/liquid-glass/CHANGELOG.md`.
+- Decisions: peer ranges stay `react-native >=0.81.0` / `react >=19.0.0` with no upper bound (R15).
+  Tab minimize-on-scroll and a tab long-press event were dropped (R20). The intermittent
+  first-tap report (R3) is deferred past 0.1.3.
+
+## Evidence
+
+| Check | Result |
+| --- | --- |
+| TypeScript, Jest | Clean; 20 suites / 92 tests and 6 tier snapshots (glass, blur, solid × light, dark). |
+| Package contents | `check-pack` passed: 317 files. |
+| Packed consumer (Release) | Passed from `main` `8f59ce5`: 317-file archive, SHA-256 `9e5575c6467090bbefa6ad88bba7f95fb3f56c7272a9482c1d30a3449df17ae5`; consumer TypeScript, both production bundles, iOS and Android native Release builds. No Expo or navigation dependency. |
+| iOS 26.5 simulator (iPhone 17 Pro Max) | Tab artwork and tints, visual tiers, tab lifecycle and first tap, tab navigation, drag lens; icon buttons and programmatic menus; toolbar dismissal (zero opaque frames in 5 recorded dismissals); context menu; badges, segments and FAB; search, toast and scroll edge; expanding pills; SwiftUI cluster merging and RTL; adaptive accessibility; slider. All passed. |
+| iOS 18.6 simulator (iPhone 16 Pro Max) | Tab artwork and tints, visual tiers (blur), tab lifecycle, tab navigation, expanding pills, badges, context menu and fallback, toolbar and menus. All passed. |
+| Android 36 emulator (Pixel 10 Pro XL), debug and release builds | Menus, toolbar, tabs, context menu, the 0.1.3 features (icon buttons, segments, badges, pills, search, toast, tab images and colours), slider, accessibility (large text, dark) and real-locale RTL. All passed. |
+| GitHub Actions on the candidate | [Run 36371512636](https://github.com/likith099/liquedGlassRecreate/actions/runs/36371512636): iOS device tests on an iOS 26.5 simulator and all eight Android checks on an API 35 emulator (release build), every Android check first time. CI (typecheck, Jest, pack check) passed on the pull request and again on `main` after the merge. |
+
+Bugs found during verification and fixed before this candidate: the Android context menu never
+opened from a long press on its content (React Native views claimed the touch), the Android search
+field capitalised queries, and Android pills without `androidIcon` were silently empty (now a
+development warning).
+
+## Not established
+
+Physical-device profiling, spoken VoiceOver and TalkBack, iOS 15–17 runtimes, the Android minimum
+API, iPad beyond the simulator checks, and signed store distribution remain documented deferrals in
+`release/acceptance.json`. Emulator and simulator results are not device acceptance.
+
+Each simulator and emulator result above is the latest run of that test. The platform code each one covers has not changed since, and the GitHub run exercised the final code on both platforms.
+
+## History
 
 ## Change
 
