@@ -1,5 +1,5 @@
 import React from 'react';
-import {AccessibilityInfo, Animated, PlatformColor, Text} from 'react-native';
+import {AccessibilityInfo, Animated, PlatformColor, StyleSheet, Text} from 'react-native';
 import Renderer, {act} from 'react-test-renderer';
 import GlassExpandingTabs from '../../packages/liquid-glass/src/GlassExpandingTabs.ios';
 import GlassExpandingTabsGeneric from '../../packages/liquid-glass/src/GlassExpandingTabs.tsx';
@@ -45,9 +45,9 @@ test('expanding tab options are validated', () => {
     .toThrow('static colour');
 });
 
-test('the Android fallback springs one progress per pill and reports reselection', async () => {
+test('the Android fallback animates on the native driver only and reports reselection', async () => {
   jest.spyOn(AccessibilityInfo, 'isReduceMotionEnabled').mockResolvedValue(false);
-  const spring = jest.spyOn(Animated, 'spring');
+  const timing = jest.spyOn(Animated, 'timing');
   const onValueChange = jest.fn();
   const onReselect = jest.fn();
   let tree!: Renderer.ReactTestRenderer;
@@ -61,15 +61,18 @@ test('the Android fallback springs one progress per pill and reports reselection
   expect(pill('overview').props.accessibilityState).toEqual({selected: true, disabled: false});
   expect(pill('archived').props.disabled).toBe(true);
   // No animation on first mount.
-  expect(spring).not.toHaveBeenCalled();
+  expect(timing).not.toHaveBeenCalled();
   act(() => pill('recent').props.onPress());
   expect(onValueChange).toHaveBeenCalledWith('recent');
   act(() => pill('overview').props.onPress());
   expect(onReselect).toHaveBeenCalledWith('overview');
-  // Only the two pills whose selection changed spring, from their current values.
+  // A selection change animates every pill's progress toward its target, on the native driver:
+  // transforms and opacity only. Layout props animated from JavaScript make the row shake.
   await act(async () => tree.update(render('recent')));
-  expect(spring).toHaveBeenCalledTimes(2);
-  expect(spring.mock.calls.map(call => (call[1] as {toValue: number}).toValue).sort()).toEqual([0, 1]);
+  expect(timing.mock.calls.map(call => (call[1] as {toValue: number}).toValue).sort()).toEqual([0, 0, 1]);
+  expect(timing.mock.calls.every(call => (call[1] as {useNativeDriver: boolean}).useNativeDriver)).toBe(true);
+  const width = StyleSheet.flatten(pill('recent').props.style).width;
+  expect(typeof width).toBe('number');
   expect(pill('overview').findAllByType(Text).length).toBeGreaterThan(0);
   act(() => tree.unmount());
 });

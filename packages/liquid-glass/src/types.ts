@@ -136,8 +136,10 @@ export interface GlassMenuItem {
   kind?: 'action';
   id: string;
   title: string;
-  /** SF Symbol on iOS; Android uses the title. */
+  /** SF Symbol on iOS. */
   systemImage?: string;
+  /** Android drawable resource name, shown beside the title in the menu. */
+  androidIcon?: string;
   disabled?: boolean;
   destructive?: boolean;
   /** Controlled checkmark. Update items in onAction to change selection. */
@@ -148,6 +150,8 @@ export interface GlassMenuSubmenu {
   id: string;
   title: string;
   systemImage?: string;
+  /** Android drawable resource name. */
+  androidIcon?: string;
   disabled?: boolean;
   items: readonly GlassMenuElement[];
 }
@@ -159,6 +163,24 @@ export interface GlassMenuSection {
   items: readonly GlassMenuElement[];
 }
 export type GlassMenuElement = GlassMenuItem | GlassMenuSubmenu | GlassMenuSection;
+/** One static colour for both appearances, or one for each. */
+export type GlassSchemeColor = ColorValue | {light: ColorValue; dark: ColorValue};
+/**
+ * Android menu popup appearance. iOS menus are drawn by UIKit and keep the system appearance.
+ * Colours must be static (strings or numbers), not PlatformColor.
+ */
+export interface GlassMenuStyle {
+  /** Corner radius in dp. Defaults to 16. */
+  cornerRadius?: number;
+  /** Popup surface. Defaults to #FFFFFF (light) and #1A1B20 (dark). */
+  backgroundColor?: GlassSchemeColor;
+  /** Item titles. */
+  textColor?: GlassSchemeColor;
+  /** Item icons and the submenu and checkmark indicators. */
+  iconColor?: GlassSchemeColor;
+  /** Titles and icons of destructive items. */
+  destructiveColor?: GlassSchemeColor;
+}
 export type GlassToolbarItem = (GlassMenuItem | GlassMenuSubmenu) & {
   /** Automatic items may move into overflow when space is limited. */
   placement?: 'automatic' | 'overflow';
@@ -182,6 +204,8 @@ export interface GlassContextMenuProps extends ViewProps, GlassRefProp {
   forceFallback?: boolean;
   /** iOS lifted preview outline only; does not clip children. Default 16. */
   previewCornerRadius?: number;
+  /** Android: corner radius and colours of the menu popup. */
+  androidMenuStyle?: GlassMenuStyle;
 }
 /**
  * Ref handle for menu buttons: the host view's measurement and focus methods, plus open().
@@ -208,6 +232,8 @@ export interface GlassMenuButtonProps extends Omit<ViewProps, 'children'> {
   tintColor?: ColorValue;
   /** Preview the standard iOS button. Android always uses its standard button. */
   forceFallback?: boolean;
+  /** Android: corner radius and colours of the menu popup. */
+  androidMenuStyle?: GlassMenuStyle;
 }
 
 export type GlassTabIcon = 'home' | 'search' | 'library' | 'favorites' | 'inbox' | 'settings';
@@ -373,4 +399,6 @@ export interface GlassIconButtonProps extends Omit<ViewProps, 'children'> {
   menu?: {items: readonly GlassMenuElement[]; onAction: (id: string) => void};
   onOpen?: () => void;
   onClose?: () => void;
+  /** Android: corner radius and colours of the menu popup. */
+  androidMenuStyle?: GlassMenuStyle;
 }

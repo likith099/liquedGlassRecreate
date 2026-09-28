@@ -19,7 +19,6 @@ import android.widget.Button
 import android.view.Gravity
 import android.widget.FrameLayout
 import android.widget.ImageView
-import android.widget.PopupMenu
 import android.widget.Toolbar
 import com.facebook.react.bridge.Arguments
 import com.facebook.react.bridge.WritableMap
@@ -31,9 +30,9 @@ import com.facebook.react.uimanager.events.NativeGestureUtil
 import com.facebook.react.views.view.ReactViewGroup
 import org.json.JSONArray
 
-private data class MenuEntry(val id: String, val title: String, val kind: String,
+internal data class MenuEntry(val id: String, val title: String, val kind: String,
   val disabled: Boolean, val destructive: Boolean, val checked: Boolean?,
-  val items: List<MenuEntry>, val placement: String) {
+  val items: List<MenuEntry>, val placement: String, val androidIcon: String = "") {
   val isGroup get() = kind == "section" || kind == "submenu"
 }
 private class MenuActionEvent(surfaceId: Int, tag: Int, private val itemId: String) : Event<MenuActionEvent>(surfaceId, tag) {
@@ -70,13 +69,15 @@ class ALGMenuView(private val reactContext: ThemedReactContext) : FrameLayout(re
   var colorScheme = "system"
   var androidIcon = ""
   var iconProminent = false
+  /** Corner radius and light/dark colours of the menu popup, as JSON; empty for the defaults. */
+  var menuStyleJSON = ""
   /** Icon mode without items is a plain button. */
   private val isPlainButton get() = iconMode && entries.isEmpty()
   private var appliedConfiguration: List<Any?>? = null
   private var appliedJSON: String? = null
   private var entries = emptyList<MenuEntry>()
   private var revision = 0
-  private var popup: PopupMenu? = null
+  private var popup: ALGMenuPopup? = null
   private var nextItemId = 1
   private var lastBarWidth = -1
   /**
@@ -122,11 +123,12 @@ class ALGMenuView(private val reactContext: ThemedReactContext) : FrameLayout(re
     MenuEntry(item.getString("id"), item.getString("title"), item.optString("kind", "action"),
       item.optBoolean("disabled"), item.optBoolean("destructive"),
       if (item.has("checked")) item.getBoolean("checked") else null,
-      item.optJSONArray("items")?.let { decode(it) } ?: emptyList(), item.optString("placement", "automatic"))
+      item.optJSONArray("items")?.let { decode(it) } ?: emptyList(), item.optString("placement", "automatic"),
+      item.optString("androidIcon"))
   }
   fun applyConfiguration() {
     val configuration = listOf(itemsJSON, disabled, toolbar, maxVisibleItems, glassTint, controlTestID, contextMenu,
-      iconMode, colorScheme, androidIcon, iconProminent)
+      iconMode, colorScheme, androidIcon, iconProminent, menuStyleJSON)
     val changed = configuration != appliedConfiguration
     if (appliedJSON != itemsJSON) {
       appliedJSON = itemsJSON
@@ -163,11 +165,7 @@ class ALGMenuView(private val reactContext: ThemedReactContext) : FrameLayout(re
       button.background = defaultBackground
       return
     }
-    val dark = when (colorScheme) {
-      "dark" -> true
-      "light" -> false
-      else -> (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
-    }
+    val dark = isDark()
     val fill = GradientDrawable().apply {
       shape = GradientDrawable.OVAL
       setColor(if (iconProminent) glassTint ?: Color.parseColor("#6159B7")
@@ -273,17 +271,29 @@ class ALGMenuView(private val reactContext: ThemedReactContext) : FrameLayout(re
     }
     if (android.os.Build.VERSION.SDK_INT >= 28) menu.setGroupDividerEnabled(true)
   }
+  private fun isDark() = when (colorScheme) {
+    "dark" -> true
+    "light" -> false
+    else -> (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
+  }
   private fun showMenu() {
     if (disabled || entries.isEmpty() || !isAttachedToWindow) return
     dismissMenus()
-    val menu = PopupMenu(reactContext, if (contextMenu) this else button)
-    fill(menu.menu, entries, revision)
-    menu.setOnDismissListener {
-      if (popup === menu) popup = null
-      dispatchLifecycle("topMenuClose")
-    }
+    val version = revision
+    lateinit var menu: ALGMenuPopup
+    menu = ALGMenuPopup(context, entries, MenuStyle.from(menuStyleJSON, isDark()), allDisabled = disabled, tint = glassTint,
+      onSelect = { entry ->
+        if (!disabled && version == revision && isAttachedToWindow && enabledAction(entry.id, entries) != null) {
+          UIManagerHelper.getEventDispatcherForReactTag(reactContext, id)?.dispatchEvent(
+            MenuActionEvent(UIManagerHelper.getSurfaceId(reactContext), id, entry.id))
+        }
+      },
+      onDismiss = {
+        if (popup === menu) popup = null
+        dispatchLifecycle("topMenuClose")
+      })
     popup = menu
-    menu.show()
+    menu.showAt(if (contextMenu) this else button)
     dispatchLifecycle("topMenuOpen")
   }
   override fun dispatchTouchEvent(event: MotionEvent): Boolean {

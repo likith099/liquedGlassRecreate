@@ -38,7 +38,8 @@ hold(); menu.tap('Save message')
 assert menu.find(menu.tree(), 'context-saved').get('text') == 'Message saved: on'
 hold(); menu.tap('More message actions'); menu.tap('Copy message')
 assert menu.find(menu.tree(), 'context-status').get('text') == 'Context selected: copy'
-hold(); menu.adb('shell', 'input', 'keyevent', 4)
+# Confirm the menu is open first: Back with no menu would leave the demo instead.
+hold(); menu.menu_row(menu.tree(), 'Edit message'); menu.adb('shell', 'input', 'keyevent', 4)
 assert menu.find(menu.tree(), 'context-count').get('text') == 'Context actions: 3'
 menu.tap('context-disabled'); hold(); absent('Edit message'); menu.tap('context-disabled')
 menu.tap('context-replace'); hold(); time.sleep(8); absent('Edit message')

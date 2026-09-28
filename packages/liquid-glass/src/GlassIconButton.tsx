@@ -1,6 +1,6 @@
 import React from 'react';
 import NativeMenu from './specs/ALGMenuNativeComponent';
-import {enabledMenuAction, validateMenuItems} from './menuTree';
+import {enabledMenuAction, menuStyleJSON, validateMenuItems} from './menuTree';
 import {useMenuHandle} from './menuHandle';
 import type {GlassIconButtonProps} from './types';
 
@@ -20,18 +20,18 @@ export function validateIconButton({systemImage, accessibilityLabel, size, symbo
 /**
  * Round icon-only control. UIKit owns the glass, press highlight and menu morph on iOS 26
  * (`UIButton.Configuration.glass()`); older iOS and Reduce Transparency use `.gray()`.
- * Android draws an oval surface with a ripple and opens a PopupMenu.
+ * Android draws an oval surface with a ripple and opens the package's menu popup.
  */
 export default function GlassIconButton({ref, systemImage, accessibilityLabel, androidIcon, size = 44,
   symbolPointSize, colorScheme = 'system', variant = 'regular', tintColor, disabled = false,
-  forceFallback = false, onPress, menu, onOpen, onClose, accessibilityHint, accessibilityState: _state, testID, style, ...props}: GlassIconButtonProps) {
+  forceFallback = false, onPress, menu, onOpen, onClose, androidMenuStyle, accessibilityHint, accessibilityState: _state, testID, style, ...props}: GlassIconButtonProps) {
   const host = useMenuHandle(ref);
   validateIconButton({systemImage, accessibilityLabel, size, symbolPointSize, onPress, menu});
   const items = menu?.items ?? [];
   return <NativeMenu {...props} ref={host} accessible={false} style={[{width: size, height: size}, style]}
     iconMode title="" systemImage={systemImage} androidIcon={androidIcon}
     symbolPointSize={symbolPointSize ?? Math.round(size * 0.4)} colorScheme={colorScheme} iconVariant={variant}
-    itemsJSON={JSON.stringify(items)} disabled={disabled} glassTint={tintColor} forceFallback={forceFallback}
+    itemsJSON={JSON.stringify(items)} menuStyleJSON={menuStyleJSON(androidMenuStyle)} disabled={disabled} glassTint={tintColor} forceFallback={forceFallback}
     controlLabel={accessibilityLabel} controlHint={accessibilityHint} controlTestID={testID}
     onButtonPress={() => { if (!disabled && !menu) onPress?.(); }}
     onMenuAction={event => {

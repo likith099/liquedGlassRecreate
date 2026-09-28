@@ -4,7 +4,28 @@ All notable changes to `@likith99/react-native-adaptive-liquid-glass`. Versions 
 [semantic versioning](https://semver.org); while the major version is 0, minor versions may
 change the API.
 
-## 0.1.3 — unreleased
+## Unreleased
+
+### Added
+
+- Android menus can show item icons (`androidIcon` on menu items and submenus) and take
+  `androidMenuStyle` on `GlassMenuButton`, `GlassIconButton` and `GlassContextMenu`: corner radius,
+  and background, text, icon and destructive colours, each for light and dark.
+
+### Changed
+
+- Android menu buttons, icon buttons and context menus open a Material 3-style popup (rounded
+  surface, icons, checkmarks, submenus shown in place) instead of the system `PopupMenu`. Rebuild
+  the Android app after upgrading: the menu component gained a prop.
+
+### Fixed
+
+- `GlassExpandingTabs` (Android): switching pills made the whole row shake sideways. The pill widths
+  were animated from JavaScript, and on the New Architecture those updates reach the views out of
+  step with the layout the other pills are placed from. The pills now animate with transforms and
+  opacity only, on the native driver, so every pill moves in the same frame.
+
+## 0.1.3 — September 28, 2026
 
 Rebuild both native apps after upgrading: the menu and tab Fabric components gained props.
 

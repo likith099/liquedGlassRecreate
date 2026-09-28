@@ -1,7 +1,16 @@
 import React, {useEffect, useRef, useState} from 'react';
-import {Pressable, ScrollView, Switch, Text, View, useColorScheme} from 'react-native';
+import {Platform, Pressable, ScrollView, Switch, Text, View, useColorScheme} from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
-import {GlassContextMenu, type GlassMenuElement} from '@likith99/react-native-adaptive-liquid-glass';
+import {GlassContextMenu, type GlassMenuElement, type GlassMenuStyle} from '@likith99/react-native-adaptive-liquid-glass';
+
+/** A custom Android menu style for the demo's switch; the default style needs no prop. */
+const customMenuStyle: GlassMenuStyle = {
+  cornerRadius: 28,
+  backgroundColor: {light: '#FFF4E8', dark: '#241F33'},
+  textColor: {light: '#3A2A12', dark: '#EDE7FF'},
+  iconColor: {light: '#B26A00', dark: '#B9A7FF'},
+  destructiveColor: {light: '#C62828', dark: '#FF8A80'},
+};
 
 export default function ContextMenuDemo({onClose}: {onClose: () => void}) {
   const dark = useColorScheme() === 'dark';
@@ -13,17 +22,18 @@ export default function ContextMenuDemo({onClose}: {onClose: () => void}) {
   const [saved, setSaved] = useState(false);
   const [replacement, setReplacement] = useState(false);
   const [mounted, setMounted] = useState(true);
+  const [customStyle, setCustomStyle] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   useEffect(() => () => clearTimeout(timer.current), []);
   const items: GlassMenuElement[] = replacement ? [{id: 'new', title: 'New action'}] : [
-    {id: 'edit', title: 'Edit message', systemImage: 'pencil'},
-    {id: 'forward', title: 'Forward message', systemImage: 'arrowshape.turn.up.right'},
-    {id: 'save', title: 'Save message', systemImage: 'bookmark', checked: saved},
-    {kind: 'submenu', id: 'more', title: 'More message actions', items: [
-      {id: 'copy', title: 'Copy message', systemImage: 'doc.on.doc'},
+    {id: 'edit', title: 'Edit message', systemImage: 'pencil', androidIcon: 'demo_edit'},
+    {id: 'forward', title: 'Forward message', systemImage: 'arrowshape.turn.up.right', androidIcon: 'demo_forward'},
+    {id: 'save', title: 'Save message', systemImage: 'bookmark', androidIcon: 'demo_bookmark', checked: saved},
+    {kind: 'submenu', id: 'more', title: 'More message actions', androidIcon: 'demo_more', items: [
+      {id: 'copy', title: 'Copy message', systemImage: 'doc.on.doc', androidIcon: 'demo_copy'},
     ]},
     {id: 'blocked', title: 'Unavailable message action', disabled: true},
-    {id: 'delete', title: 'Delete message', systemImage: 'trash', destructive: true},
+    {id: 'delete', title: 'Delete message', systemImage: 'trash', androidIcon: 'demo_delete', destructive: true},
   ];
   return <SafeAreaView style={{flex: 1, backgroundColor: dark ? '#11141B' : '#F7F8FC'}}>
     <ScrollView contentContainerStyle={{padding: 24, gap: 20}}>
@@ -32,6 +42,7 @@ export default function ContextMenuDemo({onClose}: {onClose: () => void}) {
       <Text style={{color}}>Touch and hold the message. It stays visible while you choose an action.</Text>
       {mounted && <GlassContextMenu testID="message-context" accessibilityLabel="Message: See you at the park"
         disabled={disabled} forceFallback={fallback} items={items} previewCornerRadius={22}
+        androidMenuStyle={customStyle ? customMenuStyle : undefined}
         onAction={id => {setStatus(`Context selected: ${id}`); setCount(value => value + 1); if (id === 'save') setSaved(value => !value);}}>
         <View style={{padding: 22, borderRadius: 22, backgroundColor: dark ? '#254E6A' : '#D9EAF7'}}>
           <Text style={{color, fontSize: 20}}>See you at the park</Text>
@@ -45,6 +56,10 @@ export default function ContextMenuDemo({onClose}: {onClose: () => void}) {
         <Text style={{color}}>Plain menu fallback</Text>
         <Switch testID="context-fallback" accessibilityLabel="Plain menu fallback" value={fallback} onValueChange={setFallback} />
       </View>
+      {Platform.OS === 'android' && <View style={{flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between'}}>
+        <Text style={{color}}>Custom menu style</Text>
+        <Switch testID="context-style" accessibilityLabel="Custom menu style" value={customStyle} onValueChange={setCustomStyle} />
+      </View>}
       <View style={{flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between'}}>
         <Text style={{color}}>Disable context menu</Text>
         <Switch testID="context-disabled" accessibilityLabel="Disable context menu" value={disabled} onValueChange={setDisabled} />
