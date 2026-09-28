@@ -30,6 +30,7 @@ class ALGMenuManager : ViewGroupManager<ALGMenuView>(), ALGMenuManagerInterface<
   override fun setSymbolPointSize(view: ALGMenuView, value: Float) { /* The Android drawable keeps its size. */ }
   override fun setColorScheme(view: ALGMenuView, value: String?) { view.colorScheme = value ?: "system" }
   override fun setAndroidIcon(view: ALGMenuView, value: String?) { view.androidIcon = value ?: "" }
+  override fun setMenuStyleJSON(view: ALGMenuView, value: String?) { view.menuStyleJSON = value ?: "" }
   override fun setIconVariant(view: ALGMenuView, value: String?) { view.iconProminent = value == "prominent" }
   override fun open(view: ALGMenuView) { view.openMenu() }
   override fun setDisabled(view: ALGMenuView, value: Boolean) { view.disabled = value }

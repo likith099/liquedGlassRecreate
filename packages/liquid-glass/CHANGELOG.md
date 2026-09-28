@@ -6,6 +6,18 @@ change the API.
 
 ## Unreleased
 
+### Added
+
+- Android menus can show item icons (`androidIcon` on menu items and submenus) and take
+  `androidMenuStyle` on `GlassMenuButton`, `GlassIconButton` and `GlassContextMenu`: corner radius,
+  and background, text, icon and destructive colours, each for light and dark.
+
+### Changed
+
+- Android menu buttons, icon buttons and context menus open a Material 3-style popup (rounded
+  surface, icons, checkmarks, submenus shown in place) instead of the system `PopupMenu`. Rebuild
+  the Android app after upgrading: the menu component gained a prop.
+
 ### Fixed
 
 - `GlassExpandingTabs` (Android): switching pills made the whole row shake sideways. The pill widths

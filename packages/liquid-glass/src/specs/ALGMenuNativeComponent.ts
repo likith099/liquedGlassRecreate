@@ -19,6 +19,8 @@ export interface NativeProps extends ViewProps {
   iconVariant?: CodegenTypes.WithDefault<'regular' | 'prominent', 'regular'>;
   /** Android icon-mode drawable resource name. */
   androidIcon?: string;
+  /** Android menu popup style (corner radius, light and dark colours) as JSON; empty for defaults. */
+  menuStyleJSON?: string;
   systemImage?: string;
   disabled?: CodegenTypes.WithDefault<boolean, false>;
   forceFallback?: CodegenTypes.WithDefault<boolean, false>;

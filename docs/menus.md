@@ -1,6 +1,6 @@
 # Native menu buttons
 
-`GlassMenuButton` presents a system menu from a native button. iOS 26 uses `UIButton.Configuration.glass()` and `UIMenu`; older iOS, Reduce Transparency, and `forceFallback` use a standard tinted UIKit button. Android uses `android.widget.Button` and `PopupMenu`. No Expo, custom modal menu, or extra glass layer is required.
+`GlassMenuButton` presents a system menu from a native button. iOS 26 uses `UIButton.Configuration.glass()` and `UIMenu`; older iOS, Reduce Transparency, and `forceFallback` use a standard tinted UIKit button. Android uses `android.widget.Button` and the package's menu popup (see [Android menu appearance](#android-menu-appearance)). No Expo or extra glass layer is required.
 
 ```tsx
 import {useState} from 'react';
@@ -70,7 +70,7 @@ import {GlassIconButton} from '@likith99/react-native-adaptive-liquid-glass';
 
 - **iOS 26:** `UIButton.Configuration.glass()` with capsule corners in a square frame, which draws a circle. UIKit owns the press highlight and the menu morph.
 - **Older iOS, Reduce Transparency and `forceFallback`:** the standard `.gray()` style.
-- **Android:** an oval surface with a ripple and the `androidIcon` drawable, opening a `PopupMenu`.
+- **Android:** an oval surface with a ripple and the `androidIcon` drawable, opening the menu popup.
 - **Props:** `size` is the diameter (default 44 points, the minimum recommended touch target). `symbolPointSize` defaults to 40% of it. `colorScheme` (`system`, `light`, `dark`) pins the material, for example dark glass over a photo in both themes. `tintColor` colours the glyph.
 - **Accessibility:** `accessibilityLabel` is required because the control shows no text.
 - **Floating action button:** `variant="prominent"` fills the button with `tintColor` and draws the glyph in white: prominent glass on iOS 26, a filled button below it, and a filled oval on Android.
@@ -91,11 +91,52 @@ const menu = useRef<GlassMenuHandle>(null);
 menu.current?.open();
 ```
 
-`open()` uses `UIButton.performPrimaryAction()` on iOS 17.4 and later and `PopupMenu.show()` on Android. It does nothing on older iOS, while disabled, without items, or before the button is on screen. The system decides where the menu appears, so do not use it for precisely placed menus. The events are typed callbacks, not reserved action IDs.
+`open()` uses `UIButton.performPrimaryAction()` on iOS 17.4 and later and shows the menu popup on Android. It does nothing on older iOS, while disabled, without items, or before the button is on screen. The system decides where the menu appears, so do not use it for precisely placed menus. The events are typed callbacks, not reserved action IDs.
 
 ## Verification
 
 The preceding flat-menu revision passed TypeScript checks, 19 JavaScript tests, and native UI tests on the iOS simulator, physical iPhone, and Android emulator. The earlier physical-iPhone result does not cover these additions. After building and opening a fresh Android demo, reproduce the flat regression with `python3 scripts/verify-android-menu.py`, or the consolidated batch with `python3 scripts/verify-android-toolbar.py`. Metro uses port 8093. Older iOS runtime testing and full VoiceOver/TalkBack review remain outstanding.
+
+## Android menu appearance
+
+On Android, menu buttons, icon buttons and context menus open a Material 3-style popup: a rounded
+surface with an icon beside each item, checkmarks and a submenu arrow, section titles and dividers.
+Submenus open in place with a back row. The popup sits below its button or content, aligned to the
+nearer screen edge, and moves above when there is no room below. iOS menus are drawn by UIKit and
+keep the system appearance.
+
+Give items an `androidIcon` (a drawable resource name) to show icons; rows without one keep their
+titles aligned with the rest. `androidMenuStyle` changes the shape and colours, for both
+appearances:
+
+```tsx
+<GlassContextMenu items={[
+    {id: 'forward', title: 'Forward', androidIcon: 'ic_forward'},
+    {id: 'delete', title: 'Delete', androidIcon: 'ic_delete', destructive: true},
+  ]}
+  onAction={handle}
+  androidMenuStyle={{
+    cornerRadius: 24,
+    backgroundColor: {light: '#FFFFFF', dark: '#1A1B20'},
+    textColor: {light: '#1B1B1F', dark: '#E3E3E8'},
+    iconColor: '#8E8E93',               // one colour for both appearances
+    destructiveColor: {light: '#BA1A1A', dark: '#FFB4AB'},
+  }}>
+  <Message />
+</GlassContextMenu>
+```
+
+| Style key | Default (light / dark) |
+| --- | --- |
+| `cornerRadius` | 16 dp |
+| `backgroundColor` | `#FFFFFF` / `#1A1B20` |
+| `textColor` | `#1B1B1F` / `#E3E3E8` |
+| `iconColor` | `#46464F` / `#B9BAC2` |
+| `destructiveColor` | `#BA1A1A` / `#FFB4AB` |
+
+Colours are static values. The appearance follows the system, or the control's `colorScheme`
+where it has one. `GlassMenuButton` and `GlassIconButton` take the same `androidMenuStyle`. The
+toolbar's overflow menu keeps Android's toolbar menu.
 
 ## Long-press content menus (0.1.3)
 
@@ -128,7 +169,7 @@ On iOS, a native `UIContextMenuInteraction` lifts a preview of the wrapped conte
 and presents the actions alongside it. The message remains visible in the preview
 and returns to its original layout on dismissal. iOS 26 uses the system's current
 menu appearance; older supported iOS versions use their standard context menu.
-Android opens a native anchored `PopupMenu` on long press and leaves the content in
+Android opens the menu popup below the content on long press and leaves the content in
 place. It does not reproduce the iOS lift animation. Placement is system controlled:
 menus can appear above the content when space below is limited.
 

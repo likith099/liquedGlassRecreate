@@ -32,7 +32,8 @@ where glass is not available.
   glass, including touch response and optional merging between nearby surfaces.
 - **Works everywhere else:** system blur on iOS 15.1–25, opaque themed surfaces under Reduce
   Transparency, and standard Material controls on Android, all behind the same API.
-- **Native menus and tabs:** `UIMenu` and `PopupMenu` with sections, checkmarks and destructive
+- **Native menus and tabs:** `UIMenu` on iOS and a Material-style popup on Android (icons,
+  custom corner radius and colours) with sections, checkmarks and destructive
   items; a native tab bar with badges, custom artwork and per-tab colours.
 - **New in 0.1.3:** icon buttons, long-press context menus, expanding pill tabs, search field,
   scroll-edge effect, toasts and badges.
