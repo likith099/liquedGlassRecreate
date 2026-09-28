@@ -4,6 +4,15 @@ All notable changes to `@likith99/react-native-adaptive-liquid-glass`. Versions 
 [semantic versioning](https://semver.org); while the major version is 0, minor versions may
 change the API.
 
+## Unreleased
+
+### Fixed
+
+- `GlassExpandingTabs` (Android): switching pills made the whole row shake sideways. The pill widths
+  were animated from JavaScript, and on the New Architecture those updates reach the views out of
+  step with the layout the other pills are placed from. The pills now animate with transforms and
+  opacity only, on the native driver, so every pill moves in the same frame.
+
 ## 0.1.3 — unreleased
 
 Rebuild both native apps after upgrading: the menu and tab Fabric components gained props.

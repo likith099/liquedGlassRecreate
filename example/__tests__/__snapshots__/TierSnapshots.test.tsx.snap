@@ -1784,8 +1784,7 @@ exports[`solid tier dark 1`] = `
       contentContainerStyle={
         {
           "alignItems": "center",
-          "gap": 8,
-          "paddingHorizontal": 16,
+          "flexGrow": 1,
         }
       }
       horizontal={true}
@@ -1794,73 +1793,211 @@ exports[`solid tier dark 1`] = `
     >
       <View>
         <View
-          accessibilityLabel="Overview"
-          accessibilityRole="tab"
-          accessibilityState={
-            {
-              "busy": undefined,
-              "checked": undefined,
-              "disabled": false,
-              "expanded": undefined,
-              "selected": true,
-            }
-          }
-          accessibilityValue={
-            {
-              "max": undefined,
-              "min": undefined,
-              "now": undefined,
-              "text": "1 of 2",
-            }
-          }
-          accessible={true}
-          collapsable={false}
-          focusable={true}
-          hitSlop={
-            {
-              "bottom": 0,
-              "top": 0,
-            }
-          }
-          onBlur={[Function]}
-          onClick={[Function]}
-          onFocus={[Function]}
-          onResponderGrant={[Function]}
-          onResponderMove={[Function]}
-          onResponderRelease={[Function]}
-          onResponderTerminate={[Function]}
-          onResponderTerminationRequest={[Function]}
-          onStartShouldSetResponder={[Function]}
           style={
             {
-              "opacity": 1,
-              "transform": [
-                {
-                  "scale": 1,
-                },
-              ],
+              "height": 56,
+              "width": 218,
             }
           }
         >
           <View
+            accessibilityLabel="Overview"
+            accessibilityRole="tab"
+            accessibilityState={
+              {
+                "busy": undefined,
+                "checked": undefined,
+                "disabled": false,
+                "expanded": undefined,
+                "selected": true,
+              }
+            }
+            accessibilityValue={
+              {
+                "max": undefined,
+                "min": undefined,
+                "now": undefined,
+                "text": "1 of 2",
+              }
+            }
+            accessible={true}
             collapsable={false}
+            focusable={true}
+            hitSlop={
+              {
+                "bottom": 0,
+                "top": 0,
+              }
+            }
+            needsOffscreenAlphaCompositing={false}
+            onBlur={[Function]}
+            onClick={[Function]}
+            onFocus={[Function]}
+            onResponderGrant={[Function]}
+            onResponderMove={[Function]}
+            onResponderRelease={[Function]}
+            onResponderTerminate={[Function]}
+            onResponderTerminationRequest={[Function]}
+            onStartShouldSetResponder={[Function]}
             style={
               {
-                "alignItems": "center",
-                "backgroundColor": "rgba(97, 89, 183, 0.161)",
-                "borderRadius": 28,
-                "flexDirection": "row",
                 "height": 56,
-                "justifyContent": "center",
-                "overflow": "hidden",
-                "width": 88,
+                "left": 0,
+                "opacity": 1,
+                "position": "absolute",
+                "top": 0,
+                "transform": [
+                  {
+                    "translateX": 16,
+                  },
+                  {
+                    "scale": 1,
+                  },
+                ],
+                "width": 108,
               }
             }
           >
             <View
               style={
+                [
+                  {
+                    "left": 0,
+                    "position": "absolute",
+                    "top": 0,
+                  },
+                  {
+                    "backgroundColor": "rgba(240, 241, 245, 1)",
+                    "borderRadius": 28,
+                    "height": 56,
+                    "width": 56,
+                  },
+                ]
+              }
+            />
+            <View
+              collapsable={false}
+              style={
+                {
+                  "backgroundColor": "rgba(240, 241, 245, 1)",
+                  "height": 56,
+                  "left": 28,
+                  "position": "absolute",
+                  "top": 0,
+                  "transform": [
+                    {
+                      "scaleX": 1,
+                    },
+                  ],
+                  "transformOrigin": "left",
+                  "width": 52,
+                }
+              }
+            />
+            <View
+              collapsable={false}
+              style={
+                {
+                  "backgroundColor": "rgba(240, 241, 245, 1)",
+                  "borderRadius": 28,
+                  "height": 56,
+                  "left": 0,
+                  "position": "absolute",
+                  "top": 0,
+                  "transform": [
+                    {
+                      "translateX": 52,
+                    },
+                  ],
+                  "width": 56,
+                }
+              }
+            />
+            <View
+              collapsable={false}
+              needsOffscreenAlphaCompositing={true}
+              pointerEvents="none"
+              style={
+                {
+                  "height": 56,
+                  "left": 0,
+                  "opacity": 1,
+                  "position": "absolute",
+                  "top": 0,
+                  "width": 108,
+                }
+              }
+            >
+              <View
+                style={
+                  [
+                    {
+                      "left": 0,
+                      "position": "absolute",
+                      "top": 0,
+                    },
+                    {
+                      "backgroundColor": "rgba(217, 217, 235, 1)",
+                      "borderRadius": 28,
+                      "height": 56,
+                      "width": 56,
+                    },
+                  ]
+                }
+              />
+              <View
+                collapsable={false}
+                style={
+                  {
+                    "backgroundColor": "rgba(217, 217, 235, 1)",
+                    "height": 56,
+                    "left": 28,
+                    "position": "absolute",
+                    "top": 0,
+                    "transform": [
+                      {
+                        "scaleX": 1,
+                      },
+                    ],
+                    "transformOrigin": "left",
+                    "width": 52,
+                  }
+                }
+              />
+              <View
+                collapsable={false}
+                style={
+                  {
+                    "backgroundColor": "rgba(217, 217, 235, 1)",
+                    "borderRadius": 28,
+                    "height": 56,
+                    "left": 0,
+                    "position": "absolute",
+                    "top": 0,
+                    "transform": [
+                      {
+                        "translateX": 52,
+                      },
+                    ],
+                    "width": 56,
+                  }
+                }
+              />
+            </View>
+            <View
+              collapsable={false}
+              pointerEvents="none"
+              style={
                 {
                   "height": 40,
+                  "left": 0,
+                  "position": "absolute",
+                  "top": 8,
+                  "transform": [
+                    {
+                      "translateX": 30,
+                    },
+                  ],
                   "width": 40,
                 }
               }
@@ -1902,17 +2039,20 @@ exports[`solid tier dark 1`] = `
             </View>
             <View
               collapsable={false}
+              pointerEvents="none"
               style={
                 {
-                  "width": 8,
-                }
-              }
-            />
-            <View
-              collapsable={false}
-              style={
-                {
+                  "height": 56,
+                  "justifyContent": "center",
+                  "left": 0,
                   "overflow": "hidden",
+                  "position": "absolute",
+                  "top": 0,
+                  "transform": [
+                    {
+                      "translateX": 78,
+                    },
+                  ],
                   "width": 0,
                 }
               }
@@ -1926,6 +2066,40 @@ exports[`solid tier dark 1`] = `
                     "fontSize": 15,
                     "fontWeight": "700",
                     "opacity": 1,
+                    "transform": [
+                      {
+                        "translateX": 0,
+                      },
+                    ],
+                    "width": 0,
+                  }
+                }
+              >
+                Overview
+              </Text>
+            </View>
+            <View
+              accessibilityElementsHidden={true}
+              importantForAccessibility="no-hide-descendants"
+              pointerEvents="none"
+              style={
+                {
+                  "flexDirection": "row",
+                  "left": 0,
+                  "opacity": 0,
+                  "position": "absolute",
+                  "top": 0,
+                  "width": 400,
+                }
+              }
+            >
+              <Text
+                numberOfLines={1}
+                onLayout={[Function]}
+                style={
+                  {
+                    "fontSize": 15,
+                    "fontWeight": "700",
                   }
                 }
               >
@@ -1934,103 +2108,203 @@ exports[`solid tier dark 1`] = `
             </View>
           </View>
           <View
-            accessibilityElementsHidden={true}
-            importantForAccessibility="no-hide-descendants"
-            pointerEvents="none"
+            accessibilityLabel="Recent"
+            accessibilityRole="tab"
+            accessibilityState={
+              {
+                "busy": undefined,
+                "checked": undefined,
+                "disabled": false,
+                "expanded": undefined,
+                "selected": false,
+              }
+            }
+            accessibilityValue={
+              {
+                "max": undefined,
+                "min": undefined,
+                "now": undefined,
+                "text": "2 of 2",
+              }
+            }
+            accessible={true}
+            collapsable={false}
+            focusable={true}
+            hitSlop={
+              {
+                "bottom": 0,
+                "top": 0,
+              }
+            }
+            needsOffscreenAlphaCompositing={false}
+            onBlur={[Function]}
+            onClick={[Function]}
+            onFocus={[Function]}
+            onResponderGrant={[Function]}
+            onResponderMove={[Function]}
+            onResponderRelease={[Function]}
+            onResponderTerminate={[Function]}
+            onResponderTerminationRequest={[Function]}
+            onStartShouldSetResponder={[Function]}
             style={
               {
-                "flexDirection": "row",
+                "height": 56,
                 "left": 0,
-                "opacity": 0,
+                "opacity": 1,
                 "position": "absolute",
                 "top": 0,
-                "width": 400,
-              }
-            }
-          >
-            <Text
-              collapsable={false}
-              numberOfLines={1}
-              onLayout={[Function]}
-              style={
-                {
-                  "fontSize": 15,
-                  "fontWeight": "700",
-                }
-              }
-            >
-              Overview
-            </Text>
-          </View>
-        </View>
-        <View
-          accessibilityLabel="Recent"
-          accessibilityRole="tab"
-          accessibilityState={
-            {
-              "busy": undefined,
-              "checked": undefined,
-              "disabled": false,
-              "expanded": undefined,
-              "selected": false,
-            }
-          }
-          accessibilityValue={
-            {
-              "max": undefined,
-              "min": undefined,
-              "now": undefined,
-              "text": "2 of 2",
-            }
-          }
-          accessible={true}
-          collapsable={false}
-          focusable={true}
-          hitSlop={
-            {
-              "bottom": 0,
-              "top": 0,
-            }
-          }
-          onBlur={[Function]}
-          onClick={[Function]}
-          onFocus={[Function]}
-          onResponderGrant={[Function]}
-          onResponderMove={[Function]}
-          onResponderRelease={[Function]}
-          onResponderTerminate={[Function]}
-          onResponderTerminationRequest={[Function]}
-          onStartShouldSetResponder={[Function]}
-          style={
-            {
-              "opacity": 1,
-              "transform": [
-                {
-                  "scale": 1,
-                },
-              ],
-            }
-          }
-        >
-          <View
-            collapsable={false}
-            style={
-              {
-                "alignItems": "center",
-                "backgroundColor": "rgba(240, 241, 245, 1)",
-                "borderRadius": 28,
-                "flexDirection": "row",
-                "height": 56,
-                "justifyContent": "center",
-                "overflow": "hidden",
-                "width": 50,
+                "transform": [
+                  {
+                    "translateX": 132,
+                  },
+                  {
+                    "scale": 1,
+                  },
+                ],
+                "width": 70,
               }
             }
           >
             <View
               style={
+                [
+                  {
+                    "left": 0,
+                    "position": "absolute",
+                    "top": 0,
+                  },
+                  {
+                    "backgroundColor": "rgba(240, 241, 245, 1)",
+                    "borderRadius": 28,
+                    "height": 56,
+                    "width": 56,
+                  },
+                ]
+              }
+            />
+            <View
+              collapsable={false}
+              style={
+                {
+                  "backgroundColor": "rgba(240, 241, 245, 1)",
+                  "height": 56,
+                  "left": 28,
+                  "position": "absolute",
+                  "top": 0,
+                  "transform": [
+                    {
+                      "scaleX": 0.2692307692307692,
+                    },
+                  ],
+                  "transformOrigin": "left",
+                  "width": 52,
+                }
+              }
+            />
+            <View
+              collapsable={false}
+              style={
+                {
+                  "backgroundColor": "rgba(240, 241, 245, 1)",
+                  "borderRadius": 28,
+                  "height": 56,
+                  "left": 0,
+                  "position": "absolute",
+                  "top": 0,
+                  "transform": [
+                    {
+                      "translateX": 14,
+                    },
+                  ],
+                  "width": 56,
+                }
+              }
+            />
+            <View
+              collapsable={false}
+              needsOffscreenAlphaCompositing={true}
+              pointerEvents="none"
+              style={
+                {
+                  "height": 56,
+                  "left": 0,
+                  "opacity": 0,
+                  "position": "absolute",
+                  "top": 0,
+                  "width": 108,
+                }
+              }
+            >
+              <View
+                style={
+                  [
+                    {
+                      "left": 0,
+                      "position": "absolute",
+                      "top": 0,
+                    },
+                    {
+                      "backgroundColor": "rgba(217, 217, 235, 1)",
+                      "borderRadius": 28,
+                      "height": 56,
+                      "width": 56,
+                    },
+                  ]
+                }
+              />
+              <View
+                collapsable={false}
+                style={
+                  {
+                    "backgroundColor": "rgba(217, 217, 235, 1)",
+                    "height": 56,
+                    "left": 28,
+                    "position": "absolute",
+                    "top": 0,
+                    "transform": [
+                      {
+                        "scaleX": 0.2692307692307692,
+                      },
+                    ],
+                    "transformOrigin": "left",
+                    "width": 52,
+                  }
+                }
+              />
+              <View
+                collapsable={false}
+                style={
+                  {
+                    "backgroundColor": "rgba(217, 217, 235, 1)",
+                    "borderRadius": 28,
+                    "height": 56,
+                    "left": 0,
+                    "position": "absolute",
+                    "top": 0,
+                    "transform": [
+                      {
+                        "translateX": 14,
+                      },
+                    ],
+                    "width": 56,
+                  }
+                }
+              />
+            </View>
+            <View
+              collapsable={false}
+              pointerEvents="none"
+              style={
                 {
                   "height": 40,
+                  "left": 0,
+                  "position": "absolute",
+                  "top": 8,
+                  "transform": [
+                    {
+                      "translateX": 15,
+                    },
+                  ],
                   "width": 40,
                 }
               }
@@ -2072,17 +2346,20 @@ exports[`solid tier dark 1`] = `
             </View>
             <View
               collapsable={false}
+              pointerEvents="none"
               style={
                 {
-                  "width": 0,
-                }
-              }
-            />
-            <View
-              collapsable={false}
-              style={
-                {
+                  "height": 56,
+                  "justifyContent": "center",
+                  "left": 0,
                   "overflow": "hidden",
+                  "position": "absolute",
+                  "top": 0,
+                  "transform": [
+                    {
+                      "translateX": 55,
+                    },
+                  ],
                   "width": 0,
                 }
               }
@@ -2096,41 +2373,46 @@ exports[`solid tier dark 1`] = `
                     "fontSize": 15,
                     "fontWeight": "700",
                     "opacity": 0,
+                    "transform": [
+                      {
+                        "translateX": 0,
+                      },
+                    ],
+                    "width": 0,
                   }
                 }
               >
                 Recent
               </Text>
             </View>
-          </View>
-          <View
-            accessibilityElementsHidden={true}
-            importantForAccessibility="no-hide-descendants"
-            pointerEvents="none"
-            style={
-              {
-                "flexDirection": "row",
-                "left": 0,
-                "opacity": 0,
-                "position": "absolute",
-                "top": 0,
-                "width": 400,
-              }
-            }
-          >
-            <Text
-              collapsable={false}
-              numberOfLines={1}
-              onLayout={[Function]}
+            <View
+              accessibilityElementsHidden={true}
+              importantForAccessibility="no-hide-descendants"
+              pointerEvents="none"
               style={
                 {
-                  "fontSize": 15,
-                  "fontWeight": "700",
+                  "flexDirection": "row",
+                  "left": 0,
+                  "opacity": 0,
+                  "position": "absolute",
+                  "top": 0,
+                  "width": 400,
                 }
               }
             >
-              Recent
-            </Text>
+              <Text
+                numberOfLines={1}
+                onLayout={[Function]}
+                style={
+                  {
+                    "fontSize": 15,
+                    "fontWeight": "700",
+                  }
+                }
+              >
+                Recent
+              </Text>
+            </View>
           </View>
         </View>
       </View>
@@ -2667,8 +2949,7 @@ exports[`solid tier light 1`] = `
       contentContainerStyle={
         {
           "alignItems": "center",
-          "gap": 8,
-          "paddingHorizontal": 16,
+          "flexGrow": 1,
         }
       }
       horizontal={true}
@@ -2677,73 +2958,211 @@ exports[`solid tier light 1`] = `
     >
       <View>
         <View
-          accessibilityLabel="Overview"
-          accessibilityRole="tab"
-          accessibilityState={
-            {
-              "busy": undefined,
-              "checked": undefined,
-              "disabled": false,
-              "expanded": undefined,
-              "selected": true,
-            }
-          }
-          accessibilityValue={
-            {
-              "max": undefined,
-              "min": undefined,
-              "now": undefined,
-              "text": "1 of 2",
-            }
-          }
-          accessible={true}
-          collapsable={false}
-          focusable={true}
-          hitSlop={
-            {
-              "bottom": 0,
-              "top": 0,
-            }
-          }
-          onBlur={[Function]}
-          onClick={[Function]}
-          onFocus={[Function]}
-          onResponderGrant={[Function]}
-          onResponderMove={[Function]}
-          onResponderRelease={[Function]}
-          onResponderTerminate={[Function]}
-          onResponderTerminationRequest={[Function]}
-          onStartShouldSetResponder={[Function]}
           style={
             {
-              "opacity": 1,
-              "transform": [
-                {
-                  "scale": 1,
-                },
-              ],
+              "height": 56,
+              "width": 218,
             }
           }
         >
           <View
+            accessibilityLabel="Overview"
+            accessibilityRole="tab"
+            accessibilityState={
+              {
+                "busy": undefined,
+                "checked": undefined,
+                "disabled": false,
+                "expanded": undefined,
+                "selected": true,
+              }
+            }
+            accessibilityValue={
+              {
+                "max": undefined,
+                "min": undefined,
+                "now": undefined,
+                "text": "1 of 2",
+              }
+            }
+            accessible={true}
             collapsable={false}
+            focusable={true}
+            hitSlop={
+              {
+                "bottom": 0,
+                "top": 0,
+              }
+            }
+            needsOffscreenAlphaCompositing={false}
+            onBlur={[Function]}
+            onClick={[Function]}
+            onFocus={[Function]}
+            onResponderGrant={[Function]}
+            onResponderMove={[Function]}
+            onResponderRelease={[Function]}
+            onResponderTerminate={[Function]}
+            onResponderTerminationRequest={[Function]}
+            onStartShouldSetResponder={[Function]}
             style={
               {
-                "alignItems": "center",
-                "backgroundColor": "rgba(97, 89, 183, 0.161)",
-                "borderRadius": 28,
-                "flexDirection": "row",
                 "height": 56,
-                "justifyContent": "center",
-                "overflow": "hidden",
-                "width": 88,
+                "left": 0,
+                "opacity": 1,
+                "position": "absolute",
+                "top": 0,
+                "transform": [
+                  {
+                    "translateX": 16,
+                  },
+                  {
+                    "scale": 1,
+                  },
+                ],
+                "width": 108,
               }
             }
           >
             <View
               style={
+                [
+                  {
+                    "left": 0,
+                    "position": "absolute",
+                    "top": 0,
+                  },
+                  {
+                    "backgroundColor": "rgba(240, 241, 245, 1)",
+                    "borderRadius": 28,
+                    "height": 56,
+                    "width": 56,
+                  },
+                ]
+              }
+            />
+            <View
+              collapsable={false}
+              style={
+                {
+                  "backgroundColor": "rgba(240, 241, 245, 1)",
+                  "height": 56,
+                  "left": 28,
+                  "position": "absolute",
+                  "top": 0,
+                  "transform": [
+                    {
+                      "scaleX": 1,
+                    },
+                  ],
+                  "transformOrigin": "left",
+                  "width": 52,
+                }
+              }
+            />
+            <View
+              collapsable={false}
+              style={
+                {
+                  "backgroundColor": "rgba(240, 241, 245, 1)",
+                  "borderRadius": 28,
+                  "height": 56,
+                  "left": 0,
+                  "position": "absolute",
+                  "top": 0,
+                  "transform": [
+                    {
+                      "translateX": 52,
+                    },
+                  ],
+                  "width": 56,
+                }
+              }
+            />
+            <View
+              collapsable={false}
+              needsOffscreenAlphaCompositing={true}
+              pointerEvents="none"
+              style={
+                {
+                  "height": 56,
+                  "left": 0,
+                  "opacity": 1,
+                  "position": "absolute",
+                  "top": 0,
+                  "width": 108,
+                }
+              }
+            >
+              <View
+                style={
+                  [
+                    {
+                      "left": 0,
+                      "position": "absolute",
+                      "top": 0,
+                    },
+                    {
+                      "backgroundColor": "rgba(217, 217, 235, 1)",
+                      "borderRadius": 28,
+                      "height": 56,
+                      "width": 56,
+                    },
+                  ]
+                }
+              />
+              <View
+                collapsable={false}
+                style={
+                  {
+                    "backgroundColor": "rgba(217, 217, 235, 1)",
+                    "height": 56,
+                    "left": 28,
+                    "position": "absolute",
+                    "top": 0,
+                    "transform": [
+                      {
+                        "scaleX": 1,
+                      },
+                    ],
+                    "transformOrigin": "left",
+                    "width": 52,
+                  }
+                }
+              />
+              <View
+                collapsable={false}
+                style={
+                  {
+                    "backgroundColor": "rgba(217, 217, 235, 1)",
+                    "borderRadius": 28,
+                    "height": 56,
+                    "left": 0,
+                    "position": "absolute",
+                    "top": 0,
+                    "transform": [
+                      {
+                        "translateX": 52,
+                      },
+                    ],
+                    "width": 56,
+                  }
+                }
+              />
+            </View>
+            <View
+              collapsable={false}
+              pointerEvents="none"
+              style={
                 {
                   "height": 40,
+                  "left": 0,
+                  "position": "absolute",
+                  "top": 8,
+                  "transform": [
+                    {
+                      "translateX": 30,
+                    },
+                  ],
                   "width": 40,
                 }
               }
@@ -2785,17 +3204,20 @@ exports[`solid tier light 1`] = `
             </View>
             <View
               collapsable={false}
+              pointerEvents="none"
               style={
                 {
-                  "width": 8,
-                }
-              }
-            />
-            <View
-              collapsable={false}
-              style={
-                {
+                  "height": 56,
+                  "justifyContent": "center",
+                  "left": 0,
                   "overflow": "hidden",
+                  "position": "absolute",
+                  "top": 0,
+                  "transform": [
+                    {
+                      "translateX": 78,
+                    },
+                  ],
                   "width": 0,
                 }
               }
@@ -2809,6 +3231,40 @@ exports[`solid tier light 1`] = `
                     "fontSize": 15,
                     "fontWeight": "700",
                     "opacity": 1,
+                    "transform": [
+                      {
+                        "translateX": 0,
+                      },
+                    ],
+                    "width": 0,
+                  }
+                }
+              >
+                Overview
+              </Text>
+            </View>
+            <View
+              accessibilityElementsHidden={true}
+              importantForAccessibility="no-hide-descendants"
+              pointerEvents="none"
+              style={
+                {
+                  "flexDirection": "row",
+                  "left": 0,
+                  "opacity": 0,
+                  "position": "absolute",
+                  "top": 0,
+                  "width": 400,
+                }
+              }
+            >
+              <Text
+                numberOfLines={1}
+                onLayout={[Function]}
+                style={
+                  {
+                    "fontSize": 15,
+                    "fontWeight": "700",
                   }
                 }
               >
@@ -2817,103 +3273,203 @@ exports[`solid tier light 1`] = `
             </View>
           </View>
           <View
-            accessibilityElementsHidden={true}
-            importantForAccessibility="no-hide-descendants"
-            pointerEvents="none"
+            accessibilityLabel="Recent"
+            accessibilityRole="tab"
+            accessibilityState={
+              {
+                "busy": undefined,
+                "checked": undefined,
+                "disabled": false,
+                "expanded": undefined,
+                "selected": false,
+              }
+            }
+            accessibilityValue={
+              {
+                "max": undefined,
+                "min": undefined,
+                "now": undefined,
+                "text": "2 of 2",
+              }
+            }
+            accessible={true}
+            collapsable={false}
+            focusable={true}
+            hitSlop={
+              {
+                "bottom": 0,
+                "top": 0,
+              }
+            }
+            needsOffscreenAlphaCompositing={false}
+            onBlur={[Function]}
+            onClick={[Function]}
+            onFocus={[Function]}
+            onResponderGrant={[Function]}
+            onResponderMove={[Function]}
+            onResponderRelease={[Function]}
+            onResponderTerminate={[Function]}
+            onResponderTerminationRequest={[Function]}
+            onStartShouldSetResponder={[Function]}
             style={
               {
-                "flexDirection": "row",
+                "height": 56,
                 "left": 0,
-                "opacity": 0,
+                "opacity": 1,
                 "position": "absolute",
                 "top": 0,
-                "width": 400,
-              }
-            }
-          >
-            <Text
-              collapsable={false}
-              numberOfLines={1}
-              onLayout={[Function]}
-              style={
-                {
-                  "fontSize": 15,
-                  "fontWeight": "700",
-                }
-              }
-            >
-              Overview
-            </Text>
-          </View>
-        </View>
-        <View
-          accessibilityLabel="Recent"
-          accessibilityRole="tab"
-          accessibilityState={
-            {
-              "busy": undefined,
-              "checked": undefined,
-              "disabled": false,
-              "expanded": undefined,
-              "selected": false,
-            }
-          }
-          accessibilityValue={
-            {
-              "max": undefined,
-              "min": undefined,
-              "now": undefined,
-              "text": "2 of 2",
-            }
-          }
-          accessible={true}
-          collapsable={false}
-          focusable={true}
-          hitSlop={
-            {
-              "bottom": 0,
-              "top": 0,
-            }
-          }
-          onBlur={[Function]}
-          onClick={[Function]}
-          onFocus={[Function]}
-          onResponderGrant={[Function]}
-          onResponderMove={[Function]}
-          onResponderRelease={[Function]}
-          onResponderTerminate={[Function]}
-          onResponderTerminationRequest={[Function]}
-          onStartShouldSetResponder={[Function]}
-          style={
-            {
-              "opacity": 1,
-              "transform": [
-                {
-                  "scale": 1,
-                },
-              ],
-            }
-          }
-        >
-          <View
-            collapsable={false}
-            style={
-              {
-                "alignItems": "center",
-                "backgroundColor": "rgba(240, 241, 245, 1)",
-                "borderRadius": 28,
-                "flexDirection": "row",
-                "height": 56,
-                "justifyContent": "center",
-                "overflow": "hidden",
-                "width": 50,
+                "transform": [
+                  {
+                    "translateX": 132,
+                  },
+                  {
+                    "scale": 1,
+                  },
+                ],
+                "width": 70,
               }
             }
           >
             <View
               style={
+                [
+                  {
+                    "left": 0,
+                    "position": "absolute",
+                    "top": 0,
+                  },
+                  {
+                    "backgroundColor": "rgba(240, 241, 245, 1)",
+                    "borderRadius": 28,
+                    "height": 56,
+                    "width": 56,
+                  },
+                ]
+              }
+            />
+            <View
+              collapsable={false}
+              style={
+                {
+                  "backgroundColor": "rgba(240, 241, 245, 1)",
+                  "height": 56,
+                  "left": 28,
+                  "position": "absolute",
+                  "top": 0,
+                  "transform": [
+                    {
+                      "scaleX": 0.2692307692307692,
+                    },
+                  ],
+                  "transformOrigin": "left",
+                  "width": 52,
+                }
+              }
+            />
+            <View
+              collapsable={false}
+              style={
+                {
+                  "backgroundColor": "rgba(240, 241, 245, 1)",
+                  "borderRadius": 28,
+                  "height": 56,
+                  "left": 0,
+                  "position": "absolute",
+                  "top": 0,
+                  "transform": [
+                    {
+                      "translateX": 14,
+                    },
+                  ],
+                  "width": 56,
+                }
+              }
+            />
+            <View
+              collapsable={false}
+              needsOffscreenAlphaCompositing={true}
+              pointerEvents="none"
+              style={
+                {
+                  "height": 56,
+                  "left": 0,
+                  "opacity": 0,
+                  "position": "absolute",
+                  "top": 0,
+                  "width": 108,
+                }
+              }
+            >
+              <View
+                style={
+                  [
+                    {
+                      "left": 0,
+                      "position": "absolute",
+                      "top": 0,
+                    },
+                    {
+                      "backgroundColor": "rgba(217, 217, 235, 1)",
+                      "borderRadius": 28,
+                      "height": 56,
+                      "width": 56,
+                    },
+                  ]
+                }
+              />
+              <View
+                collapsable={false}
+                style={
+                  {
+                    "backgroundColor": "rgba(217, 217, 235, 1)",
+                    "height": 56,
+                    "left": 28,
+                    "position": "absolute",
+                    "top": 0,
+                    "transform": [
+                      {
+                        "scaleX": 0.2692307692307692,
+                      },
+                    ],
+                    "transformOrigin": "left",
+                    "width": 52,
+                  }
+                }
+              />
+              <View
+                collapsable={false}
+                style={
+                  {
+                    "backgroundColor": "rgba(217, 217, 235, 1)",
+                    "borderRadius": 28,
+                    "height": 56,
+                    "left": 0,
+                    "position": "absolute",
+                    "top": 0,
+                    "transform": [
+                      {
+                        "translateX": 14,
+                      },
+                    ],
+                    "width": 56,
+                  }
+                }
+              />
+            </View>
+            <View
+              collapsable={false}
+              pointerEvents="none"
+              style={
                 {
                   "height": 40,
+                  "left": 0,
+                  "position": "absolute",
+                  "top": 8,
+                  "transform": [
+                    {
+                      "translateX": 15,
+                    },
+                  ],
                   "width": 40,
                 }
               }
@@ -2955,17 +3511,20 @@ exports[`solid tier light 1`] = `
             </View>
             <View
               collapsable={false}
+              pointerEvents="none"
               style={
                 {
-                  "width": 0,
-                }
-              }
-            />
-            <View
-              collapsable={false}
-              style={
-                {
+                  "height": 56,
+                  "justifyContent": "center",
+                  "left": 0,
                   "overflow": "hidden",
+                  "position": "absolute",
+                  "top": 0,
+                  "transform": [
+                    {
+                      "translateX": 55,
+                    },
+                  ],
                   "width": 0,
                 }
               }
@@ -2979,41 +3538,46 @@ exports[`solid tier light 1`] = `
                     "fontSize": 15,
                     "fontWeight": "700",
                     "opacity": 0,
+                    "transform": [
+                      {
+                        "translateX": 0,
+                      },
+                    ],
+                    "width": 0,
                   }
                 }
               >
                 Recent
               </Text>
             </View>
-          </View>
-          <View
-            accessibilityElementsHidden={true}
-            importantForAccessibility="no-hide-descendants"
-            pointerEvents="none"
-            style={
-              {
-                "flexDirection": "row",
-                "left": 0,
-                "opacity": 0,
-                "position": "absolute",
-                "top": 0,
-                "width": 400,
-              }
-            }
-          >
-            <Text
-              collapsable={false}
-              numberOfLines={1}
-              onLayout={[Function]}
+            <View
+              accessibilityElementsHidden={true}
+              importantForAccessibility="no-hide-descendants"
+              pointerEvents="none"
               style={
                 {
-                  "fontSize": 15,
-                  "fontWeight": "700",
+                  "flexDirection": "row",
+                  "left": 0,
+                  "opacity": 0,
+                  "position": "absolute",
+                  "top": 0,
+                  "width": 400,
                 }
               }
             >
-              Recent
-            </Text>
+              <Text
+                numberOfLines={1}
+                onLayout={[Function]}
+                style={
+                  {
+                    "fontSize": 15,
+                    "fontWeight": "700",
+                  }
+                }
+              >
+                Recent
+              </Text>
+            </View>
           </View>
         </View>
       </View>
