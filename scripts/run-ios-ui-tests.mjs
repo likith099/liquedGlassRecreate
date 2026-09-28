@@ -1,10 +1,13 @@
 #!/usr/bin/env node
 // Runs named example UI tests on an iOS simulator and exits with their result.
 //
-//   node scripts/run-ios-ui-tests.mjs [--simulator <udid>] [--result <path.xcresult>] [--log <path>] testName…
+//   node scripts/run-ios-ui-tests.mjs [--simulator <udid>] [--configuration Debug|Release]
+//     [--result <path.xcresult>] [--log <path>] testName…
 //
 // Without --simulator it uses the first available iPhone on the newest installed iOS runtime.
-// Metro must already serve the example on port 8093 (Debug builds load JavaScript from it).
+// Debug (the default) loads JavaScript from Metro, which must serve the example on port 8093. Release
+// carries its JavaScript, so it needs no Metro; CI uses it because a Debug launch fails outright when
+// a busy Metro does not answer the app's startup check.
 // xcodebuild can stay alive after the test run has finished, so once the run's summary line
 // appears the process is given 30 s to exit and is then stopped; the summary decides the result.
 // Failure diagnostics (a sysdiagnose per failure) are disabled: they are gigabytes each.
@@ -22,6 +25,8 @@ function option(name) {
   if (!value) throw new Error(`${name} needs a value`);
   return value;
 }
+const configuration = option('--configuration') ?? 'Debug';
+if (!['Debug', 'Release'].includes(configuration)) throw new Error('--configuration must be Debug or Release');
 const simulator = option('--simulator') ?? newestIPhone();
 const result = resolve(option('--result') ?? 'artifacts/UITests.xcresult');
 const logPath = resolve(option('--log') ?? 'artifacts/ui-tests.log');
@@ -50,7 +55,7 @@ mkdirSync(dirname(result), {recursive: true});
 mkdirSync(dirname(logPath), {recursive: true});
 const log = createWriteStream(logPath);
 const xcodebuild = spawn('xcodebuild', [
-  '-workspace', 'example/ios/LiquidGlassLab.xcworkspace', '-scheme', 'LiquidGlassLab',
+  '-workspace', 'example/ios/LiquidGlassLab.xcworkspace', '-scheme', 'LiquidGlassLab', '-configuration', configuration,
   '-destination', `platform=iOS Simulator,id=${simulator}`,
   '-resultBundlePath', result, '-collect-test-diagnostics', 'never', '-parallel-testing-enabled', 'NO',
   ...(process.env.ALG_DERIVED_DATA ? ['-derivedDataPath', process.env.ALG_DERIVED_DATA] : []),

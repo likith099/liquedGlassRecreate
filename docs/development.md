@@ -77,8 +77,10 @@ access, Xcode and CocoaPods, and `ANDROID_HOME` / `JAVA_HOME`.
 - `ci.yml` (every push to `main` and every pull request): release-tool tests, typecheck, Jest and
   the pack check.
 - `device-tests.yml` (pull requests that change native, source or example code, and on demand):
-  iOS UI tests on a macOS simulator, and all Android checks on an API 35 emulator with a release
-  build.
+  iOS UI tests on a macOS simulator and all Android checks on an API 35 emulator, both with Release
+  builds that carry their JavaScript. (A Debug launch on a busy runner can fail outright when Metro
+  misses the app's startup check; locally, `run-ios-ui-tests.mjs` defaults to Debug and takes
+  `--configuration Release`.)
 - `release.yml` (a `v*` tag): acceptance checks, native Release builds, then npm publishing with
   provenance. See [releasing](releasing.md).
 
