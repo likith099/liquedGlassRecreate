@@ -1,7 +1,7 @@
 {
   "schemaVersion": 2,
   "version": "0.1.3",
-  "sourceDigest": "e3cdf59e49fea3f0851158696bfd2c12050b13c483fee1a239aa55c7071767fc",
+  "sourceDigest": "d0aa22f786aa398366847dcf863e3f9909ebae1db53fd156d30a4f4ffa834f8a",
   "checks": {
     "ios-current-profile": {
       "status": "deferred",
@@ -194,7 +194,7 @@
       "os": "iOS and Android native Release builds",
       "date": "2026-09-28",
       "configuration": "Release",
-      "summary": "317-file archive SHA-256 9e5575c6467090bbefa6ad88bba7f95fb3f56c7272a9482c1d30a3449df17ae5 passed consumer TypeScript, both production bundles and both native Release builds from main 8f59ce5. No Expo or navigation dependency.",
+      "summary": "317-file archive SHA-256 02a19f6104864592e791561587e20007b6aa7356bc9aabc2ef941091e8edeba5 passed consumer TypeScript, both production bundles and both native Release builds, from the final candidate source (0.1.3 plus the README rewrite and the expanding-pill shadow fix). No Expo or navigation dependency.",
       "evidence": [
         "release/verification-0.1.3.md"
       ]
@@ -218,7 +218,7 @@
       "os": "iOS 26.5",
       "date": "2026-09-28",
       "configuration": "Debug",
-      "summary": "0.1.3 UI tests passed: tab lifecycle and first tap, tab artwork and tints, drag lens, visual tiers, icon buttons and programmatic menus, toolbar dismissal (no opaque frames), context menu, badges/segments/FAB, search/toast/scroll edge, expanding pills, SwiftUI cluster merging and RTL, adaptive accessibility, slider. The GitHub device-test run on the final candidate passed. Captures inspected.",
+      "summary": "0.1.3 UI tests passed: tab lifecycle and first tap, tab artwork and tints, drag lens, visual tiers, icon buttons and programmatic menus, toolbar dismissal (no opaque frames), context menu, badges/segments/FAB, search/toast/scroll edge, expanding pills, SwiftUI cluster merging and RTL, adaptive accessibility, slider. The GitHub device-test run on the final candidate passed. Captures inspected. After the expanding-pill shadow fix, the pill test passed again on 26.5 and the shadow was inspected.",
       "evidence": [
         "release/verification-0.1.3.md"
       ]
@@ -228,9 +228,9 @@
       "reviewer": "Claude Code",
       "device": "iPhone 16 Pro Max simulator",
       "os": "iOS 18.6",
-      "date": "2026-09-27",
+      "date": "2026-09-28",
       "configuration": "Debug",
-      "summary": "Blur-tier and pre-26 checks passed: tab artwork and tints, visual tiers (blur and standard, light and dark), tab lifecycle and navigation, expanding pills, badges, context menu and plain fallback, toolbar and menus. iOS 15-17 remains unexecuted.",
+      "summary": "Blur-tier and pre-26 checks passed: tab artwork and tints, visual tiers (blur and standard, light and dark), tab lifecycle and navigation, expanding pills, badges, context menu and plain fallback, toolbar and menus. iOS 15-17 remains unexecuted. Pills and badges passed again on 18.6 after the shadow fix.",
       "evidence": [
         "release/verification-0.1.3.md"
       ]

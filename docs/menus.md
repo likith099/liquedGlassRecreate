@@ -73,6 +73,12 @@ import {GlassIconButton} from '@likith99/react-native-adaptive-liquid-glass';
 - **Android:** an oval surface with a ripple and the `androidIcon` drawable, opening a `PopupMenu`.
 - **Props:** `size` is the diameter (default 44 points, the minimum recommended touch target). `symbolPointSize` defaults to 40% of it. `colorScheme` (`system`, `light`, `dark`) pins the material, for example dark glass over a photo in both themes. `tintColor` colours the glyph.
 - **Accessibility:** `accessibilityLabel` is required because the control shows no text.
+- **Floating action button:** `variant="prominent"` fills the button with `tintColor` and draws the glyph in white: prominent glass on iOS 26, a filled button below it, and a filled oval on Android.
+
+```tsx
+<GlassIconButton systemImage="plus" androidIcon="ic_add" accessibilityLabel="Add item" size={56}
+  variant="prominent" tintColor="#6159B7" onPress={add} />
+```
 
 ## Opening a menu from code, and open/close events
 

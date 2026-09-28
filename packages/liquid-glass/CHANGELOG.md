@@ -61,6 +61,8 @@ Rebuild both native apps after upgrading: the menu and tab Fabric components gai
 
 ### Documentation
 
+- The READMEs are shorter, with current screenshots; component detail moved to `docs/controls.md`,
+  `docs/surfaces.md`, `docs/development.md` and a host-app setup section in `docs/compatibility.md`.
 - iOS tab bars: extend the host to the bottom edge and include the bottom inset in its height.
   Padding it above the home indicator left the iOS 26 bar 34 points too high.
 - New surfaces reference and `expo-glass-effect` migration guide.
@@ -87,6 +89,9 @@ Rebuild both native apps after upgrading: the menu and tab Fabric components gai
   `SearchView`.
 - `GlassExpandingTabs` (Android): a development warning names options without `androidIcon`,
   whose collapsed pills would otherwise be empty.
+- `GlassExpandingTabs` (iOS 26): the pill row's scroll view clipped the glass shadow, drawing a
+  hard-edged grey band behind the pills. The row no longer clips, so the shadow fades naturally and
+  pills scroll under the row's inset.
 
 ## 0.1.2
 

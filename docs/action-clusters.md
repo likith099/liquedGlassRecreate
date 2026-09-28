@@ -57,3 +57,24 @@ needs newer SDK/runtime support, so this implementation deliberately uses the
 26.0 stock style. The addition compiled and passed simulator switching, merging and RTL checks;
 light-mode screenshots were inspected. See [release verification](../release/verification-0.1.2.md)
 for exact executed coverage and remaining limits.
+
+## UIKit cluster behaviour
+
+`GlassActionCluster` is controlled: update `expanded` in `onExpandedChange`. Action IDs must be
+unique, nonempty and stable. iOS shows SF Symbols with accessible titles; Android shows the titles on
+standard buttons. The native controls do not accept React children.
+
+- **Size:** allow about `24 + 52 * (actions.length + 1) + 12 * actions.length` points of width and at
+  least 80 of height. A narrower host switches to wrapping standard controls and back to glass when
+  it fits, keeping the controlled state; let the height grow rather than fixing it.
+- **Material and touch:** the cluster uses the same `UIGlassEffect` host as `GlassView`. UIKit owns
+  the finger-localized highlight and deformation, with the symbols inside the effect so they stretch
+  with the glass. There is no custom press overlay or movement. `interactive={false}` removes the
+  press visuals but keeps callbacks. `pressFeedback` is deprecated and ignored.
+- **Default tint:** in dark mode actions use a neutral black material tint at 0.65 alpha, which also
+  darkens the glass at rest; light mode is untinted; `tintColor` overrides both. UIKit has no
+  separate highlight-strength setting.
+- **Merging:** `mergingEnabled` defaults to false. When enabled, UIKit merges the glass with
+  `UIGlassContainerEffect` during expansion and collapse; `spacing` is the merging threshold.
+- **Accessibility:** Reduce Transparency uses opaque backgrounds; Reduce Motion skips the
+  transitions. `forceFallback` previews the standard controls.

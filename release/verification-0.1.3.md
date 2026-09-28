@@ -6,8 +6,8 @@ something is untested or open, this summary supersedes them.
 
 ## Candidate
 
-- Source: `main` at the merge of pull request #1 (`8f59ce5`), version 0.1.3.
-- Reviewed source digest: `e3cdf59e49fea3f0851158696bfd2c12050b13c483fee1a239aa55c7071767fc`.
+- Source: version 0.1.3 as merged in pull request #1 (`8f59ce5`), plus the acceptance branch: the README rewrite, new docs pages and the expanding-pill shadow fix.
+- Reviewed source digest: `d0aa22f786aa398366847dcf863e3f9909ebae1db53fd156d30a4f4ffa834f8a`.
 - Contents: the consumer review (R1–R21 in the shared review tracker), new components
   (`GlassIconButton`, `GlassContextMenu`, `GlassExpandingTabs`, `GlassSearchField`,
   `GlassScrollEdge`, `GlassToast`, `GlassBadge`), tab image sources and per-tab colours on both
@@ -22,7 +22,7 @@ something is untested or open, this summary supersedes them.
 | --- | --- |
 | TypeScript, Jest | Clean; 20 suites / 92 tests and 6 tier snapshots (glass, blur, solid × light, dark). |
 | Package contents | `check-pack` passed: 317 files. |
-| Packed consumer (Release) | Passed from `main` `8f59ce5`: 317-file archive, SHA-256 `9e5575c6467090bbefa6ad88bba7f95fb3f56c7272a9482c1d30a3449df17ae5`; consumer TypeScript, both production bundles, iOS and Android native Release builds. No Expo or navigation dependency. |
+| Packed consumer (Release) | Passed on the final source: 317-file archive, SHA-256 `02a19f6104864592e791561587e20007b6aa7356bc9aabc2ef941091e8edeba5`; consumer TypeScript, both production bundles, iOS and Android native Release builds. No Expo or navigation dependency. (An earlier run from `8f59ce5`, before the README and pill changes, also passed.) |
 | iOS 26.5 simulator (iPhone 17 Pro Max) | Tab artwork and tints, visual tiers, tab lifecycle and first tap, tab navigation, drag lens; icon buttons and programmatic menus; toolbar dismissal (zero opaque frames in 5 recorded dismissals); context menu; badges, segments and FAB; search, toast and scroll edge; expanding pills; SwiftUI cluster merging and RTL; adaptive accessibility; slider. All passed. |
 | iOS 18.6 simulator (iPhone 16 Pro Max) | Tab artwork and tints, visual tiers (blur), tab lifecycle, tab navigation, expanding pills, badges, context menu and fallback, toolbar and menus. All passed. |
 | Android 36 emulator (Pixel 10 Pro XL), debug and release builds | Menus, toolbar, tabs, context menu, the 0.1.3 features (icon buttons, segments, badges, pills, search, toast, tab images and colours), slider, accessibility (large text, dark) and real-locale RTL. All passed. |
@@ -31,7 +31,9 @@ something is untested or open, this summary supersedes them.
 Bugs found during verification and fixed before this candidate: the Android context menu never
 opened from a long press on its content (React Native views claimed the touch), the Android search
 field capitalised queries, and Android pills without `androidIcon` were silently empty (now a
-development warning).
+development warning). While taking the README screenshots, the iOS 26 pill row turned out to clip
+the glass shadow into a hard grey band; the row no longer clips, and the pill tests passed again on
+26.5 and 18.6.
 
 ## Not established
 
