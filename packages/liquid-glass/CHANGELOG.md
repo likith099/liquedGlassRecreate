@@ -4,7 +4,7 @@ All notable changes to `@likith99/react-native-adaptive-liquid-glass`. Versions 
 [semantic versioning](https://semver.org); while the major version is 0, minor versions may
 change the API.
 
-## Unreleased
+## 0.1.4 — September 28, 2026
 
 ### Added
 
