@@ -1,5 +1,9 @@
 import XCTest
 
+/// How long a freshly launched app may take to show its first screen. A cold launch loads the
+/// JavaScript bundle from Metro, and shared CI runners are several times slower than a local Mac.
+let launchTimeout: TimeInterval = 120
+
 extension XCUIApplication {
   /// Scrolls the page until `element` is hittable inside `band` (fractions of the screen height; the
   /// default only requires it to be on screen). Each drag moves the page by the distance from the
@@ -49,7 +53,7 @@ final class GlassInteractionTests: XCTestCase {
     let app = XCUIApplication(); app.launch()
     defer { app.terminate() }
     let open = app.buttons["open-context-demo"]
-    XCTAssertTrue(open.waitForExistence(timeout: 45)); open.tap()
+    XCTAssertTrue(open.waitForExistence(timeout: launchTimeout)); open.tap()
     if fallback { app.switches["context-fallback"].tap() }
     func action(_ title: String) -> XCUIElement {
       if fallback { return app.descendants(matching: .any).matching(NSPredicate(format: "label == %@", title)).firstMatch }
@@ -106,7 +110,7 @@ final class GlassInteractionTests: XCTestCase {
     let app = XCUIApplication(); app.launch()
     defer { app.terminate() }
     let toggle = app.buttons["glass-cluster-toggle"]
-    XCTAssertTrue(toggle.waitForExistence(timeout: 45)); toggle.tap()
+    XCTAssertTrue(toggle.waitForExistence(timeout: launchTimeout)); toggle.tap()
     let favorite = app.buttons["glass-action-heart"]
     XCTAssertTrue(favorite.waitForExistence(timeout: 5))
     let setting = app.switches["swiftui-cluster-toggle"]
@@ -174,7 +178,7 @@ final class GlassInteractionTests: XCTestCase {
     app.launch()
     defer { app.terminate() }
     let toggle = app.buttons["glass-cluster-toggle"]
-    XCTAssertTrue(toggle.waitForExistence(timeout: 45)); toggle.tap()
+    XCTAssertTrue(toggle.waitForExistence(timeout: launchTimeout)); toggle.tap()
     let favorite = app.buttons["glass-action-heart"]
     XCTAssertTrue(favorite.waitForExistence(timeout: 5))
     XCTAssertGreaterThan(favorite.frame.midX, toggle.frame.midX)
@@ -201,7 +205,7 @@ final class GlassInteractionTests: XCTestCase {
     let originalOrientation = XCUIDevice.shared.orientation
     defer { XCUIDevice.shared.orientation = originalOrientation }
     let open = app.buttons["open-tabs-demo"]
-    XCTAssertTrue(open.waitForExistence(timeout: 45)); open.tap()
+    XCTAssertTrue(open.waitForExistence(timeout: launchTimeout)); open.tap()
     for orientation in [UIDeviceOrientation.portrait, .landscapeLeft] {
       XCUIDevice.shared.orientation = orientation
       let home = app.buttons["Home tab"]
@@ -225,7 +229,7 @@ final class GlassInteractionTests: XCTestCase {
     continueAfterFailure = false
     let app = XCUIApplication(); app.launch()
     let toggle = app.buttons["glass-cluster-toggle"]
-    XCTAssertTrue(toggle.waitForExistence(timeout: 45))
+    XCTAssertTrue(toggle.waitForExistence(timeout: launchTimeout))
     toggle.tap(); app.buttons["glass-action-heart"].tap(); toggle.tap()
     let context = XCTAttachment(string: "Device: \(UIDevice.current.model); OS: \(UIDevice.current.systemVersion); "
       + "thermal: \(ProcessInfo.processInfo.thermalState.rawValue); maximumFPS: \(UIScreen.main.maximumFramesPerSecond); configuration: Release")
@@ -294,7 +298,7 @@ final class GlassInteractionTests: XCTestCase {
     continueAfterFailure = false
     let app = XCUIApplication(); app.launch()
     let button = app.buttons["glass-counter"]
-    XCTAssertTrue(button.waitForExistence(timeout: 45))
+    XCTAssertTrue(button.waitForExistence(timeout: launchTimeout))
     button.tap()
     XCTAssertTrue(app.staticTexts["React button pressed"].waitForExistence(timeout: 5))
     let capture = XCTAttachment(screenshot: app.screenshot())
@@ -379,7 +383,7 @@ final class GlassInteractionTests: XCTestCase {
     continueAfterFailure = false
     let app = XCUIApplication(); app.launch()
     let button = app.buttons["native-menu"]
-    XCTAssertTrue(button.waitForExistence(timeout: 45))
+    XCTAssertTrue(button.waitForExistence(timeout: launchTimeout))
     app.scrollIntoView(button)
     XCTAssertTrue(button.isHittable)
     for standard in [false, true] {
@@ -435,7 +439,7 @@ final class GlassInteractionTests: XCTestCase {
     continueAfterFailure = false
     let app = XCUIApplication(); app.launch()
     let sort = app.buttons["native-toolbar-sort"]
-    XCTAssertTrue(sort.waitForExistence(timeout: 45))
+    XCTAssertTrue(sort.waitForExistence(timeout: launchTimeout))
     func bringIntoBand(_ element: XCUIElement) {
       app.scrollIntoView(element, band: 0.2...0.7)
       XCTAssertTrue(element.isHittable)
@@ -476,7 +480,7 @@ final class GlassInteractionTests: XCTestCase {
     let app = XCUIApplication(); app.launch()
     let close = app.buttons["icon-close"]
     let more = app.buttons["icon-more"]
-    XCTAssertTrue(close.waitForExistence(timeout: 45))
+    XCTAssertTrue(close.waitForExistence(timeout: launchTimeout))
     app.scrollIntoView(more, band: 0.2...0.7)
     XCTAssertEqual(close.frame.width, 40, accuracy: 1)
     XCTAssertEqual(close.frame.height, 40, accuracy: 1)
@@ -514,7 +518,7 @@ final class GlassInteractionTests: XCTestCase {
   func testBadgesSegmentsAndFab() throws {
     continueAfterFailure = false
     let app = XCUIApplication(); app.launch()
-    XCTAssertTrue(app.buttons["glass-counter"].waitForExistence(timeout: 45))
+    XCTAssertTrue(app.buttons["glass-counter"].waitForExistence(timeout: launchTimeout))
     func bringIntoView(_ element: XCUIElement) { app.scrollIntoView(element, band: 0.15...0.8) }
     // Counts and colours on the existing All/Saved/Shared control.
     let counts = app.switches["segment-counts-toggle"]
@@ -547,7 +551,7 @@ final class GlassInteractionTests: XCTestCase {
       attachment.name = name; attachment.lifetime = .keepAlways; add(attachment)
     }
     let open = app.buttons["open-search-demo"]
-    XCTAssertTrue(open.waitForExistence(timeout: 45)); open.tap()
+    XCTAssertTrue(open.waitForExistence(timeout: launchTimeout)); open.tap()
     let field = app.descendants(matching: .any)["item-search"].firstMatch
     XCTAssertTrue(field.waitForExistence(timeout: 10))
     XCTAssertTrue(app.staticTexts["20 results"].exists)
@@ -588,7 +592,7 @@ final class GlassInteractionTests: XCTestCase {
     continueAfterFailure = false
     let app = XCUIApplication(); app.launch()
     let selection = app.staticTexts["Filter: overview"]
-    XCTAssertTrue(app.buttons["glass-counter"].waitForExistence(timeout: 45))
+    XCTAssertTrue(app.buttons["glass-counter"].waitForExistence(timeout: launchTimeout))
     app.scrollIntoView(selection, band: 0.15...0.8)
     func pill(_ value: String) -> XCUIElement { app.buttons["filter-tabs-\(value)"] }
     // Collapsed pills still expose their labels to accessibility.
@@ -632,7 +636,7 @@ final class GlassInteractionTests: XCTestCase {
       XCTAssertTrue(app.staticTexts["Toolbar selected: \(id)"].waitForExistence(timeout: 5))
     }
     let save = app.buttons["native-toolbar-save"]
-    XCTAssertTrue(save.waitForExistence(timeout: 45)); reveal(save); save.tap(); expectStatus("save")
+    XCTAssertTrue(save.waitForExistence(timeout: launchTimeout)); reveal(save); save.tap(); expectStatus("save")
     let sort = app.buttons["native-toolbar-sort"]
     sort.tap(); select("Most recent"); expectStatus("recent")
     XCTAssertTrue(app.staticTexts["Order: recent"].exists)
@@ -695,7 +699,7 @@ final class GlassInteractionTests: XCTestCase {
     for launch in 0..<3 {
       app.launch()
       let open = app.buttons["open-tabs-demo"]
-      XCTAssertTrue(open.waitForExistence(timeout: 45)); open.tap()
+      XCTAssertTrue(open.waitForExistence(timeout: launchTimeout)); open.tap()
       screen("Home")
       XCTAssertTrue(tab("Library").waitForExistence(timeout: 5))
       tab("Library").tap()
@@ -740,7 +744,7 @@ final class GlassInteractionTests: XCTestCase {
       attachment.name = name; attachment.lifetime = .keepAlways; add(attachment)
     }
     let open = app.buttons["open-tabs-demo"]
-    XCTAssertTrue(open.waitForExistence(timeout: 45)); open.tap()
+    XCTAssertTrue(open.waitForExistence(timeout: launchTimeout)); open.tap()
     screen("Home")
     let brand = app.switches["tabs-brand-toggle"]
     app.scrollIntoView(brand)
@@ -817,7 +821,7 @@ final class GlassInteractionTests: XCTestCase {
       print("ALG-LENS \(from)->\(to) released")
     }
     let open = app.buttons["open-tabs-demo"]
-    XCTAssertTrue(open.waitForExistence(timeout: 45)); open.tap()
+    XCTAssertTrue(open.waitForExistence(timeout: launchTimeout)); open.tap()
     screen("Home")
     // Default colours: UIKit swaps in the selected image (house.circle.fill) by itself.
     capture("Default tabs, Home selected")
@@ -842,7 +846,7 @@ final class GlassInteractionTests: XCTestCase {
     continueAfterFailure = false
     let app = XCUIApplication(); app.launch()
     let open = app.buttons["open-tabs-demo"]
-    XCTAssertTrue(open.waitForExistence(timeout: 45)); open.tap()
+    XCTAssertTrue(open.waitForExistence(timeout: launchTimeout)); open.tap()
     XCTAssertTrue(app.staticTexts["Home screen"].waitForExistence(timeout: 8))
     func capture(_ name: String) {
       let attachment = XCTAttachment(screenshot: app.screenshot())
@@ -865,7 +869,7 @@ final class GlassInteractionTests: XCTestCase {
     continueAfterFailure = false
     let app = XCUIApplication(); app.launch()
     let open = app.buttons["open-tabs-demo"]
-    XCTAssertTrue(open.waitForExistence(timeout: 45)); open.tap()
+    XCTAssertTrue(open.waitForExistence(timeout: launchTimeout)); open.tap()
     func tab(_ name: String) -> XCUIElement { app.buttons["\(name) tab"] }
     func screen(_ name: String) { XCTAssertTrue(app.staticTexts["\(name) screen"].waitForExistence(timeout: 8)) }
     func toggle(_ id: String) {
@@ -930,7 +934,7 @@ final class GlassInteractionTests: XCTestCase {
     continueAfterFailure = false
     let app = XCUIApplication(); app.launch()
     let open = app.buttons["open-accessibility-demo"]
-    XCTAssertTrue(open.waitForExistence(timeout: 45)); open.tap()
+    XCTAssertTrue(open.waitForExistence(timeout: launchTimeout)); open.tap()
     // The demo screen must finish mounting before scrolling; an early probe followed by
     // one-directional swipes scrolls past controls near the top of the scroll view.
     XCTAssertTrue(app.staticTexts["Added: 0"].waitForExistence(timeout: 30))
@@ -1009,7 +1013,7 @@ final class GlassInteractionTests: XCTestCase {
     app.launchArguments += ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"]
     app.launch()
     let open = app.buttons["open-accessibility-demo"]
-    XCTAssertTrue(open.waitForExistence(timeout: 45)); open.tap()
+    XCTAssertTrue(open.waitForExistence(timeout: launchTimeout)); open.tap()
     let all = app.descendants(matching: .any)["adaptive-segments-all"].firstMatch
     let saved = app.descendants(matching: .any)["adaptive-segments-saved"].firstMatch
     XCTAssertTrue(app.staticTexts["Selected: all"].waitForExistence(timeout: 30))
@@ -1030,7 +1034,7 @@ final class GlassInteractionTests: XCTestCase {
     continueAfterFailure = false
     let app = XCUIApplication(); app.launch()
     let open = app.buttons["open-tabs-demo"]
-    XCTAssertTrue(open.waitForExistence(timeout: 45)); open.tap()
+    XCTAssertTrue(open.waitForExistence(timeout: launchTimeout)); open.tap()
     let badges = app.switches["tabs-badges-toggle"]
     XCTAssertTrue(badges.waitForExistence(timeout: 8)); badges.tap()
     XCTAssertEqual(badges.value as? String, "0")
@@ -1053,7 +1057,7 @@ final class GlassInteractionTests: XCTestCase {
       app.launchArguments = ["-ALGAppearance", appearance]
       app.launch()
       let surface = app.descendants(matching: .any).matching(identifier: "adaptive-surface").firstMatch
-      XCTAssertTrue(surface.waitForExistence(timeout: 45))
+      XCTAssertTrue(surface.waitForExistence(timeout: launchTimeout))
       let fallback = app.switches["fallback-toggle"]
       for tier in [native, "standard"] {
         if tier == "standard" {
@@ -1104,7 +1108,7 @@ final class GlassInteractionTests: XCTestCase {
     let app = XCUIApplication()
     app.launch()
     let toggle = app.buttons["glass-cluster-toggle"]
-    XCTAssertTrue(toggle.waitForExistence(timeout: 45))
+    XCTAssertTrue(toggle.waitForExistence(timeout: launchTimeout))
     let reference = app.descendants(matching: .any).matching(identifier: "adaptive-surface").firstMatch
     XCTAssertTrue(reference.exists)
     // Long holds expose peak lighting for the companion simulator recording.
@@ -1119,7 +1123,7 @@ final class GlassInteractionTests: XCTestCase {
     let app = XCUIApplication()
     app.launch()
     let toggle = app.buttons["glass-cluster-toggle"]
-    XCTAssertTrue(toggle.waitForExistence(timeout: 45))
+    XCTAssertTrue(toggle.waitForExistence(timeout: launchTimeout))
     let setting = app.switches["interactive-toggle"]
     for expected in ["1", "0"] {
       app.scrollIntoView(setting)
@@ -1141,7 +1145,7 @@ final class GlassInteractionTests: XCTestCase {
     let app = XCUIApplication()
     app.launch()
     let toggle = app.buttons["glass-cluster-toggle"]
-    XCTAssertTrue(toggle.waitForExistence(timeout: 45))
+    XCTAssertTrue(toggle.waitForExistence(timeout: launchTimeout))
     let origin = toggle.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
     let outside = origin.withOffset(CGVector(dx: 0, dy: -100))
     origin.press(forDuration: 0.5, thenDragTo: outside)
@@ -1166,7 +1170,7 @@ final class GlassInteractionTests: XCTestCase {
     let app = XCUIApplication()
     app.launch()
     let toggle = app.buttons["glass-cluster-toggle"]
-    XCTAssertTrue(toggle.waitForExistence(timeout: 45))
+    XCTAssertTrue(toggle.waitForExistence(timeout: launchTimeout))
     // Exercise native press/release and React callback updates in both rendering modes.
     // These assertions verify behavior, not frame rate or optical smoothness.
     for merging in [false, true] {
@@ -1198,7 +1202,7 @@ final class GlassInteractionTests: XCTestCase {
     continueAfterFailure = false
     let app = XCUIApplication()
     app.launch()
-    XCTAssertTrue(app.buttons["glass-counter"].waitForExistence(timeout: 45))
+    XCTAssertTrue(app.buttons["glass-counter"].waitForExistence(timeout: launchTimeout))
     let slider = app.sliders["native-slider"]
     app.scrollIntoView(slider)
     XCTAssertTrue(slider.isHittable, app.debugDescription)
@@ -1237,7 +1241,7 @@ final class GlassInteractionTests: XCTestCase {
     continueAfterFailure = false
     let app = XCUIApplication()
     app.launch()
-    XCTAssertTrue(app.buttons["glass-counter"].waitForExistence(timeout: 45))
+    XCTAssertTrue(app.buttons["glass-counter"].waitForExistence(timeout: launchTimeout))
     if glassEra {
       let segments = app.segmentedControls["native-segments"]
       app.scrollIntoView(segments)
@@ -1291,7 +1295,7 @@ final class GlassInteractionTests: XCTestCase {
     continueAfterFailure = false
     let app = XCUIApplication()
     app.launch()
-    XCTAssertTrue(app.buttons["glass-counter"].waitForExistence(timeout: 45), app.debugDescription)
+    XCTAssertTrue(app.buttons["glass-counter"].waitForExistence(timeout: launchTimeout), app.debugDescription)
     app.buttons["glass-counter"].tap()
     XCTAssertTrue(app.staticTexts["React button pressed"].waitForExistence(timeout: 5))
     let toggle = app.buttons["glass-cluster-toggle"]
@@ -1355,7 +1359,7 @@ final class GlassInteractionTests: XCTestCase {
     app.launch()
     defer { app.terminate() }
     let toggle = app.buttons["glass-cluster-toggle"]
-    XCTAssertTrue(toggle.waitForExistence(timeout: 45))
+    XCTAssertTrue(toggle.waitForExistence(timeout: launchTimeout))
     func reveal(_ element: XCUIElement, up: Bool) {
       app.scrollIntoView(element)
       XCTAssertTrue(element.isHittable)
