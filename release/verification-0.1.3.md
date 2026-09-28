@@ -1,6 +1,6 @@
 # 0.1.3 verification
 
-**Status (September 28, 2026): release candidate verified on `main`. Not yet published.** The
+**Status: published to npm on September 28, 2026** from tag `v0.1.3` (`793a46b`) by the release workflow ([run 36426664917](https://github.com/likith099/liquedGlassRecreate/actions/runs/36426664917)), with provenance. The registry tarball (shasum `619c5f3a0fd16c2bb771f5bd88da07d45ba84977`, 317 files) has contents identical to the tarball that passed the Release packed-consumer check. The
 sections after this summary are the dated history of how the candidate was built; where they say
 something is untested or open, this summary supersedes them.
 
