@@ -19,8 +19,11 @@ Remaining manual/device categories may have documented owner deferrals; these ar
 not passes. Each entry needs reviewer, date, summary and durable evidence. Current
 results are in [0.1.2 verification](../release/verification-0.1.2.md).
 
-Shared CI checks and both native Release build jobs must still succeed before OIDC
-publishing starts. They run on GitHub after a tag push, following local candidate verification. Branch workflow dispatch cannot publish. The
+The shared checks (release tools, typecheck, Jest, pack, acceptance) must still succeed on GitHub
+before OIDC publishing starts; they run after a tag push and take a few minutes. Native builds and
+device tests are not repeated on GitHub (owner decision, September 29, 2026): they are verified
+locally before the tag, on simulators, the emulator and the packed Release consumer, and recorded
+here. Branch workflow dispatch cannot publish. The
 trusted-publisher identity and workflow filename remain unchanged. 0.1.2 passed
 these hosted gates and was published on September 22, 2026; see the verification report.
 

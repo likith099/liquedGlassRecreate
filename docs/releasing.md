@@ -30,8 +30,9 @@ now use the tag workflow; an interactive publish would bypass its checks.
    reviewed source; it does not mean tests passed. Commit the candidate and its
    durable review report together so the evidence survives a clean clone.
 4. Push the candidate commit and its matching `v<version>` tag when proceeding with
-   publication. The tag triggers shared checks, both native Release builds, then
-   OIDC publishing with provenance. Do not bypass a CI failure with manual publish.
+   publication. The tag triggers the shared checks (a few minutes), then OIDC publishing
+   with provenance. Native builds and device tests are the local checks in step 1; they
+   are not repeated on GitHub. Do not bypass a CI failure with manual publish.
    Push only the intended tag. A branch dispatch cannot publish, and published
    name/version pairs cannot be reused.
 5. Inspect Actions results and verify the registry artifact as described below.
@@ -88,5 +89,5 @@ A first publish can return `PUT 200` while anonymous `GET` still 404s for a minu
 The [acceptance record](../release/acceptance.json) uses schema 2 and the
 `iphone-first` scope. Documented owner deferrals do not block publication. Source
 review, SwiftUI/fallback runtime evidence, the packed Release consumer, exact
-source/version/tag matching, shared CI and native Release builds
-remain required.
+source/version/tag matching and the shared CI checks remain required. The native Release
+builds are the packed consumer's, run locally.

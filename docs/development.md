@@ -76,17 +76,14 @@ access, Xcode and CocoaPods, and `ANDROID_HOME` / `JAVA_HOME`.
 
 - `ci.yml` (every push to `main` and every pull request): release-tool tests, typecheck, Jest and
   the pack check.
-- `device-tests-ios.yml` and `device-tests-android.yml` (ready, non-draft pull requests that
-  change code that platform's app is built from, and on demand; an iOS-only change does not run
-  the Android checks and the reverse, and Jest tests or Markdown run neither): iOS UI tests on a
-  macOS simulator and all Android checks on API 35 emulators, both with Release builds that carry
-  their JavaScript. The iOS job keeps React Native's compiled C/C++/Objective-C in a ccache between
-  runs, so only the first run on a pull request compiles everything. The Android demo is built once
-  (with Gradle's cache) and its checks run in three emulator jobs at the same time. (A Debug launch
-  on a busy runner can fail outright when Metro misses the app's startup check; locally,
-  `run-ios-ui-tests.mjs` defaults to Debug and takes `--configuration Release`.)
-- `release.yml` (a `v*` tag): acceptance checks, native Release builds, then npm publishing with
-  provenance. See [releasing](releasing.md).
+- `release.yml` (a `v*` tag): the same shared checks plus the acceptance record, then npm
+  publishing with provenance. See [releasing](releasing.md).
+
+Native builds and device tests do not run on GitHub. Hosted simulator and emulator runs took 20–40
+minutes and failed on runner problems unrelated to the package, so they were removed on September
+29, 2026. Run them locally before a release: `node scripts/run-ios-ui-tests.mjs [--configuration
+Release] <tests…>` on an iOS simulator, `scripts/run-android-checks.sh [checks…]` on an emulator
+(never both at once), and the packed consumer above.
 
 ## Reference study
 

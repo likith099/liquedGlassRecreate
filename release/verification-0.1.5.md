@@ -8,7 +8,9 @@ September 29, 2026.
 - Source: branch `release/0.1.5`, which is `main` (`6f399df`, 0.1.4 plus docs) with the menu-panel
   work (`e2e8092`, `1372ef3`, `e615ed9`), the version bump (`290c413`), a UI-test fix for the
   segment fallback (`d356f1f`), an Android check-runner fix (`ae0c722`), the concentric row
-  highlight found in owner testing (`1744b07`) and faster device-test workflows (`c6129cc`).
+  highlight found in owner testing (`1744b07`), a more tolerant Android toast check (`f27d7b0`), and
+  CI changes that end with device tests and native builds removed from GitHub (owner decision; see
+  below). The package source is unchanged since `1744b07`.
 - Reviewed source digest: recorded in `release/acceptance.json`.
 - Changes since 0.1.4 (see `packages/liquid-glass/CHANGELOG.md`):
   - **Added:** `GlassMenuPanel`, the system menu as a native view the app places itself: iOS 26
@@ -33,7 +35,7 @@ September 29, 2026.
 | Android 36 emulator (Pixel 10 Pro XL), debug | All nine checks passed, including the new `verify-android-menu-panel.py` (long press, slide onto a row, lift off the panel, tap). |
 | Row highlight (owner report) | The highlighted row did not follow the panel's corners (iOS 26: a fixed 12 pt radius against the 30 pt platter; Android: a full-width rectangle). It is now inset by the panel's top padding with the panel's radius less that gap. iOS 26.5: the menu-panel test passed with the fix (Release) and the simulator run was recorded; Android: a held row was captured showing the inset, rounded highlight, and the menu-panel, context-menu and menu checks passed. Pre-26 iOS keeps the edge-to-edge highlight (same code path as before). |
 | Android panel entrance | A flicker found in manual testing (the panel drew one fully opaque frame before its fade-in started) was fixed; a per-frame draw log showed the first frame transparent in 10 of 10 presses afterwards. iOS recordings of every entrance frame showed no dip. |
-| GitHub Actions | Device tests on `290c413` ([run 36577601719](https://github.com/likith099/liquedGlassRecreate/actions/runs/36577601719)): iOS (now including the menu-panel test) passed. Android failed in every check because the CI emulator's launcher showed "isn't responding" over the app (all 18 attempts' UI dumps show the dialog; the app itself had started). The check runner now suppresses system error dialogs. Rerun on `ae0c722` ([run 36581627009](https://github.com/likith099/liquedGlassRecreate/actions/runs/36581627009)): iOS and Android jobs both passed; the Android job runs all nine checks, including the menu panel, on a release build. That run took about 40 minutes: ~30 compiling React Native for iOS from source, ~27 running the Android checks in sequence. The workflows are now split per platform, cache the iOS compile (ccache) and run the Android checks in three parallel emulator jobs; they first run on the release pull request (a new workflow cannot be dispatched before it is on `main`). |
+| GitHub Actions | Only the shared checks (release tools, typecheck, Jest, pack) run on GitHub now; they passed on every push of pull request #8. Hosted device tests were tried and removed: across the runs, iOS and Android each failed at least once on runner problems unrelated to the package (the emulator launcher's "isn't responding" dialog over the app; a compiler-cache path; a 2-second toast missed by a slow UI read, now read more tolerantly), and a run took 20–40 minutes. The owner decided on September 29 that native builds and device tests are verified locally before release instead; the local results above are that evidence. |
 
 ## Not established
 

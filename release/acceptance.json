@@ -1,7 +1,7 @@
 {
   "schemaVersion": 2,
   "version": "0.1.5",
-  "sourceDigest": "579c57492963e3b5d13a2d408eb52ff444aac38637477f04afe5bc4b9f14d332",
+  "sourceDigest": "cc10d7aa15e884ced1ac394d02715af70543cdb1356bfb442c1862c7d007163b",
   "checks": {
     "ios-current-profile": {
       "status": "deferred",
@@ -218,7 +218,7 @@
       "os": "iOS 26.5",
       "date": "2026-09-29",
       "configuration": "Release",
-      "summary": "Release UI tests passed on 26.5: tab lifecycle and first tap, tab artwork and tints, icon buttons and programmatic menus, visual tiers, menu panel (placement, tap and press-slide-lift selection, lift off the panel, steady platter brightness), context menu with onOpen/onClose and its plain fallback. The GitHub device-test run passed the iOS job including the menu-panel test.",
+      "summary": "Release UI tests passed on 26.5: tab lifecycle and first tap, tab artwork and tints, icon buttons and programmatic menus, visual tiers, menu panel (placement, tap and press-slide-lift selection, lift off the panel, steady platter brightness), context menu with onOpen/onClose and its plain fallback. Device tests run locally; hosted device tests were removed by owner decision (September 29).",
       "evidence": [
         "release/verification-0.1.5.md"
       ]

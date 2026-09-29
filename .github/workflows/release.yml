@@ -2,6 +2,9 @@ name: Release
 
 # The existing npm trusted publisher remains bound to this workflow filename.
 # Only a version tag with reviewed source and documented deferrals can reach the OIDC publish job.
+# Native builds and device tests are not run here: the release candidate is verified locally
+# (simulator and emulator checks, and the packed Release consumer that builds both native apps),
+# and that evidence is what release/acceptance.json records.
 on:
   push:
     tags:
@@ -29,12 +32,9 @@ jobs:
       - run: node scripts/check-pack.mjs
       - name: Require matching tag, source review and documented deferrals
         run: node scripts/check-release-acceptance.mjs
-  native:
-    needs: checks
-    uses: ./.github/workflows/native-acceptance.yml
   release:
     name: Publish verified release
-    needs: [checks, native]
+    needs: checks
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     permissions:
