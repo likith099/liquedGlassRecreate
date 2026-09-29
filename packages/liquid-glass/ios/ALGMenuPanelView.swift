@@ -23,6 +23,8 @@ enum PanelMetrics {
   static let title: CGFloat = 30
   static let cornerRadius: CGFloat = 30
   static let legacyCornerRadius: CGFloat = 13
+  /// Space between a highlighted row and the platter's sides: the same as above the first row.
+  static let highlightGap: CGFloat = paddingVertical
   static func scale(_ fontScale: CGFloat) -> CGFloat { max(1, fontScale) }
 }
 
@@ -121,7 +123,6 @@ private final class PanelRow: UIView {
     let destructive = item.destructive == true
     let ink: UIColor = !enabled ? .tertiaryLabel : destructive ? .systemRed : .label
     highlight.backgroundColor = legacy ? .tertiarySystemFill : UIColor.label.withAlphaComponent(0.1)
-    highlight.layer.cornerRadius = legacy ? 0 : 12 * scale
     highlight.layer.cornerCurve = .continuous
     highlight.isHidden = true
     addSubview(highlight)
@@ -157,7 +158,17 @@ private final class PanelRow: UIView {
   required init?(coder: NSCoder) { fatalError("init(coder:) is unavailable") }
   var reserveIcon = false
   func layout(scale: CGFloat, reserveIcon: Bool, legacy: Bool) {
-    highlight.frame = legacy ? bounds : bounds.insetBy(dx: 8 * scale, dy: 0)
+    if legacy {
+      // Pre-26 menus highlight edge to edge; the platter's rounded clip shapes the first and last rows.
+      highlight.frame = bounds
+      highlight.layer.cornerRadius = 0
+    } else {
+      // Concentric with the platter: the same gap on the sides as above the first row, and the
+      // platter's radius less that gap, so the highlight's ends follow the platter's corners.
+      let gap = PanelMetrics.highlightGap
+      highlight.frame = bounds.insetBy(dx: gap, dy: 0)
+      highlight.layer.cornerRadius = min(PanelMetrics.cornerRadius - gap, highlight.frame.height / 2)
+    }
     let titleX: CGFloat = reserveIcon ? 62 * scale : 20 * scale
     let trailing: CGFloat = viewWithTag(3) == nil ? 20 * scale : 46 * scale
     viewWithTag(1)?.frame = CGRect(x: titleX, y: 0, width: max(0, bounds.width - titleX - trailing), height: bounds.height)

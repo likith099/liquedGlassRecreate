@@ -1,9 +1,13 @@
 package com.adaptiveglass
 
 import android.animation.ValueAnimator
+import android.content.res.ColorStateList
 import android.content.res.Configuration
+import android.graphics.Color
 import android.graphics.Outline
 import android.graphics.drawable.GradientDrawable
+import android.graphics.drawable.InsetDrawable
+import android.graphics.drawable.RippleDrawable
 import android.view.HapticFeedbackConstants
 import android.view.MotionEvent
 import android.view.View
@@ -25,6 +29,9 @@ import org.json.JSONArray
 import java.lang.ref.WeakReference
 import kotlin.math.max
 import kotlin.math.roundToInt
+
+/** Space above the first row and below the last; also the highlight's side gap. Matches measure(). */
+private const val PANEL_PADDING_DP = 8f
 
 private class PanelEvent(surfaceId: Int, tag: Int, private val name: String, private val itemId: String? = null) :
   Event<PanelEvent>(surfaceId, tag) {
@@ -144,7 +151,7 @@ class ALGMenuPanelView(private val reactContext: ThemedReactContext) : FrameLayo
     val scale = max(1f, fontScale)
     val reserveIcon = flatten(entries).any { it.androidIcon.isNotEmpty() }
     content.removeAllViews()
-    content.setPadding(0, dp(8f), 0, dp(8f))
+    content.setPadding(0, dp(PANEL_PADDING_DP), 0, dp(PANEL_PADDING_DP))
     val built = mutableListOf<Pair<MenuRow, MenuEntry>>()
     // Sections become an optional title between dividers, as in the popup and in measure().
     var lastDivider = true
@@ -159,11 +166,12 @@ class ALGMenuPanelView(private val reactContext: ThemedReactContext) : FrameLayo
           if (!lastDivider) divider()
         } else {
           val enabled = !disabled && !entry.disabled
+          val rowHeight = dp(52f * scale)
           val row = views.item(entry, enabled, reserveIcon).apply {
-            background = views.ripple()
+            background = highlight(next, rowHeight)
             accessibilityDelegate = RowAccessibility(entry, enabled)
           }
-          add(row, dp(52f * scale)); built.add(row to entry); lastDivider = false
+          add(row, rowHeight); built.add(row to entry); lastDivider = false
         }
       }
     }
@@ -174,6 +182,19 @@ class ALGMenuPanelView(private val reactContext: ThemedReactContext) : FrameLayo
     }
     rows = built
     requestLayout()
+  }
+
+  /**
+   * A row's press highlight, concentric with the panel: inset from the sides by the same gap as
+   * above the first row, with the panel's corner radius less that gap (at most a capsule), so its
+   * ends follow the panel's corners. The ripple is confined to that shape.
+   */
+  private fun highlight(style: MenuStyle, rowHeight: Int): RippleDrawable {
+    val gap = dp(PANEL_PADDING_DP)
+    val radius = minOf(max(0f, style.cornerRadius - PANEL_PADDING_DP) * density, rowHeight / 2f)
+    val shape = GradientDrawable().apply { setColor(Color.WHITE); cornerRadius = radius }
+    val ink = Color.argb(0x1F, Color.red(style.text), Color.green(style.text), Color.blue(style.text))
+    return RippleDrawable(ColorStateList.valueOf(ink), null, InsetDrawable(shape, gap, 0, gap, 0))
   }
 
   private fun flatten(nodes: List<MenuEntry>): List<MenuEntry> = nodes.flatMap { if (it.kind == "section") flatten(it.items) else listOf(it) }
