@@ -44,7 +44,7 @@ jobs:
           ALG_DERIVED_DATA: ${{ runner.temp }}/DerivedData
         run: >
           node scripts/run-ios-ui-tests.mjs --configuration Release --result artifacts/DeviceTests.xcresult --log artifacts/device-tests.log
-          testTabBarLifecycleAndFirstTap testTabBarArtworkAndTints testIconButtonsAndProgrammaticMenu testVisualTiers
+          testTabBarLifecycleAndFirstTap testTabBarArtworkAndTints testIconButtonsAndProgrammaticMenu testVisualTiers testGlassMenuPanel
       - uses: actions/upload-artifact@v4
         if: always()
         with:

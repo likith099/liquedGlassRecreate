@@ -78,7 +78,8 @@
         "ALGScrollEdge": "ALGScrollEdgeComponentView",
         "ALGSearchField": "ALGSearchFieldComponentView",
         "ALGExpandingTabs": "ALGExpandingTabsComponentView",
-        "ALGSymbol": "ALGSymbolComponentView"
+        "ALGMenuPanel": "ALGMenuPanelComponentView",
+        "ALGLongPress": "ALGLongPressComponentView"
       }
     }
   },

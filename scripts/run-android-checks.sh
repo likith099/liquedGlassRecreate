@@ -15,7 +15,7 @@ export ADB="${ADB:-$(command -v adb || echo "$HOME/Library/Android/sdk/platform-
 export ANDROID_SERIAL="${ANDROID_SERIAL:-emulator-5554}"
 WAIT="${ANDROID_LAUNCH_WAIT:-8}"
 checks=("$@")
-[ ${#checks[@]} -eq 0 ] && checks=(menu toolbar tabs context-menu features slider accessibility rtl)
+[ ${#checks[@]} -eq 0 ] && checks=(menu toolbar tabs context-menu menu-panel features slider accessibility rtl)
 mkdir -p "$ROOT/artifacts"
 adb_() { "$ADB" -s "$ANDROID_SERIAL" "$@"; }
 adb_ reverse tcp:8093 tcp:8093 >/dev/null 2>&1 || true

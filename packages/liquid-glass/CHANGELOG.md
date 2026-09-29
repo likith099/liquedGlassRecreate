@@ -8,11 +8,19 @@ change the API.
 
 ### Added
 
-- `GlassMenuPanel`: the menu on its own, with no trigger or automatic placement, for apps that
-  position it themselves (below or above a message, in any corner). Glass on iOS 26, blur below,
-  an opaque surface on Android; same items, sections, submenus and `onAction` as the other menus;
-  `menuStyle` colours and corner radius on every platform. Rebuild the iOS app: it adds a small
-  native SF Symbol view.
+- `GlassMenuPanel`: the system menu as a native view the app places itself, never presented by
+  UIKit. iOS 26 glass platter and rows matching UIKit's menu (250 pt, 40 pt rows), final material
+  from the first frame; system material below iOS 26; the `androidMenuStyle` popup look with
+  ripples on Android. Touch highlights a row, sliding moves it with a selection tick, lifting on an
+  enabled row calls `onAction`. `GlassMenuPanel.measure(items)` gives the height before it draws;
+  also `width`, `maxHeight` with native scrolling, `colorScheme`, `appearFrom`, `dismiss()`,
+  `autoFocus` and `accessibilityModal`. Sections only; submenus are rejected.
+- `GlassLongPress`: a native long press around any content that reports the content's window
+  frame, cancels the content's touches once recognised, and hands the same finger to the latest
+  `GlassMenuPanel`, so a press can slide onto a row and lift to choose it.
+- `GlassContextMenu`: `onOpen` and `onClose`, and per-corner `previewCornerRadii`.
+
+Rebuild both native apps: this release adds native components.
 
 ## 0.1.4 — September 28, 2026
 

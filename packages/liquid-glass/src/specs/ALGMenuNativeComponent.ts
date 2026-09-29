@@ -6,6 +6,11 @@ export interface NativeProps extends ViewProps {
   itemsJSON: string;
   contextMenu?: CodegenTypes.WithDefault<boolean, false>;
   previewCornerRadius?: CodegenTypes.WithDefault<CodegenTypes.Float, 16>;
+  /** Per-corner preview radii; -1 uses previewCornerRadius. */
+  previewCornerTopLeft?: CodegenTypes.WithDefault<CodegenTypes.Float, -1>;
+  previewCornerTopRight?: CodegenTypes.WithDefault<CodegenTypes.Float, -1>;
+  previewCornerBottomLeft?: CodegenTypes.WithDefault<CodegenTypes.Float, -1>;
+  previewCornerBottomRight?: CodegenTypes.WithDefault<CodegenTypes.Float, -1>;
   toolbar?: CodegenTypes.WithDefault<boolean, false>;
   maxVisibleItems?: CodegenTypes.WithDefault<CodegenTypes.Int32, 3>;
   mergingEnabled?: CodegenTypes.WithDefault<boolean, false>;

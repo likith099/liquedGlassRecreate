@@ -20,6 +20,10 @@ class ALGMenuManager : ViewGroupManager<ALGMenuView>(), ALGMenuManagerInterface<
   override fun needsCustomLayoutForChildren() = false
   override fun setContextMenu(view: ALGMenuView, value: Boolean) { view.contextMenu = value }
   override fun setPreviewCornerRadius(view: ALGMenuView, value: Float) { /* iOS preview outline only. */ }
+  override fun setPreviewCornerTopLeft(view: ALGMenuView, value: Float) { /* iOS preview outline only. */ }
+  override fun setPreviewCornerTopRight(view: ALGMenuView, value: Float) { /* iOS preview outline only. */ }
+  override fun setPreviewCornerBottomLeft(view: ALGMenuView, value: Float) { /* iOS preview outline only. */ }
+  override fun setPreviewCornerBottomRight(view: ALGMenuView, value: Float) { /* iOS preview outline only. */ }
   override fun setTitle(view: ALGMenuView, value: String?) { view.title = value ?: "" }
   override fun setItemsJSON(view: ALGMenuView, value: String?) { view.itemsJSON = value ?: "[]" }
   override fun setToolbar(view: ALGMenuView, value: Boolean) { view.toolbar = value }

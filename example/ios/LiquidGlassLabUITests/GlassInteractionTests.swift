@@ -68,10 +68,12 @@ final class GlassInteractionTests: XCTestCase {
     message.press(forDuration: 1)
     XCTAssertTrue(action("Edit message").waitForExistence(timeout: 5))
     XCTAssertFalse(action("Unavailable message action").isEnabled)
+    XCTAssertTrue(app.staticTexts["Context menu open: yes"].waitForExistence(timeout: 3), "onOpen reports the menu")
     let capture = XCTAttachment(screenshot: app.screenshot())
     capture.name = fallback ? "Plain context menu with stationary message" : "Context menu with retained message preview"; capture.lifetime = .keepAlways; add(capture)
     action("Edit message").tap()
     XCTAssertTrue(app.staticTexts["Context selected: edit"].waitForExistence(timeout: 5))
+    XCTAssertTrue(app.staticTexts["Context menu open: no"].waitForExistence(timeout: 3), "onClose follows the dismissal")
     XCTAssertEqual(message.frame, originalFrame, "Dismissal restores the original content layout")
     message.press(forDuration: 1); action("Save message").tap()
     XCTAssertTrue(app.staticTexts["Message saved: on"].waitForExistence(timeout: 5))
@@ -1077,17 +1079,45 @@ final class GlassInteractionTests: XCTestCase {
     element("menu-panel-copy").tap()
     XCTAssertTrue(app.staticTexts["Panel selected: copy"].waitForExistence(timeout: 5))
     XCTAssertFalse(element("menu-panel").exists)
-    // "Open on long press": a tap does nothing, a long press opens the panel, a tap closes it.
+    // "Open on long press" wraps the message in GlassLongPress: a tap still reaches the message,
+    // a long press opens the panel with the message's window frame, and a tap closes it.
     let longPress = app.switches["panel-longpress"]
     XCTAssertTrue(app.scrollIntoView(longPress)); longPress.tap()
-    XCTAssertTrue(app.scrollIntoView(message, band: 0.2...0.8))
+    let belowRight = app.buttons["Below right"]
+    XCTAssertTrue(app.scrollIntoView(belowRight)); belowRight.tap()
+    XCTAssertTrue(app.scrollIntoView(message, band: 0.2...0.45))
     message.tap()
-    XCTAssertFalse(element("menu-panel").waitForExistence(timeout: 1))
+    XCTAssertTrue(app.staticTexts["Message tapped"].waitForExistence(timeout: 3))
+    XCTAssertFalse(element("menu-panel").exists)
     message.press(forDuration: 0.8)
     XCTAssertTrue(element("menu-panel-forward").waitForExistence(timeout: 3))
+    let reported = "Long press at \(Int(message.frame.width.rounded()))×\(Int(message.frame.height.rounded()))"
+    XCTAssertTrue(app.staticTexts[reported].waitForExistence(timeout: 3), "Expected \(reported)")
+    // The material is final from the first frame: after the entrance spring, the platter's
+    // brightness does not change (UIKit's own menu brightened ~0.9 s after opening).
+    let platter = element("menu-panel").frame.insetBy(dx: 12, dy: 12)
+    var levels: [CGFloat] = []
+    for delay in [0.6, 0.7, 1.0] {
+      Thread.sleep(forTimeInterval: delay)
+      levels.append(meanLuminance(app.screenshot(), in: platter))
+    }
+    XCTAssertLessThan(levels.max()! - levels.min()!, 0.006, "Panel luminance over time: \(levels)")
     capture("Menu panel opened by long press")
+    let star = element("menu-panel-star").frame, source = message.frame
     message.tap()
     XCTAssertTrue(element("menu-panel").waitForNonExistence(timeout: 3))
+    XCTAssertEqual(message.frame, source, "The demo reserves the panel's room, so the message stays put")
+    // The finger that pressed slides onto a row and lifts: that row is chosen.
+    let start = message.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+    start.press(forDuration: 0.8, thenDragTo: start.withOffset(CGVector(dx: star.midX - source.midX, dy: star.midY - source.midY)))
+    XCTAssertTrue(app.staticTexts["Panel selected: star"].waitForExistence(timeout: 5))
+    XCTAssertTrue(element("menu-panel").waitForNonExistence(timeout: 3))
+    // Lifting off the panel chooses nothing and leaves it open for a tap.
+    start.press(forDuration: 0.8, thenDragTo: start.withOffset(CGVector(dx: -source.width / 2 - 40, dy: -source.height / 2 - 30)))
+    XCTAssertTrue(element("menu-panel-copy").waitForExistence(timeout: 3))
+    XCTAssertFalse(app.staticTexts["Panel selected: copy"].exists)
+    element("menu-panel-copy").tap()
+    XCTAssertTrue(app.staticTexts["Panel selected: copy"].waitForExistence(timeout: 5))
   }
 
   // Visual tiers (R18): the native tier (glass on 26, blur below) and the standard opaque surface, in

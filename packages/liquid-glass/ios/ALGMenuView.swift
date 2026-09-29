@@ -36,6 +36,9 @@ public final class ALGMenuView: UIView, UIContextMenuInteractionDelegate {
   private lazy var contextInteraction = UIContextMenuInteraction(delegate: self)
   private var contextMenu = false
   private var previewCornerRadius: CGFloat = 16
+  /// Per-corner preview radii (top left, top right, bottom left, bottom right); a negative value
+  /// uses previewCornerRadius.
+  @objc public var previewCornerRadii: [NSNumber] = []
   private let button = MenuButton(type: .system)
   private let bar = UIToolbar()
   // iOS 26 glass controls. Kept out of the UIToolbar, which restyles hosted
@@ -189,9 +192,45 @@ public final class ALGMenuView: UIView, UIContextMenuInteractionDelegate {
     guard reactContentView.window != nil else { return nil }
     let parameters = UIPreviewParameters()
     parameters.backgroundColor = .clear
-    parameters.visiblePath = UIBezierPath(roundedRect: reactContentView.bounds,
-      cornerRadius: previewCornerRadius)
+    parameters.visiblePath = previewPath(in: reactContentView.bounds)
     return UITargetedPreview(view: reactContentView, parameters: parameters)
+  }
+  /// A rounded rectangle with its own radius per corner, so a grouped bubble keeps its tight
+  /// corner while lifted.
+  private func previewPath(in rect: CGRect) -> UIBezierPath {
+    func radius(_ index: Int) -> CGFloat {
+      let value = index < previewCornerRadii.count ? CGFloat(truncating: previewCornerRadii[index]) : -1
+      return min(value >= 0 ? value : previewCornerRadius, rect.width / 2, rect.height / 2)
+    }
+    let (topLeft, topRight, bottomLeft, bottomRight) = (radius(0), radius(1), radius(2), radius(3))
+    if topLeft == topRight, topRight == bottomLeft, bottomLeft == bottomRight {
+      return UIBezierPath(roundedRect: rect, cornerRadius: topLeft)
+    }
+    let path = UIBezierPath()
+    path.move(to: CGPoint(x: rect.minX + topLeft, y: rect.minY))
+    path.addLine(to: CGPoint(x: rect.maxX - topRight, y: rect.minY))
+    path.addArc(withCenter: CGPoint(x: rect.maxX - topRight, y: rect.minY + topRight), radius: topRight,
+      startAngle: -.pi / 2, endAngle: 0, clockwise: true)
+    path.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY - bottomRight))
+    path.addArc(withCenter: CGPoint(x: rect.maxX - bottomRight, y: rect.maxY - bottomRight), radius: bottomRight,
+      startAngle: 0, endAngle: .pi / 2, clockwise: true)
+    path.addLine(to: CGPoint(x: rect.minX + bottomLeft, y: rect.maxY))
+    path.addArc(withCenter: CGPoint(x: rect.minX + bottomLeft, y: rect.maxY - bottomLeft), radius: bottomLeft,
+      startAngle: .pi / 2, endAngle: .pi, clockwise: true)
+    path.addLine(to: CGPoint(x: rect.minX, y: rect.minY + topLeft))
+    path.addArc(withCenter: CGPoint(x: rect.minX + topLeft, y: rect.minY + topLeft), radius: topLeft,
+      startAngle: .pi, endAngle: 3 * .pi / 2, clockwise: true)
+    path.close()
+    return path
+  }
+  // The long-press menu's own open and close, like the menu button's.
+  public func contextMenuInteraction(_ interaction: UIContextMenuInteraction,
+    willDisplayMenuFor configuration: UIContextMenuConfiguration, animator: UIContextMenuInteractionAnimating?) {
+    onMenuOpen?()
+  }
+  public func contextMenuInteraction(_ interaction: UIContextMenuInteraction,
+    willEndFor configuration: UIContextMenuConfiguration, animator: UIContextMenuInteractionAnimating?) {
+    if let animator { animator.addCompletion { [weak self] in self?.onMenuClose?() } } else { onMenuClose?() }
   }
   public func contextMenuInteraction(_ interaction: UIContextMenuInteraction,
     previewForHighlightingMenuWithConfiguration configuration: UIContextMenuConfiguration) -> UITargetedPreview? {

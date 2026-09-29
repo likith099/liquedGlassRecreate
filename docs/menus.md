@@ -97,44 +97,90 @@ menu.current?.open();
 
 The preceding flat-menu revision passed TypeScript checks, 19 JavaScript tests, and native UI tests on the iOS simulator, physical iPhone, and Android emulator. The earlier physical-iPhone result does not cover these additions. After building and opening a fresh Android demo, reproduce the flat regression with `python3 scripts/verify-android-menu.py`, or the consolidated batch with `python3 scripts/verify-android-toolbar.py`. Metro uses port 8093. Older iOS runtime testing and full VoiceOver/TalkBack review remain outstanding.
 
-## Menu panel: a menu you place yourself
+## Menu panel: a menu you place yourself (0.1.5)
 
-`GlassMenuPanel` draws the menu alone, with no button or long press and no automatic placement.
-Render it where you want it and remove it to close it. For example, show it below a message with a
-reaction row above, or above the message near the bottom of the screen.
+`GlassMenuPanel` is the system menu as a view: native rows on the iOS 26 glass platter, laid out by
+React Native like any other view and never presented by the system. You decide where it goes, for
+example always directly under a pressed message, moving the message up when there is no room.
+`GlassLongPress` opens it from a long press, and the finger that pressed can slide straight onto a row.
 
 ```tsx
-import {GlassMenuPanel} from '@likith99/react-native-adaptive-liquid-glass';
+import {GlassLongPress, GlassMenuPanel, type GlassMenuElement} from '@likith99/react-native-adaptive-liquid-glass';
 
-{menuOpen && (
-  <GlassMenuPanel
-    style={{position: 'absolute', top: bubbleHeight + 8, right: 0}}   // any position you choose
-    transformOrigin="top right"                                     // grows in from that corner
-    items={[
-      {id: 'forward', title: 'Forward', systemImage: 'arrowshape.turn.up.right', androidIcon: 'ic_forward'},
-      {id: 'copy', title: 'Copy', systemImage: 'doc.on.doc', androidIcon: 'ic_copy'},
-      {kind: 'section', id: 'more', title: '', items: [
-        {id: 'delete', title: 'Delete', systemImage: 'trash', androidIcon: 'ic_delete', destructive: true},
-      ]},
-    ]}
-    onAction={id => { handle(id); setMenuOpen(false); }}
-  />
+const actions: GlassMenuElement[] = [
+  {id: 'forward', title: 'Forward', systemImage: 'arrowshape.turn.up.right', androidIcon: 'ic_forward'},
+  {id: 'copy', title: 'Copy', systemImage: 'doc.on.doc', androidIcon: 'ic_copy'},
+  {kind: 'section', id: 'more', title: '', items: [
+    {id: 'delete', title: 'Delete', systemImage: 'trash', androidIcon: 'ic_delete', destructive: true},
+  ]},
+];
+// Known before the panel draws, so the message can be placed in the same frame.
+const menuHeight = GlassMenuPanel.measure(actions);
+
+<GlassLongPress minimumDuration={350} haptic="medium" disabled={selecting}
+  onLongPress={({frame}) => openMenuFor(message, frame)}>   {/* frame: window points */}
+  <MessageBubble message={message} />
+</GlassLongPress>
+
+{menu && (
+  <GlassMenuPanel ref={panel} items={actions} appearFrom="top" autoFocus accessibilityModal
+    style={{position: 'absolute', left: menu.x, top: menu.y}}
+    onAction={id => { handle(id); closeMenu(); }}
+    onRequestClose={closeMenu} />
 )}
 ```
 
-- **Surface:** Liquid Glass with native touch response on iOS 26, system blur on iOS 15–25, and an
-  opaque surface on Android, under Reduce Transparency and with `forceFallback`.
-- **Items:** the same tree as the other menus: SF Symbol icons on iOS, `androidIcon` on Android,
-  checkmarks, destructive and disabled items, sections with dividers, and submenus that open in
-  place with a back row. `onAction` receives only enabled items.
-- **Look:** `width` (default 250), `colorScheme`, and `menuStyle` with `cornerRadius` and text,
-  icon, destructive and background colours for light and dark, on every platform. On iOS 26 the
-  background colour tints the glass, so give it some transparency.
-- **Motion:** it grows in from `transformOrigin` (default `'top left'`) when it mounts; set
-  `animateIn={false}` to skip that. Reduce Motion always does. The panel never fades, because glass
-  does not render inside a fading view.
-- **Dismissal is yours:** the panel does not close itself, trap focus or dim the screen. Wrap it in
-  your own overlay, for example a full-screen `Pressable` that closes it on an outside tap.
+**Look.** iOS 26: the glass platter with interactive glass, 250 pt wide, 40 pt rows, 21 pt across a
+section separator, the SF Symbol leading and a checkmark trailing, as UIKit's own menu (measured on
+iOS 26.5). The material is final from the first frame; it does not brighten after appearing.
+Destructive rows are red and disabled rows dimmed; titles follow Dynamic Type. Below iOS 26 and under
+Reduce Transparency: the system material (or an opaque surface) with a shadow. Android: the Material
+popup look from `androidMenuStyle` (corner radius and light/dark colours), with ripples. `colorScheme`
+(`'system' | 'light' | 'dark'`) follows your app's theme rather than the system's.
+
+**Items.** The same tree as the other menus: actions, titled or untitled sections, `checked`,
+`destructive`, `disabled`, `systemImage`, `androidIcon`. Submenus are not supported in a panel
+(it throws); use sections. `onAction` receives only enabled items.
+
+**Touch.** Touching a row highlights it; sliding moves the highlight with a selection tick on each
+new row (`UISelectionFeedbackGenerator` on iOS, a clock tick on Android); lifting on an enabled row
+calls `onAction`. Lifting elsewhere, or on a disabled row, calls `onCancelTouch` if given. The panel
+does not cancel React Native's touches, and is not cancelled by them. When content is taller than
+`maxHeight` the rows scroll natively; once they scroll, the touch no longer selects.
+
+**Layout.** `width` is a number or `'intrinsic'` (default, the system menu width). The height comes
+from the items: `GlassMenuPanel.measure(items, {width, maxHeight, fontScale})` returns it
+synchronously and the panel uses the same value, so nothing jumps. `fontScale` defaults to the
+current text size. The panel renders correctly under transformed ancestors; do not fade it with
+`opacity` on iOS, because glass does not render inside a fading view (`appearFrom` animates with
+transforms only).
+
+**Motion.** `appearFrom="top" | "bottom"` springs the panel in from that edge when it mounts
+(`'none'` by default; skipped under Reduce Motion or with Android animations off). The ref's
+`dismiss()` animates it out and then calls `onDismissed`; unmount it there.
+
+**Accessibility.** Each row is a button element labelled by its title; destructive rows say so,
+disabled rows are disabled, and VoiceOver or TalkBack can activate them. `autoFocus` moves the
+screen reader to the first row when the panel appears; `accessibilityModal` makes it the only
+thing VoiceOver reads (on Android it becomes an accessibility pane). VoiceOver's escape gesture
+calls `onRequestClose`.
+
+**Dismissal is yours.** The panel does not close itself, dim the screen or handle Android Back. Put
+it in your own overlay, for example a full-screen `Pressable` that closes it on an outside tap.
+
+### `GlassLongPress`
+
+Wraps any content and recognises a native long press (`minimumDuration` in ms, default 500;
+`allowableMovement` in points, default 10; `disabled`; `haptic`: `'none' | 'light' | 'medium' |
+'heavy' | 'soft' | 'rigid'`, Android uses its standard long-press haptic for any value except none).
+
+- Before it is recognised it stays out of the way: the children's `onPress`, an enclosing list's
+  scroll and gesture-handler pans keep working, and moving further than `allowableMovement` fails it.
+- On recognition `onLongPress({frame})` reports the wrapper's frame in window points, measured
+  natively, and the children's touches are cancelled, so they do not fire `onPress` on release.
+- While the finger stays down, its movement and release go to the most recently mounted
+  `GlassMenuPanel`. If the panel is not mounted yet, the latest point is kept and applied when it
+  mounts. Lifting on a row chooses it; lifting anywhere else leaves the panel open for a tap.
 
 ## Android menu appearance
 
@@ -222,7 +268,11 @@ The wrapper sizes from its React children and accepts normal View layout props.
 Use a single noninteractive content root for a coherent preview; nested buttons,
 selectable text and scrolling controls own their gestures and can compete with long
 press. `previewCornerRadius` (default 16, finite and nonnegative) shapes only the iOS
-preview outline; style your child's background and corners separately. No custom
+preview outline; style your child's background and corners separately.
+`previewCornerRadii={{topLeft, topRight, bottomLeft, bottomRight}}` (0.1.5) sets corners
+individually, for example a grouped bubble's tight corner; a corner left out uses
+`previewCornerRadius`. `onOpen` and `onClose` (0.1.5) report the menu appearing and, after its
+dismissal animation, going away, on iOS, Android and the plain fallback. No custom
 press physics, merging, trigger replacement, or forced menu-material tint is added.
 The existing `GlassMenuButton` keeps its tap presentation.
 

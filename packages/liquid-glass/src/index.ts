@@ -15,7 +15,9 @@ export type {NativeGlassButtonProps, GlassPressableProps, GlassSegment, GlassSeg
 export {default as GlassMenuButton} from './GlassMenuButton';
 export {default as GlassContextMenu} from './GlassContextMenu';
 export {default as GlassMenuPanel} from './GlassMenuPanel';
-export type {GlassContextMenuProps, GlassMenuPanelProps} from './types';
+export {default as GlassLongPress} from './GlassLongPress';
+export type {GlassContextMenuProps, GlassMenuPanelProps, GlassMenuPanelHandle, GlassMenuPanelMeasureOptions,
+  GlassLongPressProps, GlassLongPressEvent} from './types';
 export type {GlassMenuButtonProps, GlassMenuItem, GlassMenuHandle, GlassMenuStyle, GlassSchemeColor} from './types';
 export {default as GlassIconButton} from './GlassIconButton';
 export {default as GlassBadge} from './GlassBadge';

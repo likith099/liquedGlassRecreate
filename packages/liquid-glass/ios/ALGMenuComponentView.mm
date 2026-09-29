@@ -46,6 +46,8 @@ using namespace facebook::react;
     label:@(p.controlLabel.c_str()) hint:@(p.controlHint.c_str()) identifier:@(p.controlTestID.c_str())
     toolbar:p.toolbar maxVisibleItems:p.maxVisibleItems mergingEnabled:p.mergingEnabled
     contextMenu:p.contextMenu previewCornerRadius:p.previewCornerRadius];
+  _menu.previewCornerRadii = @[@(p.previewCornerTopLeft), @(p.previewCornerTopRight), @(p.previewCornerBottomLeft),
+    @(p.previewCornerBottomRight)];
   [super updateProps:props oldProps:oldProps];
 }
 - (void)mountChildComponentView:(UIView<RCTComponentViewProtocol> *)child index:(NSInteger)index {
