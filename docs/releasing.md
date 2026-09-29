@@ -1,6 +1,6 @@
 # Publishing and consuming the package
 
-`@likith99/react-native-adaptive-liquid-glass` is MIT licensed and published to the public npm registry. **0.1.4** is the current release (September 28, 2026); 0.1.0 was the first, released on September 20, 2026. From 0.1.1 onward releases are published by the [release workflow](../.github/workflows/release.yml) on a `v*` tag, using npm trusted publishing, and carry a signed provenance attestation. This is the process for cutting a release and for installing it in another app and its pipelines.
+`@likith99/react-native-adaptive-liquid-glass` is MIT licensed and published to the public npm registry. **0.1.5** is the current release (September 29, 2026); 0.1.0 was the first, released on September 20, 2026. From 0.1.1 onward releases are published by the [release workflow](../.github/workflows/release.yml) on a `v*` tag, using npm trusted publishing, and carry a signed provenance attestation. This is the process for cutting a release and for installing it in another app and its pipelines.
 
 The organization scope is `@likith99` and the publishing account is `likithnmp`, an `owner` of that organization. The login username and organization scope correctly differ. `npm access get status` reports the package `public`.
 
@@ -18,7 +18,7 @@ now use the tag workflow; an interactive publish would bypass its checks.
 ## Cutting the next release
 
 1. Review the [release policy](release-acceptance.md) and the previous release's
-   [verification report](../release/verification-0.1.4.md). Run the SwiftUI/current-iOS, older-iOS fallback and packed Release consumer
+   [verification report](../release/verification-0.1.5.md). Run the SwiftUI/current-iOS, older-iOS fallback and packed Release consumer
    checks. The owner authorized testing and publishing; remaining manual/device
    deferrals are coverage limits and must not be relabeled as passes.
 2. Keep the package version, example dependency and npm lockfile synchronized.
@@ -38,7 +38,7 @@ now use the tag workflow; an interactive publish would bypass its checks.
 5. Inspect Actions results and verify the registry artifact as described below.
 
 The earlier source-review pass did not execute tests. The subsequent
-release verification reports (latest: [0.1.4](../release/verification-0.1.4.md)) record actual candidate execution. The
+release verification reports (latest: [0.1.5](../release/verification-0.1.5.md)) record actual candidate execution. The
 unsigned iOS archive and demo-signed Android bundle are build checks. Signing and
 store delivery belong to the host app; they are not prerequisites for publishing
 this native source package under the agreed scope.

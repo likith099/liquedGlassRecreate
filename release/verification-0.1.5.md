@@ -1,7 +1,6 @@
 # 0.1.5 verification
 
-**Status: candidate.** Not yet tagged or published. The owner authorized the 0.1.5 release on
-September 29, 2026.
+**Status: published to npm on September 29, 2026** from tag `v0.1.5` (`18f0e73`) by the release workflow ([run 36609426709](https://github.com/likith099/liquedGlassRecreate/actions/runs/36609426709), 1.5 minutes), with provenance. The registry tarball (shasum `f3c28eddb9b761e46212a8c82b3c8027a9f4b9a6`, 345 files) has contents identical to the tarball that passed the Release packed-consumer check.
 
 ## Candidate
 
