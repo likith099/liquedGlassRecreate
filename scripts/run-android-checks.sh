@@ -19,6 +19,9 @@ checks=("$@")
 mkdir -p "$ROOT/artifacts"
 adb_() { "$ADB" -s "$ANDROID_SERIAL" "$@"; }
 adb_ reverse tcp:8093 tcp:8093 >/dev/null 2>&1 || true
+# A slow emulator can leave a system "isn't responding" dialog (for example the launcher's) over the
+# app, which hides it from every check; this emulator setting suppresses those dialogs.
+adb_ shell settings put global hide_error_dialogs 1 >/dev/null 2>&1 || true
 
 failed=()
 for check in "${checks[@]}"; do
