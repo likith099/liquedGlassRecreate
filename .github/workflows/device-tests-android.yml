@@ -1,0 +1,114 @@
+name: Device tests (Android)
+
+# Emulator checks of the example app. They need a full native build, so they run on demand and on
+# ready (not draft) pull requests that change code the Android app is built from. Jest tests and
+# Markdown do not trigger them. The release demo is built once; the checks then run in three
+# emulator jobs at the same time, grouped so each takes about as long.
+on:
+  workflow_dispatch:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - 'packages/liquid-glass/android/**'
+      - 'packages/liquid-glass/src/**'
+      - 'packages/liquid-glass/package.json'
+      - 'example/**'
+      - '!example/ios/**'
+      - '!example/__tests__/**'
+      - '!**/*.md'
+      - 'package-lock.json'
+      - 'scripts/run-android-checks.sh'
+      - 'scripts/verify-android-*.py'
+      - '.github/workflows/device-tests-android.yml'
+permissions:
+  contents: read
+concurrency:
+  group: device-tests-android-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  build:
+    name: Build the release demo
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      # Caches Gradle's dependencies and build cache between runs.
+      - uses: gradle/actions/setup-gradle@v4
+      - uses: android-actions/setup-android@v3
+        with:
+          # The action's v3 default includes the retired SDK `tools` package.
+          packages: platform-tools
+      - name: Install Android SDK components
+        run: sdkmanager 'platforms;android-36' 'build-tools;36.0.0' 'ndk;27.1.12297006' 'cmake;3.22.1'
+      # A release build carries its JavaScript (Hermes bytecode), so the emulator needs no Metro
+      # connection and starts quickly under software rendering. It is signed with the demo's debug
+      # key. It also exercises release asset resolution for require() tab images.
+      - name: Build the release demo
+        working-directory: example/android
+        run: ./gradlew :app:assembleRelease -PreactNativeArchitectures=x86_64 --build-cache
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android-demo-${{ github.sha }}
+          path: example/android/app/build/outputs/apk/release/app-release.apk
+          retention-days: 3
+  checks:
+    name: Android checks (${{ matrix.name }})
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        # Grouped by measured duration on the CI emulator (about 7-9 minutes each).
+        include:
+          - name: toolbar, tabs, menu panel, slider
+            checks: toolbar tabs menu-panel slider
+          - name: features, context menu
+            checks: features context-menu
+          - name: accessibility, RTL, menu
+            checks: accessibility rtl menu
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: android-demo-${{ github.sha }}
+          path: apk
+      - name: Install Pillow for the screenshot checks
+        run: python3 -m pip install --user pillow
+      - name: Enable KVM for the emulator
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Run the Android checks
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_7
+          ram-size: 4096M
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot-save -camera-back none
+          disable-animations: false
+          script: |
+            adb install -r apk/app-release.apk
+            ANDROID_LAUNCH_WAIT=10 bash scripts/run-android-checks.sh ${{ matrix.checks }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: android-checks-${{ strategy.job-index }}-${{ github.sha }}
+          path: |
+            artifacts/android-*
+            artifacts/*android*.png
+            artifacts/*android*.json
+          retention-days: 14
