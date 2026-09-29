@@ -45,8 +45,13 @@ jobs:
           node-version: '22'
           cache: npm
       - run: npm ci
+      # React Native's compiler wrapper runs "$CCACHE_BINARY clang". Pods sets CCACHE_BINARY only as
+      # a build setting, which Xcode does not pass to compile tasks; without it in the environment
+      # the wrapper silently runs plain clang. Environment variables do reach the compiles.
       - name: Install ccache
-        run: brew install ccache
+        run: |
+          brew install ccache
+          echo "CCACHE_BINARY=$(command -v ccache)" >> "$GITHUB_ENV"
       - name: Restore the compiler cache
         uses: actions/cache@v4
         with:
@@ -57,7 +62,9 @@ jobs:
             ios-ccache-
       - name: Install iOS pods
         working-directory: example/ios
-        run: pod install
+        run: |
+          pod install
+          ccache --zero-stats
       # Cold-launch first taps, tab rebuilds before and after attach, per-tab artwork and colours,
       # icon buttons and programmatic menus, the surface tiers in light and dark, and the menu
       # panel. A Release build carries its JavaScript: a Debug launch fails when a busy Metro
