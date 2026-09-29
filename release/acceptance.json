@@ -1,7 +1,7 @@
 {
   "schemaVersion": 2,
-  "version": "0.1.4",
-  "sourceDigest": "791c5bd747feb1e90460c41c22aff734ae48ac9d72cda82844a87ad27af7e7e1",
+  "version": "0.1.5",
+  "sourceDigest": "20292bea272515b05adfc26e227df471b6705c1ddc2c4f4e46fdafd49a5290c3",
   "checks": {
     "ios-current-profile": {
       "status": "deferred",
@@ -192,11 +192,11 @@
       "reviewer": "Claude Code",
       "device": "Independent React Native 0.87.1 consumer",
       "os": "iOS and Android native Release builds",
-      "date": "2026-09-28",
+      "date": "2026-09-29",
       "configuration": "Release",
-      "summary": "318-file archive SHA-256 f1f537c646e9c9c160f0b18d722f4b9ffea22dbfb0e21eea85487636858390be passed consumer TypeScript, both production bundles and both native Release builds from the 0.1.4 source. No Expo or navigation dependency.",
+      "summary": "345-file archive SHA-256 916e2ab81eb75e8dd12fa28512b0cd14c404b932fc062d18af6d4dbc53e537ab passed consumer TypeScript, both production bundles and both native Release builds from the 0.1.5 source. No Expo or navigation dependency.",
       "evidence": [
-        "release/verification-0.1.4.md"
+        "release/verification-0.1.5.md"
       ]
     },
     "ios-source-review": {
@@ -204,23 +204,23 @@
       "reviewer": "Claude Code source review",
       "device": "Source review",
       "os": "iOS guarded APIs",
-      "date": "2026-09-28",
+      "date": "2026-09-29",
       "configuration": "Source review",
-      "summary": "Reviewed the 0.1.4 changes: iOS native code gains only the ignored menuStyleJSON Fabric prop; the Android menu popup (PopupWindow, ListView rows reporting enabled/checked state) and the native-driver pill animation. No private APIs or new runtime dependencies. Runtime evidence is recorded separately.",
+      "summary": "Reviewed the 0.1.5 changes: new ALGMenuPanel (UIGlassEffect behind iOS 26 availability checks, UIBlurEffect/opaque fallback, a non-cancelling UIGestureRecognizer for row tracking, UISelectionFeedbackGenerator) and ALGLongPress (UILongPressGestureRecognizer; cancels React Native touches by toggling its touch handler recognizer) Fabric components, and UIContextMenuInteraction delegate open/close plus a per-corner preview path on ALGMenu. Android counterparts use public View APIs and React Native NativeGestureUtil. No private APIs or new runtime dependencies. Runtime evidence is recorded separately.",
       "evidence": [
-        "release/verification-0.1.4.md"
+        "release/verification-0.1.5.md"
       ]
     },
     "ios-swiftui-runtime": {
       "status": "passed",
       "reviewer": "Claude Code",
-      "device": "iPhone 17 Pro Max simulator; GitHub macOS runner iPhone 17 Pro simulator",
+      "device": "iPhone 17 Pro Max simulator; GitHub macOS runner iPhone simulator",
       "os": "iOS 26.5",
-      "date": "2026-09-28",
+      "date": "2026-09-29",
       "configuration": "Release",
-      "summary": "The four device tests (tab lifecycle with three cold launches, tab artwork and tints, icon buttons and programmatic menus, visual tiers) passed in Release on 26.5 locally, and on GitHub on the menu branch. iOS behaviour is unchanged since 0.1.3.",
+      "summary": "Release UI tests passed on 26.5: tab lifecycle and first tap, tab artwork and tints, icon buttons and programmatic menus, visual tiers, menu panel (placement, tap and press-slide-lift selection, lift off the panel, steady platter brightness), context menu with onOpen/onClose and its plain fallback. The GitHub device-test run passed the iOS job including the menu-panel test.",
       "evidence": [
-        "release/verification-0.1.4.md"
+        "release/verification-0.1.5.md"
       ]
     },
     "ios-fallback-runtime": {
@@ -228,12 +228,12 @@
       "reviewer": "Claude Code",
       "device": "iPhone 16 Pro Max simulator",
       "os": "iOS 18.6",
-      "date": "2026-09-28",
-      "configuration": "Debug",
-      "summary": "Blur-tier and pre-26 checks passed: tab artwork and tints, visual tiers (blur and standard, light and dark), tab lifecycle and navigation, expanding pills, badges, context menu and plain fallback, toolbar and menus. iOS 15-17 remains unexecuted. Pills and badges passed again on 18.6 after the shadow fix. Carried from 0.1.3: 0.1.4 changes no iOS behaviour (one ignored prop, compile verified).",
+      "date": "2026-09-29",
+      "configuration": "Release",
+      "summary": "0.1.5 on 18.6 in Release: menu panel (system-material look, full selection flow, steady brightness), context menu and plain fallback passed. Earlier 18.6 evidence (tab artwork and tints, visual tiers, tab lifecycle and navigation, pills, badges, toolbar and menus) is carried from 0.1.3; those paths are unchanged. iOS 15-17 remains unexecuted.",
       "evidence": [
         "release/verification-0.1.3.md",
-        "release/verification-0.1.4.md"
+        "release/verification-0.1.5.md"
       ]
     }
   },
