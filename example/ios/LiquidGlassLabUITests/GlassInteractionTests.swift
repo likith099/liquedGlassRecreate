@@ -1077,6 +1077,17 @@ final class GlassInteractionTests: XCTestCase {
     element("menu-panel-copy").tap()
     XCTAssertTrue(app.staticTexts["Panel selected: copy"].waitForExistence(timeout: 5))
     XCTAssertFalse(element("menu-panel").exists)
+    // "Open on long press": a tap does nothing, a long press opens the panel, a tap closes it.
+    let longPress = app.switches["panel-longpress"]
+    XCTAssertTrue(app.scrollIntoView(longPress)); longPress.tap()
+    XCTAssertTrue(app.scrollIntoView(message, band: 0.2...0.8))
+    message.tap()
+    XCTAssertFalse(element("menu-panel").waitForExistence(timeout: 1))
+    message.press(forDuration: 0.8)
+    XCTAssertTrue(element("menu-panel-forward").waitForExistence(timeout: 3))
+    capture("Menu panel opened by long press")
+    message.tap()
+    XCTAssertTrue(element("menu-panel").waitForNonExistence(timeout: 3))
   }
 
   // Visual tiers (R18): the native tier (glass on 26, blur below) and the standard opaque surface, in

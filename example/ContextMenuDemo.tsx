@@ -26,6 +26,7 @@ export default function ContextMenuDemo({onClose}: {onClose: () => void}) {
   const [panelShown, setPanelShown] = useState(false);
   const [placement, setPlacement] = useState<string | null>('below-right');
   const [panelStatus, setPanelStatus] = useState('No panel action');
+  const [panelOnLongPress, setPanelOnLongPress] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   useEffect(() => () => clearTimeout(timer.current), []);
   const items: GlassMenuElement[] = replacement ? [{id: 'new', title: 'New action'}] : [
@@ -82,6 +83,11 @@ export default function ContextMenuDemo({onClose}: {onClose: () => void}) {
         <Text style={{color}}>Show menu panel</Text>
         <Switch testID="panel-toggle" accessibilityLabel="Show menu panel" value={panelShown} onValueChange={setPanelShown} />
       </View>
+      <View style={{flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between'}}>
+        <Text style={{color}}>Open on long press</Text>
+        <Switch testID="panel-longpress" accessibilityLabel="Open on long press" value={panelOnLongPress}
+          onValueChange={value => {setPanelOnLongPress(value); setPanelShown(false);}} />
+      </View>
       <GlassSegmentedControl testID="panel-placement" accessibilityLabel="Menu placement" value={placement}
         onValueChange={setPlacement} options={[
           {value: 'below-left', label: 'Below left'}, {value: 'below-right', label: 'Below right'},
@@ -94,10 +100,17 @@ export default function ContextMenuDemo({onClose}: {onClose: () => void}) {
         {panelShown && placement?.startsWith('below') && <Text testID="panel-reactions"
           style={{position: 'absolute', bottom: 72, fontSize: 28, letterSpacing: 6,
             [placement === 'below-right' ? 'right' : 'left']: 0}}>👍❤️😂😮</Text>}
-        <View testID="panel-message" style={{alignSelf: placement?.endsWith('right') ? 'flex-end' : 'flex-start',
-          paddingVertical: 14, paddingHorizontal: 18, borderRadius: 20, backgroundColor: dark ? '#3B4A8C' : '#A6BBFF'}}>
+        {/* With "Open on long press", the app opens the panel from its own long press on the message;
+            a tap on the message closes it again. The panel itself has no trigger. */}
+        <Pressable testID="panel-message" accessibilityRole={panelOnLongPress ? 'button' : undefined}
+          accessibilityLabel="Message: Hi" accessibilityHint={panelOnLongPress ? 'Touch and hold for actions' : undefined}
+          disabled={!panelOnLongPress} delayLongPress={350}
+          onLongPress={() => setPanelShown(true)} onPress={() => setPanelShown(false)}
+          style={({pressed}) => ({alignSelf: placement?.endsWith('right') ? 'flex-end' : 'flex-start',
+            paddingVertical: 14, paddingHorizontal: 18, borderRadius: 20, backgroundColor: dark ? '#3B4A8C' : '#A6BBFF',
+            transform: [{scale: pressed && panelOnLongPress ? 0.96 : 1}]})}>
           <Text style={{color: '#0B1026', fontSize: 17}}>Hi</Text>
-        </View>
+        </Pressable>
         {panelShown && placement && <GlassMenuPanel testID="menu-panel" accessibilityLabel="Message actions"
           style={{position: 'absolute', [placement.startsWith('below') ? 'top' : 'bottom']: 58,
             [placement.endsWith('right') ? 'right' : 'left']: 0}}
