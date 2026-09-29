@@ -9,7 +9,7 @@ type Anchor = {x: number; y: number; width: number; height: number};
 
 /** Shared plain popup: preserves the source content and uses no glass or lift. */
 export default function FallbackContextMenu({children, items, onAction, disabled = false,
-  forceFallback: _fallback, previewCornerRadius: _radius, accessibilityLabel,
+  forceFallback: _fallback, previewCornerRadius: _radius, previewCornerRadii: _radii, onOpen, onClose, accessibilityLabel,
   accessibilityHint, accessibilityActions, onAccessibilityAction, testID,
   ...props}: GlassContextMenuProps) {
   const trigger = useRef<React.ElementRef<typeof View>>(null);
@@ -24,6 +24,17 @@ export default function FallbackContextMenu({children, items, onAction, disabled
     request.current += 1; setAnchor(null); setSubmenu(null);
     return () => {request.current += 1;};
   }, [json, disabled, width, height, fontScale]);
+  // Report the menu appearing and going away, however it closes.
+  const shown = anchor !== null;
+  const wasShown = useRef(false);
+  const callbacks = useRef({onOpen, onClose});
+  callbacks.current = {onOpen, onClose};
+  useEffect(() => {
+    if (shown === wasShown.current) return;
+    wasShown.current = shown;
+    (shown ? callbacks.current.onOpen : callbacks.current.onClose)?.();
+  }, [shown]);
+  useEffect(() => () => { if (wasShown.current) callbacks.current.onClose?.(); }, []);
   const open = () => {
     if (disabled || items.length === 0) return;
     const version = ++request.current;

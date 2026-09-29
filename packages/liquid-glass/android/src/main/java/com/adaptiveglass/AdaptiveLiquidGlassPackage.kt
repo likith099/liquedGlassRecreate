@@ -7,5 +7,6 @@ import com.facebook.react.uimanager.ViewManager
 
 class AdaptiveLiquidGlassPackage : ReactPackage {
   override fun createNativeModules(context: ReactApplicationContext): List<NativeModule> = emptyList()
-  override fun createViewManagers(context: ReactApplicationContext): List<ViewManager<*, *>> = listOf(ALGSliderManager(), ALGMenuManager(), ALGTabsManager())
+  override fun createViewManagers(context: ReactApplicationContext): List<ViewManager<*, *>> = listOf(ALGSliderManager(), ALGMenuManager(), ALGTabsManager(),
+    ALGMenuPanelManager(), ALGLongPressManager())
 }

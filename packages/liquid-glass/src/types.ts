@@ -204,6 +204,13 @@ export interface GlassContextMenuProps extends ViewProps, GlassRefProp {
   forceFallback?: boolean;
   /** iOS lifted preview outline only; does not clip children. Default 16. */
   previewCornerRadius?: number;
+  /** iOS: a radius per corner for the lifted preview, for example a grouped bubble's tight corner.
+   * Corners left out use previewCornerRadius. */
+  previewCornerRadii?: {topLeft?: number; topRight?: number; bottomLeft?: number; bottomRight?: number};
+  /** The menu opened. */
+  onOpen?: () => void;
+  /** The menu closed, after its dismissal animation, with or without an action. */
+  onClose?: () => void;
   /** Android: corner radius and colours of the menu popup. */
   androidMenuStyle?: GlassMenuStyle;
 }
@@ -316,6 +323,72 @@ export interface GlassExpandingTabsProps extends Omit<ViewProps, 'children'>, Gl
   /** Default ink for tabs without their own tintColor. */
   tintColor?: ColorValue;
   disabled?: boolean;
+}
+/** Ref handle for GlassMenuPanel: the host view's measurement, plus a native dismissal. */
+export interface GlassMenuPanelHandle extends Pick<GlassHostRef, 'measure' | 'measureInWindow' | 'measureLayout'> {
+  /** Animates the panel out toward the edge it appeared from, then calls onDismissed. */
+  dismiss(): void;
+}
+/**
+ * The system menu as a view the app places: drawn natively (UIKit rows on the iOS 26 glass
+ * platter, system material below 26, the Material popup look on Android), laid out by React Native
+ * like any view, never presented by the system. Rows drag-select with a haptic tick per row.
+ */
+export interface GlassMenuPanelProps extends Omit<ViewProps, 'children'> {
+  ref?: React.Ref<GlassMenuPanelHandle>;
+  /** Actions and sections (titled or untitled). Submenus are not supported in a panel. */
+  items: readonly GlassMenuElement[];
+  /** An enabled row was chosen, by lifting a finger on it or by VoiceOver/TalkBack. */
+  onAction: (id: string) => void;
+  /** A touch ended off the rows or on a disabled row. */
+  onCancelTouch?: () => void;
+  /** iOS: VoiceOver's escape gesture; close the menu. Android Back stays with the app (BackHandler). */
+  onRequestClose?: () => void;
+  /** After dismiss() finishes its animation. */
+  onDismissed?: () => void;
+  /** Points, or 'intrinsic' for the system menu's width (250 at the default text size). */
+  width?: number | 'intrinsic';
+  /** Taller content scrolls natively. */
+  maxHeight?: number;
+  colorScheme?: 'system' | 'light' | 'dark';
+  /** Blocks every row. */
+  disabled?: boolean;
+  /** A native spring in from this edge on mount, like the system menu. Defaults to 'none'. */
+  appearFrom?: 'none' | 'top' | 'bottom';
+  /** Moves VoiceOver/TalkBack focus to the first row when the panel appears. */
+  autoFocus?: boolean;
+  /** Screen readers ignore everything outside the panel while it is shown (iOS). */
+  accessibilityModal?: boolean;
+  /** Android: corner radius and colours; iOS keeps the system look. */
+  androidMenuStyle?: GlassMenuStyle;
+}
+/** Options for GlassMenuPanel.measure(); pass the same width and maxHeight as the panel. */
+export interface GlassMenuPanelMeasureOptions {
+  width?: number | 'intrinsic';
+  maxHeight?: number;
+  /** The system text size multiplier. Defaults to PixelRatio.getFontScale(). */
+  fontScale?: number;
+}
+/** Window-point frame of the view a long press began on. */
+export interface GlassLongPressEvent {
+  frame: {x: number; y: number; width: number; height: number};
+}
+/**
+ * A native long press around React children. Before it is recognised the children's own taps and
+ * an enclosing list's scroll keep working; once recognised it cancels the children's touch, and the
+ * same finger drives the most recently mounted GlassMenuPanel until it lifts.
+ */
+export interface GlassLongPressProps extends ViewProps {
+  children?: React.ReactNode;
+  /** Milliseconds before the press is recognised. Defaults to 500. */
+  minimumDuration?: number;
+  /** Points the finger may move before recognition; more fails the press so a list can scroll.
+   * Defaults to 10. */
+  allowableMovement?: number;
+  disabled?: boolean;
+  /** Impact feedback when recognised. Defaults to 'none'. */
+  haptic?: 'none' | 'light' | 'medium' | 'heavy' | 'soft' | 'rigid';
+  onLongPress?: (event: GlassLongPressEvent) => void;
 }
 /** Ref handle for GlassSearchField: host measurement plus keyboard focus. */
 export interface GlassSearchFieldHandle extends Pick<GlassHostRef, 'measure' | 'measureInWindow' | 'measureLayout'> {

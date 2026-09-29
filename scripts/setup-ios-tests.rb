@@ -15,7 +15,10 @@ target.build_configurations.each do |config|
     'PRODUCT_BUNDLE_IDENTIFIER' => 'org.local.LiquidGlassLabUITests',
     'PRODUCT_NAME' => '$(TARGET_NAME)',
     'GENERATE_INFOPLIST_FILE' => 'YES', 'SWIFT_VERSION' => '5.0',
-    'TEST_TARGET_NAME' => 'LiquidGlassLab', 'CODE_SIGN_STYLE' => 'Automatic'
+    'TEST_TARGET_NAME' => 'LiquidGlassLab', 'CODE_SIGN_STYLE' => 'Automatic',
+    # The project-level value comes from PODS_ROOT, which this target (not a CocoaPods target) lacks;
+    # with ccache on, React Native routes every target's compiler and linker through this path.
+    'REACT_NATIVE_PATH' => '${SRCROOT}/../../node_modules/react-native'
   })
 end
 project.save

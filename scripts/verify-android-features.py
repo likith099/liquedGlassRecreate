@@ -180,9 +180,19 @@ for _ in range(10):
 else:
     adb('shell', 'input', 'keyevent', 4)
 time.sleep(1)
-tap('copy-action', settle=.2); wait('Copied 1 items')
-# The toast shows for 2 s, about as long as a tree read takes, so a second one is captured.
-tap('copy-action', settle=.3); screenshot('b11-android-toast')
+# The toast shows for 2 s, and on a slow emulator one tree read can take longer. Find the button
+# once, then tap and read straight away, up to three times: each tap shows the toast again.
+copy_x, copy_y = center('copy-action')
+for attempt in range(3):
+    adb('shell', 'input', 'tap', copy_x, copy_y)
+    try:
+        node(tree(), 'Copied 1 items')
+        break
+    except AssertionError:
+        if attempt == 2:
+            raise
+# A second toast is captured for review.
+adb('shell', 'input', 'tap', copy_x, copy_y); time.sleep(.3); screenshot('b11-android-toast')
 time.sleep(2.5); absent('Copied 1 items', timeout=0)
 tap('search-focus', settle=1)
 assert keyboard_shown(), 'focus() did not raise the keyboard'

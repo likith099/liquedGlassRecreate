@@ -1,6 +1,6 @@
 {
   "name": "@likith99/react-native-adaptive-liquid-glass",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "Native iOS Liquid Glass surfaces and controls with standard Android counterparts.",
   "license": "MIT",
   "author": "Likith Kanneganti",
@@ -77,7 +77,9 @@
         "ALGTabs": "ALGTabsComponentView",
         "ALGScrollEdge": "ALGScrollEdgeComponentView",
         "ALGSearchField": "ALGSearchFieldComponentView",
-        "ALGExpandingTabs": "ALGExpandingTabsComponentView"
+        "ALGExpandingTabs": "ALGExpandingTabsComponentView",
+        "ALGMenuPanel": "ALGMenuPanelComponentView",
+        "ALGLongPress": "ALGLongPressComponentView"
       }
     }
   },

@@ -35,6 +35,8 @@ where glass is not available.
 - **Native menus and tabs:** `UIMenu` on iOS and a Material-style popup on Android (icons,
   custom corner radius and colours) with sections, checkmarks and destructive
   items; a native tab bar with badges, custom artwork and per-tab colours.
+- **New in 0.1.5:** `GlassMenuPanel`, the system menu as a native view you place yourself, and
+  `GlassLongPress`, whose finger slides straight onto the menu's rows.
 - **New in 0.1.3:** icon buttons, long-press context menus, expanding pill tabs, search field,
   scroll-edge effect, toasts and badges.
 - **No runtime dependencies:** no Expo modules or third-party glass library. TypeScript types
@@ -92,7 +94,7 @@ Every component is controlled: pass the current value and update it in the callb
 | `GlassBadge`, `GlassToastProvider`, `GlassScrollEdge` | Labels over imagery, confirmation toasts, content fading under floating bars | [Surfaces](docs/surfaces.md) |
 | `GlassButton`, `GlassSegmentedControl`, `GlassSlider` | Native button, segmented control (with counts) and slider | [Controls](docs/controls.md) |
 | `GlassSearchField`, `GlassExpandingTabs` | Search field; pill tabs where the selected pill shows its label | [Controls](docs/controls.md) |
-| `GlassMenuButton`, `GlassIconButton`, `GlassContextMenu` | Menu buttons, round icon buttons and floating action buttons, long-press menus | [Menus](docs/menus.md) |
+| `GlassMenuButton`, `GlassIconButton`, `GlassContextMenu`, `GlassMenuPanel`, `GlassLongPress` | Menu buttons, round icon buttons and floating action buttons, long-press menus, and a native menu you place yourself that a long press can slide onto | [Menus](docs/menus.md) |
 | `GlassToolbar` | Toolbar with actions, menus and automatic overflow | [Toolbars](docs/toolbars.md) |
 | `GlassTabBar` | Native tab bar with badges, custom images and per-tab colours | [Tabs](docs/tabs.md) |
 | `GlassActionCluster` | A button that expands into a row of glass actions | [Action clusters](docs/action-clusters.md) |

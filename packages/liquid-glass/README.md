@@ -35,6 +35,8 @@ where glass is not available.
 - **Native menus and tabs:** `UIMenu` on iOS and a Material-style popup on Android (icons,
   custom corner radius and colours) with sections, checkmarks and destructive
   items; a native tab bar with badges, custom artwork and per-tab colours.
+- **New in 0.1.5:** `GlassMenuPanel`, the system menu as a native view you place yourself, and
+  `GlassLongPress`, whose finger slides straight onto the menu's rows.
 - **New in 0.1.3:** icon buttons, long-press context menus, expanding pill tabs, search field,
   scroll-edge effect, toasts and badges.
 - **No runtime dependencies:** no Expo modules or third-party glass library. TypeScript types
@@ -52,7 +54,7 @@ where glass is not available.
 
 > Some React Native versions need host app settings: 0.81 uses prebuilt iOS dependencies, 0.87
 > builds React from source, and iOS 27 requires the UIScene lifecycle. See
-> [compatibility](https://github.com/likith099/liquedGlassRecreate/blob/v0.1.4/docs/compatibility.md#host-app-setup).
+> [compatibility](https://github.com/likith099/liquedGlassRecreate/blob/v0.1.5/docs/compatibility.md#host-app-setup).
 
 ## Installation
 
@@ -88,15 +90,15 @@ Every component is controlled: pass the current value and update it in the callb
 
 | Component | What it is | Docs |
 | --- | --- | --- |
-| `GlassView`, `GlassContainer`, `GlassPressable` | Glass surfaces for your own content; opt-in merging; pressable cards | [Surfaces](https://github.com/likith099/liquedGlassRecreate/blob/v0.1.4/docs/surfaces.md) |
-| `GlassBadge`, `GlassToastProvider`, `GlassScrollEdge` | Labels over imagery, confirmation toasts, content fading under floating bars | [Surfaces](https://github.com/likith099/liquedGlassRecreate/blob/v0.1.4/docs/surfaces.md) |
-| `GlassButton`, `GlassSegmentedControl`, `GlassSlider` | Native button, segmented control (with counts) and slider | [Controls](https://github.com/likith099/liquedGlassRecreate/blob/v0.1.4/docs/controls.md) |
-| `GlassSearchField`, `GlassExpandingTabs` | Search field; pill tabs where the selected pill shows its label | [Controls](https://github.com/likith099/liquedGlassRecreate/blob/v0.1.4/docs/controls.md) |
-| `GlassMenuButton`, `GlassIconButton`, `GlassContextMenu` | Menu buttons, round icon buttons and floating action buttons, long-press menus | [Menus](https://github.com/likith099/liquedGlassRecreate/blob/v0.1.4/docs/menus.md) |
-| `GlassToolbar` | Toolbar with actions, menus and automatic overflow | [Toolbars](https://github.com/likith099/liquedGlassRecreate/blob/v0.1.4/docs/toolbars.md) |
-| `GlassTabBar` | Native tab bar with badges, custom images and per-tab colours | [Tabs](https://github.com/likith099/liquedGlassRecreate/blob/v0.1.4/docs/tabs.md) |
-| `GlassActionCluster` | A button that expands into a row of glass actions | [Action clusters](https://github.com/likith099/liquedGlassRecreate/blob/v0.1.4/docs/action-clusters.md) |
-| `useGlassTier()`, `GlassFallbackThemeProvider` | Which material is showing (`glass`, `blur`, `solid`); theme colours for the opaque tier | [Surfaces](https://github.com/likith099/liquedGlassRecreate/blob/v0.1.4/docs/surfaces.md#theming-the-opaque-tier) |
+| `GlassView`, `GlassContainer`, `GlassPressable` | Glass surfaces for your own content; opt-in merging; pressable cards | [Surfaces](https://github.com/likith099/liquedGlassRecreate/blob/v0.1.5/docs/surfaces.md) |
+| `GlassBadge`, `GlassToastProvider`, `GlassScrollEdge` | Labels over imagery, confirmation toasts, content fading under floating bars | [Surfaces](https://github.com/likith099/liquedGlassRecreate/blob/v0.1.5/docs/surfaces.md) |
+| `GlassButton`, `GlassSegmentedControl`, `GlassSlider` | Native button, segmented control (with counts) and slider | [Controls](https://github.com/likith099/liquedGlassRecreate/blob/v0.1.5/docs/controls.md) |
+| `GlassSearchField`, `GlassExpandingTabs` | Search field; pill tabs where the selected pill shows its label | [Controls](https://github.com/likith099/liquedGlassRecreate/blob/v0.1.5/docs/controls.md) |
+| `GlassMenuButton`, `GlassIconButton`, `GlassContextMenu`, `GlassMenuPanel`, `GlassLongPress` | Menu buttons, round icon buttons and floating action buttons, long-press menus, and a native menu you place yourself that a long press can slide onto | [Menus](https://github.com/likith099/liquedGlassRecreate/blob/v0.1.5/docs/menus.md) |
+| `GlassToolbar` | Toolbar with actions, menus and automatic overflow | [Toolbars](https://github.com/likith099/liquedGlassRecreate/blob/v0.1.5/docs/toolbars.md) |
+| `GlassTabBar` | Native tab bar with badges, custom images and per-tab colours | [Tabs](https://github.com/likith099/liquedGlassRecreate/blob/v0.1.5/docs/tabs.md) |
+| `GlassActionCluster` | A button that expands into a row of glass actions | [Action clusters](https://github.com/likith099/liquedGlassRecreate/blob/v0.1.5/docs/action-clusters.md) |
+| `useGlassTier()`, `GlassFallbackThemeProvider` | Which material is showing (`glass`, `blur`, `solid`); theme colours for the opaque tier | [Surfaces](https://github.com/likith099/liquedGlassRecreate/blob/v0.1.5/docs/surfaces.md#theming-the-opaque-tier) |
 
 ## Platform behaviour
 
@@ -108,16 +110,16 @@ Every component is controlled: pass the current value and update it in the callb
 
 ## Documentation
 
-- [Accessibility](https://github.com/likith099/liquedGlassRecreate/blob/v0.1.4/docs/accessibility.md): text size, Reduce Motion and Transparency, screen readers
-- [Migrating from expo-glass-effect](https://github.com/likith099/liquedGlassRecreate/blob/v0.1.4/docs/migrating-from-expo-glass-effect.md)
-- [Compatibility](https://github.com/likith099/liquedGlassRecreate/blob/v0.1.4/docs/compatibility.md): tested versions and known gaps
-- [Changelog](https://github.com/likith099/liquedGlassRecreate/blob/v0.1.4/packages/liquid-glass/CHANGELOG.md)
+- [Accessibility](https://github.com/likith099/liquedGlassRecreate/blob/v0.1.5/docs/accessibility.md): text size, Reduce Motion and Transparency, screen readers
+- [Migrating from expo-glass-effect](https://github.com/likith099/liquedGlassRecreate/blob/v0.1.5/docs/migrating-from-expo-glass-effect.md)
+- [Compatibility](https://github.com/likith099/liquedGlassRecreate/blob/v0.1.5/docs/compatibility.md): tested versions and known gaps
+- [Changelog](https://github.com/likith099/liquedGlassRecreate/blob/v0.1.5/packages/liquid-glass/CHANGELOG.md)
 
 ## Contributing
 
 The [repository](https://github.com/likith099/liquedGlassRecreate) includes a demo app that
 exercises every component, and the UI tests that run in CI on iOS and Android. See
-[developing the package](https://github.com/likith099/liquedGlassRecreate/blob/v0.1.4/docs/development.md).
+[developing the package](https://github.com/likith099/liquedGlassRecreate/blob/v0.1.5/docs/development.md).
 
 ## License
 
