@@ -1068,7 +1068,12 @@ final class GlassInteractionTests: XCTestCase {
     XCTAssertTrue(element("menu-panel-delete").exists)
     capture("Menu panel below right")
     // Above left: above the message, left edges aligned.
-    let aboveLeft = app.buttons["Above left"]
+    // Native segments (iOS 26) are buttons by label; the fallback below 26 has a test ID per option.
+    func placement(_ label: String, _ value: String) -> XCUIElement {
+      let fallback = element("panel-placement-\(value)")
+      return fallback.exists ? fallback : app.buttons[label]
+    }
+    let aboveLeft = placement("Above left", "above-left")
     XCTAssertTrue(app.scrollIntoView(aboveLeft)); aboveLeft.tap()
     XCTAssertTrue(app.scrollIntoView(panel, band: 0.05...0.95))
     Thread.sleep(forTimeInterval: 0.6)
@@ -1083,7 +1088,7 @@ final class GlassInteractionTests: XCTestCase {
     // a long press opens the panel with the message's window frame, and a tap closes it.
     let longPress = app.switches["panel-longpress"]
     XCTAssertTrue(app.scrollIntoView(longPress)); longPress.tap()
-    let belowRight = app.buttons["Below right"]
+    let belowRight = placement("Below right", "below-right")
     XCTAssertTrue(app.scrollIntoView(belowRight)); belowRight.tap()
     XCTAssertTrue(app.scrollIntoView(message, band: 0.2...0.45))
     message.tap()
