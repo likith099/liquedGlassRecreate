@@ -97,6 +97,45 @@ menu.current?.open();
 
 The preceding flat-menu revision passed TypeScript checks, 19 JavaScript tests, and native UI tests on the iOS simulator, physical iPhone, and Android emulator. The earlier physical-iPhone result does not cover these additions. After building and opening a fresh Android demo, reproduce the flat regression with `python3 scripts/verify-android-menu.py`, or the consolidated batch with `python3 scripts/verify-android-toolbar.py`. Metro uses port 8093. Older iOS runtime testing and full VoiceOver/TalkBack review remain outstanding.
 
+## Menu panel: a menu you place yourself
+
+`GlassMenuPanel` draws the menu alone, with no button or long press and no automatic placement.
+Render it where you want it and remove it to close it. For example, show it below a message with a
+reaction row above, or above the message near the bottom of the screen.
+
+```tsx
+import {GlassMenuPanel} from '@likith99/react-native-adaptive-liquid-glass';
+
+{menuOpen && (
+  <GlassMenuPanel
+    style={{position: 'absolute', top: bubbleHeight + 8, right: 0}}   // any position you choose
+    transformOrigin="top right"                                     // grows in from that corner
+    items={[
+      {id: 'forward', title: 'Forward', systemImage: 'arrowshape.turn.up.right', androidIcon: 'ic_forward'},
+      {id: 'copy', title: 'Copy', systemImage: 'doc.on.doc', androidIcon: 'ic_copy'},
+      {kind: 'section', id: 'more', title: '', items: [
+        {id: 'delete', title: 'Delete', systemImage: 'trash', androidIcon: 'ic_delete', destructive: true},
+      ]},
+    ]}
+    onAction={id => { handle(id); setMenuOpen(false); }}
+  />
+)}
+```
+
+- **Surface:** Liquid Glass with native touch response on iOS 26, system blur on iOS 15–25, and an
+  opaque surface on Android, under Reduce Transparency and with `forceFallback`.
+- **Items:** the same tree as the other menus: SF Symbol icons on iOS, `androidIcon` on Android,
+  checkmarks, destructive and disabled items, sections with dividers, and submenus that open in
+  place with a back row. `onAction` receives only enabled items.
+- **Look:** `width` (default 250), `colorScheme`, and `menuStyle` with `cornerRadius` and text,
+  icon, destructive and background colours for light and dark, on every platform. On iOS 26 the
+  background colour tints the glass, so give it some transparency.
+- **Motion:** it grows in from `transformOrigin` (default `'top left'`) when it mounts; set
+  `animateIn={false}` to skip that. Reduce Motion always does. The panel never fades, because glass
+  does not render inside a fading view.
+- **Dismissal is yours:** the panel does not close itself, trap focus or dim the screen. Wrap it in
+  your own overlay, for example a full-screen `Pressable` that closes it on an outside tap.
+
 ## Android menu appearance
 
 On Android, menu buttons, icon buttons and context menus open a Material 3-style popup: a rounded

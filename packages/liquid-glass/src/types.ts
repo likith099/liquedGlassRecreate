@@ -317,6 +317,31 @@ export interface GlassExpandingTabsProps extends Omit<ViewProps, 'children'>, Gl
   tintColor?: ColorValue;
   disabled?: boolean;
 }
+/**
+ * A menu drawn in place, with no trigger: you choose where it appears. It shows the same items as
+ * the other menus, on a glass surface.
+ */
+export interface GlassMenuPanelProps extends Omit<ViewProps, 'children'>, GlassRefProp {
+  items: readonly GlassMenuElement[];
+  /** An enabled item was chosen. The panel does not hide itself; unmount it when you are done. */
+  onAction: (id: string) => void;
+  /** Width in points. Defaults to 250. */
+  width?: number;
+  /** Corner radius, text, icon, destructive and background colours, for light and dark. On iOS 26
+   * the background colour tints the glass, so give it some transparency. */
+  menuStyle?: GlassMenuStyle;
+  /** Pins the appearance, for example over media. Defaults to the system appearance. */
+  colorScheme?: 'system' | 'light' | 'dark';
+  /** Blocks every item. */
+  disabled?: boolean;
+  /** The opaque surface on every platform. */
+  forceFallback?: boolean;
+  /** The point the entrance grows from, as a CSS transform origin; point it at the element the
+   * panel belongs to, for example 'top right'. Defaults to 'top left'. */
+  transformOrigin?: string;
+  /** Grow in on mount. Defaults to true; Reduce Motion always skips it. */
+  animateIn?: boolean;
+}
 /** Ref handle for GlassSearchField: host measurement plus keyboard focus. */
 export interface GlassSearchFieldHandle extends Pick<GlassHostRef, 'measure' | 'measureInWindow' | 'measureLayout'> {
   focus(): void;

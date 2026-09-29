@@ -1043,6 +1043,42 @@ final class GlassInteractionTests: XCTestCase {
     capture.name = "Native tabs cleared badges fresh capture"; capture.lifetime = .keepAlways; add(capture)
   }
 
+  // GlassMenuPanel: the menu with no trigger, placed by the app. Placements are checked from frames.
+  func testGlassMenuPanel() throws {
+    continueAfterFailure = false
+    let app = XCUIApplication(); app.launch()
+    func capture(_ name: String) {
+      let attachment = XCTAttachment(screenshot: app.screenshot())
+      attachment.name = name; attachment.lifetime = .keepAlways; add(attachment)
+    }
+    func element(_ id: String) -> XCUIElement { app.descendants(matching: .any)[id].firstMatch }
+    let open = app.buttons["open-context-demo"]
+    XCTAssertTrue(open.waitForExistence(timeout: launchTimeout)); open.tap()
+    let toggle = app.switches["panel-toggle"]
+    XCTAssertTrue(app.scrollIntoView(toggle)); toggle.tap()
+    let panel = element("menu-panel"), message = element("panel-message")
+    XCTAssertTrue(element("menu-panel-forward").waitForExistence(timeout: 5))
+    XCTAssertTrue(app.scrollIntoView(panel, band: 0.05...0.95))
+    Thread.sleep(forTimeInterval: 0.6) // entrance spring
+    // Default placement: below the message, right edges aligned.
+    XCTAssertGreaterThanOrEqual(panel.frame.minY, message.frame.maxY)
+    XCTAssertEqual(panel.frame.maxX, message.frame.maxX, accuracy: 2)
+    XCTAssertTrue(element("menu-panel-delete").exists)
+    capture("Menu panel below right")
+    // Above left: above the message, left edges aligned.
+    let aboveLeft = app.buttons["Above left"]
+    XCTAssertTrue(app.scrollIntoView(aboveLeft)); aboveLeft.tap()
+    XCTAssertTrue(app.scrollIntoView(panel, band: 0.05...0.95))
+    Thread.sleep(forTimeInterval: 0.6)
+    XCTAssertLessThanOrEqual(panel.frame.maxY, message.frame.minY)
+    XCTAssertEqual(panel.frame.minX, message.frame.minX, accuracy: 2)
+    capture("Menu panel above left")
+    // Choosing an action reports it; this demo then hides the panel.
+    element("menu-panel-copy").tap()
+    XCTAssertTrue(app.staticTexts["Panel selected: copy"].waitForExistence(timeout: 5))
+    XCTAssertFalse(element("menu-panel").exists)
+  }
+
   // Visual tiers (R18): the native tier (glass on 26, blur below) and the standard opaque surface, in
   // light and dark. Screenshots are kept for review. The checks are that every tier follows the
   // appearance and that the standard surface keeps its documented default colours. The appearance

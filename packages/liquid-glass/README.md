@@ -92,7 +92,7 @@ Every component is controlled: pass the current value and update it in the callb
 | `GlassBadge`, `GlassToastProvider`, `GlassScrollEdge` | Labels over imagery, confirmation toasts, content fading under floating bars | [Surfaces](https://github.com/likith099/liquedGlassRecreate/blob/v0.1.4/docs/surfaces.md) |
 | `GlassButton`, `GlassSegmentedControl`, `GlassSlider` | Native button, segmented control (with counts) and slider | [Controls](https://github.com/likith099/liquedGlassRecreate/blob/v0.1.4/docs/controls.md) |
 | `GlassSearchField`, `GlassExpandingTabs` | Search field; pill tabs where the selected pill shows its label | [Controls](https://github.com/likith099/liquedGlassRecreate/blob/v0.1.4/docs/controls.md) |
-| `GlassMenuButton`, `GlassIconButton`, `GlassContextMenu` | Menu buttons, round icon buttons and floating action buttons, long-press menus | [Menus](https://github.com/likith099/liquedGlassRecreate/blob/v0.1.4/docs/menus.md) |
+| `GlassMenuButton`, `GlassIconButton`, `GlassContextMenu`, `GlassMenuPanel` | Menu buttons, round icon buttons and floating action buttons, long-press menus, and a menu you place yourself | [Menus](https://github.com/likith099/liquedGlassRecreate/blob/v0.1.4/docs/menus.md) |
 | `GlassToolbar` | Toolbar with actions, menus and automatic overflow | [Toolbars](https://github.com/likith099/liquedGlassRecreate/blob/v0.1.4/docs/toolbars.md) |
 | `GlassTabBar` | Native tab bar with badges, custom images and per-tab colours | [Tabs](https://github.com/likith099/liquedGlassRecreate/blob/v0.1.4/docs/tabs.md) |
 | `GlassActionCluster` | A button that expands into a row of glass actions | [Action clusters](https://github.com/likith099/liquedGlassRecreate/blob/v0.1.4/docs/action-clusters.md) |

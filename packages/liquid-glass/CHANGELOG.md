@@ -4,6 +4,16 @@ All notable changes to `@likith99/react-native-adaptive-liquid-glass`. Versions 
 [semantic versioning](https://semver.org); while the major version is 0, minor versions may
 change the API.
 
+## Unreleased
+
+### Added
+
+- `GlassMenuPanel`: the menu on its own, with no trigger or automatic placement, for apps that
+  position it themselves (below or above a message, in any corner). Glass on iOS 26, blur below,
+  an opaque surface on Android; same items, sections, submenus and `onAction` as the other menus;
+  `menuStyle` colours and corner radius on every platform. Rebuild the iOS app: it adds a small
+  native SF Symbol view.
+
 ## 0.1.4 — September 28, 2026
 
 ### Added

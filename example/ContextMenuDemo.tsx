@@ -1,7 +1,7 @@
 import React, {useEffect, useRef, useState} from 'react';
 import {Platform, Pressable, ScrollView, Switch, Text, View, useColorScheme} from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
-import {GlassContextMenu, type GlassMenuElement, type GlassMenuStyle} from '@likith99/react-native-adaptive-liquid-glass';
+import {GlassContextMenu, GlassMenuPanel, GlassSegmentedControl, type GlassMenuElement, type GlassMenuStyle} from '@likith99/react-native-adaptive-liquid-glass';
 
 /** A custom Android menu style for the demo's switch; the default style needs no prop. */
 const customMenuStyle: GlassMenuStyle = {
@@ -23,6 +23,9 @@ export default function ContextMenuDemo({onClose}: {onClose: () => void}) {
   const [replacement, setReplacement] = useState(false);
   const [mounted, setMounted] = useState(true);
   const [customStyle, setCustomStyle] = useState(false);
+  const [panelShown, setPanelShown] = useState(false);
+  const [placement, setPlacement] = useState<string | null>('below-right');
+  const [panelStatus, setPanelStatus] = useState('No panel action');
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   useEffect(() => () => clearTimeout(timer.current), []);
   const items: GlassMenuElement[] = replacement ? [{id: 'new', title: 'New action'}] : [
@@ -72,6 +75,45 @@ export default function ContextMenuDemo({onClose}: {onClose: () => void}) {
         clearTimeout(timer.current); setStatus('Removal pending');
         timer.current = setTimeout(() => {setMounted(false); setStatus('Message removed');}, 8000);
       }}><Text style={{color}}>Remove message in 8 seconds</Text></Pressable>
+      <Text style={{color, fontSize: 22, fontWeight: '700', marginTop: 12}}>Menu panel</Text>
+      <Text style={{color}}>The same menu without a long press, placed by the app. Pick where it sits
+        relative to the message.</Text>
+      <View style={{flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between'}}>
+        <Text style={{color}}>Show menu panel</Text>
+        <Switch testID="panel-toggle" accessibilityLabel="Show menu panel" value={panelShown} onValueChange={setPanelShown} />
+      </View>
+      <GlassSegmentedControl testID="panel-placement" accessibilityLabel="Menu placement" value={placement}
+        onValueChange={setPlacement} options={[
+          {value: 'below-left', label: 'Below left'}, {value: 'below-right', label: 'Below right'},
+          {value: 'above-left', label: 'Above left'}, {value: 'above-right', label: 'Above right'},
+        ]} />
+      <Text testID="panel-status" style={{color}}>{panelStatus}</Text>
+      {/* The app positions the panel: here absolutely, against the message it belongs to. */}
+      <View style={{marginTop: placement?.startsWith('above') && panelShown ? 330 : 64,
+        marginBottom: placement?.startsWith('below') && panelShown ? 330 : 24, zIndex: 1}}>
+        {panelShown && placement?.startsWith('below') && <Text testID="panel-reactions"
+          style={{position: 'absolute', bottom: 72, fontSize: 28, letterSpacing: 6,
+            [placement === 'below-right' ? 'right' : 'left']: 0}}>👍❤️😂😮</Text>}
+        <View testID="panel-message" style={{alignSelf: placement?.endsWith('right') ? 'flex-end' : 'flex-start',
+          paddingVertical: 14, paddingHorizontal: 18, borderRadius: 20, backgroundColor: dark ? '#3B4A8C' : '#A6BBFF'}}>
+          <Text style={{color: '#0B1026', fontSize: 17}}>Hi</Text>
+        </View>
+        {panelShown && placement && <GlassMenuPanel testID="menu-panel" accessibilityLabel="Message actions"
+          style={{position: 'absolute', [placement.startsWith('below') ? 'top' : 'bottom']: 58,
+            [placement.endsWith('right') ? 'right' : 'left']: 0}}
+          transformOrigin={`${placement.startsWith('below') ? 'top' : 'bottom'} ${placement.endsWith('right') ? 'right' : 'left'}`}
+          menuStyle={customStyle ? customMenuStyle : undefined}
+          items={[
+            {id: 'forward', title: 'Forward', systemImage: 'arrowshape.turn.up.right', androidIcon: 'demo_forward'},
+            {id: 'copy', title: 'Copy', systemImage: 'doc.on.doc', androidIcon: 'demo_copy'},
+            {id: 'star', title: 'Star', systemImage: 'star', androidIcon: 'demo_bookmark'},
+            {kind: 'section', id: 'manage', title: '', items: [
+              {id: 'select', title: 'Select more', systemImage: 'checklist', androidIcon: 'demo_more'},
+              {id: 'delete', title: 'Delete', systemImage: 'trash', androidIcon: 'demo_delete', destructive: true},
+            ]},
+          ]}
+          onAction={id => {setPanelStatus(`Panel selected: ${id}`); setPanelShown(false);}} />}
+      </View>
     </ScrollView>
   </SafeAreaView>;
 }

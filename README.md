@@ -92,7 +92,7 @@ Every component is controlled: pass the current value and update it in the callb
 | `GlassBadge`, `GlassToastProvider`, `GlassScrollEdge` | Labels over imagery, confirmation toasts, content fading under floating bars | [Surfaces](docs/surfaces.md) |
 | `GlassButton`, `GlassSegmentedControl`, `GlassSlider` | Native button, segmented control (with counts) and slider | [Controls](docs/controls.md) |
 | `GlassSearchField`, `GlassExpandingTabs` | Search field; pill tabs where the selected pill shows its label | [Controls](docs/controls.md) |
-| `GlassMenuButton`, `GlassIconButton`, `GlassContextMenu` | Menu buttons, round icon buttons and floating action buttons, long-press menus | [Menus](docs/menus.md) |
+| `GlassMenuButton`, `GlassIconButton`, `GlassContextMenu`, `GlassMenuPanel` | Menu buttons, round icon buttons and floating action buttons, long-press menus, and a menu you place yourself | [Menus](docs/menus.md) |
 | `GlassToolbar` | Toolbar with actions, menus and automatic overflow | [Toolbars](docs/toolbars.md) |
 | `GlassTabBar` | Native tab bar with badges, custom images and per-tab colours | [Tabs](docs/tabs.md) |
 | `GlassActionCluster` | A button that expands into a row of glass actions | [Action clusters](docs/action-clusters.md) |
