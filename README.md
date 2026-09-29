@@ -35,6 +35,8 @@ where glass is not available.
 - **Native menus and tabs:** `UIMenu` on iOS and a Material-style popup on Android (icons,
   custom corner radius and colours) with sections, checkmarks and destructive
   items; a native tab bar with badges, custom artwork and per-tab colours.
+- **New in 0.1.5:** `GlassMenuPanel`, the system menu as a native view you place yourself, and
+  `GlassLongPress`, whose finger slides straight onto the menu's rows.
 - **New in 0.1.3:** icon buttons, long-press context menus, expanding pill tabs, search field,
   scroll-edge effect, toasts and badges.
 - **No runtime dependencies:** no Expo modules or third-party glass library. TypeScript types
