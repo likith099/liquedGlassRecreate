@@ -6,7 +6,7 @@ import FallbackContextMenu from './fallback/GlassContextMenu';
 
 /** Native long-press menu with the original content retained as its preview. */
 export default function GlassContextMenu({children, items, onAction, disabled = false,
-  previewCornerRadius = 16, previewCornerRadii, onOpen, onClose, forceFallback = false, androidMenuStyle,
+  previewCornerRadius = 16, previewCornerRadii, menuPlacement = 'system', onOpen, onClose, forceFallback = false, androidMenuStyle,
   accessibilityLabel, accessibilityHint, testID,
   ...props}: GlassContextMenuProps) {
   validateMenuItems(items);
@@ -22,7 +22,7 @@ export default function GlassContextMenu({children, items, onAction, disabled = 
     disabled={disabled} accessibilityLabel={accessibilityLabel} accessibilityHint={accessibilityHint}
     testID={testID}>{children}</FallbackContextMenu>;
   return <NativeMenu {...props} title="" contextMenu itemsJSON={JSON.stringify(items)} menuStyleJSON={menuStyleJSON(androidMenuStyle)}
-    disabled={disabled || items.length === 0} previewCornerRadius={previewCornerRadius}
+    disabled={disabled || items.length === 0} previewCornerRadius={previewCornerRadius} menuPlacement={menuPlacement}
     previewCornerTopLeft={previewCornerRadii?.topLeft ?? -1} previewCornerTopRight={previewCornerRadii?.topRight ?? -1}
     previewCornerBottomLeft={previewCornerRadii?.bottomLeft ?? -1} previewCornerBottomRight={previewCornerRadii?.bottomRight ?? -1}
     onMenuOpen={onOpen && (() => onOpen())} onMenuClose={onClose && (() => onClose())}

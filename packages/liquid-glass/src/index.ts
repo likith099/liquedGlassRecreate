@@ -16,7 +16,9 @@ export {default as GlassMenuButton} from './GlassMenuButton';
 export {default as GlassContextMenu} from './GlassContextMenu';
 export {default as GlassMenuPanel} from './GlassMenuPanel';
 export {default as GlassLongPress} from './GlassLongPress';
-export type {GlassContextMenuProps, GlassMenuPanelProps, GlassMenuPanelHandle, GlassMenuPanelMeasureOptions,
+export {default as computeFocusMenuLayout} from './focusMenuLayout';
+export type {GlassContextMenuProps, GlassMenuPanelProps, GlassMenuPanelHandle, GlassMenuPanelMeasureOptions, GlassMenuSize,
+  FocusMenuLayoutInput, FocusMenuLayout, FocusMenuRect,
   GlassLongPressProps, GlassLongPressEvent} from './types';
 export type {GlassMenuButtonProps, GlassMenuItem, GlassMenuHandle, GlassMenuStyle, GlassSchemeColor} from './types';
 export {default as GlassIconButton} from './GlassIconButton';

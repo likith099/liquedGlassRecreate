@@ -39,6 +39,7 @@ using namespace facebook::react;
 }
 - (void)updateProps:(Props::Shared const &)props oldProps:(Props::Shared const &)oldProps {
   const auto &p = *std::static_pointer_cast<const ALGMenuProps>(props);
+  [_menu setMenuAnchor:p.menuAnchor];
   [_menu setIcon:p.iconMode pointSize:p.symbolPointSize colorScheme:@(toString(p.colorScheme).c_str())
     prominent:p.iconVariant == ALGMenuIconVariant::Prominent];
   [_menu configure:@(p.title.c_str()) itemsJSON:@(p.itemsJSON.c_str()) symbol:@(p.systemImage.c_str())
@@ -46,6 +47,7 @@ using namespace facebook::react;
     label:@(p.controlLabel.c_str()) hint:@(p.controlHint.c_str()) identifier:@(p.controlTestID.c_str())
     toolbar:p.toolbar maxVisibleItems:p.maxVisibleItems mergingEnabled:p.mergingEnabled
     contextMenu:p.contextMenu previewCornerRadius:p.previewCornerRadius];
+  _menu.menuPlacement = @(toString(p.menuPlacement).c_str());
   _menu.previewCornerRadii = @[@(p.previewCornerTopLeft), @(p.previewCornerTopRight), @(p.previewCornerBottomLeft),
     @(p.previewCornerBottomRight)];
   [super updateProps:props oldProps:oldProps];

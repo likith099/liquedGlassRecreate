@@ -97,90 +97,79 @@ menu.current?.open();
 
 The preceding flat-menu revision passed TypeScript checks, 19 JavaScript tests, and native UI tests on the iOS simulator, physical iPhone, and Android emulator. The earlier physical-iPhone result does not cover these additions. After building and opening a fresh Android demo, reproduce the flat regression with `python3 scripts/verify-android-menu.py`, or the consolidated batch with `python3 scripts/verify-android-toolbar.py`. Metro uses port 8093. Older iOS runtime testing and full VoiceOver/TalkBack review remain outstanding.
 
-## Menu panel: a menu you place yourself (0.1.5)
+## Long-press message menus (0.1.6)
 
-`GlassMenuPanel` is the system menu as a view: native rows on the iOS 26 glass platter, laid out by
-React Native like any other view and never presented by the system. You decide where it goes, for
-example always directly under a pressed message, moving the message up when there is no room.
-`GlassLongPress` opens it from a long press, and the finger that pressed can slide straight onto a row.
+For a message (or any content) that opens its actions on a long press, wrap it in
+`GlassContextMenu` with `menuPlacement="below"`. It is Apple's own context menu, placed the way
+Messages places it:
 
 ```tsx
-import {GlassLongPress, GlassMenuPanel, type GlassMenuElement} from '@likith99/react-native-adaptive-liquid-glass';
+import {GlassContextMenu} from '@likith99/react-native-adaptive-liquid-glass';
 
-const actions: GlassMenuElement[] = [
-  {id: 'forward', title: 'Forward', systemImage: 'arrowshape.turn.up.right', androidIcon: 'ic_forward'},
-  {id: 'copy', title: 'Copy', systemImage: 'doc.on.doc', androidIcon: 'ic_copy'},
-  {kind: 'section', id: 'more', title: '', items: [
-    {id: 'delete', title: 'Delete', systemImage: 'trash', androidIcon: 'ic_delete', destructive: true},
-  ]},
-];
-// Known before the panel draws, so the message can be placed in the same frame.
-const menuHeight = GlassMenuPanel.measure(actions);
-
-<GlassLongPress minimumDuration={350} haptic="medium" disabled={selecting}
-  onLongPress={({frame}) => openMenuFor(message, frame)}>   {/* frame: window points */}
+<GlassContextMenu menuPlacement="below" previewCornerRadius={18}
+  items={[
+    {id: 'reply', title: 'Reply', systemImage: 'arrowshape.turn.up.left', androidIcon: 'ic_reply'},
+    {id: 'copy', title: 'Copy', systemImage: 'doc.on.doc', androidIcon: 'ic_copy'},
+    {kind: 'section', id: 'more', title: '', items: [
+      {id: 'delete', title: 'Delete', systemImage: 'trash', androidIcon: 'ic_delete', destructive: true},
+    ]},
+  ]}
+  onAction={id => handle(id)}>
   <MessageBubble message={message} />
-</GlassLongPress>
-
-{menu && (
-  <GlassMenuPanel ref={panel} items={actions} appearFrom="top" autoFocus accessibilityModal
-    style={{position: 'absolute', left: menu.x, top: menu.y}}
-    onAction={id => { handle(id); closeMenu(); }}
-    onRequestClose={closeMenu} />
-)}
+</GlassContextMenu>
 ```
 
-**Look.** iOS 26: the glass platter with interactive glass, 250 pt wide, 40 pt rows, 21 pt across a
-section separator, the SF Symbol leading and a checkmark trailing, as UIKit's own menu (measured on
-iOS 26.5). The material is final from the first frame; it does not brighten after appearing.
-Destructive rows are red and disabled rows dimmed; titles follow Dynamic Type. Below iOS 26 and under
-Reduce Transparency: the system material (or an opaque surface) with a shadow. Android: the Material
-popup look from `androidMenuStyle` (corner radius and light/dark colours), with ripples. `colorScheme`
-(`'system' | 'light' | 'dark'`) follows your app's theme rather than the system's.
+- **The menu opens below the message.** A message low on the screen glides up only as far as the
+  menu needs; the menu emerges from behind it; both return when the menu closes. UIKit lays out and
+  animates the lift and the menu. The message stays above the menu, and the same finger can slide
+  from the long press onto a row.
+- **No scaling.** The message keeps its size: the press-in effect UIKit plays while the finger is
+  down runs on an invisible stand-in. An app that wants a scale effect can add its own.
+- **Shape.** Set `previewCornerRadius` (or `previewCornerRadii`) to the bubble's corner radius: it
+  shapes the press and return outlines, and on iOS 26 it sizes a small clear margin around the lifted
+  copy so UIKit's own corner clip (about 32 points) does not round a small bubble into a circle.
+- **Spacing is the system's**: 20 points from the lifted copy on iOS 26, tighter on iOS 18. iOS 18
+  also blurs the screen behind the menu, as its context menus always do.
+- **Android** opens the menu popup below the message, lifting the message just enough first (180 ms)
+  when the popup would not fit, and lowering it when the popup closes. Long-press menus are at least
+  208 dp wide.
+- The default, `menuPlacement="system"`, keeps UIKit's placement around the content in place, which
+  opens above content in the lower half of the screen.
 
-**Items.** The same tree as the other menus: actions, titled or untitled sections, `checked`,
-`destructive`, `disabled`, `systemImage`, `androidIcon`. Submenus are not supported in a panel
-(it throws); use sections. `onAction` receives only enabled items.
+Measured on iOS 26.5 and 18.6 and the Android emulator for received and sent messages at the top,
+middle and bottom of the screen; see the UI test `testGlassMenuPanel` and
+`scripts/verify-android-menu-panel.py`.
 
-**Touch.** Touching a row highlights it; sliding moves the highlight with a selection tick on each
-new row (`UISelectionFeedbackGenerator` on iOS, a clock tick on Android); lifting on an enabled row
-calls `onAction`. Lifting elsewhere, or on a disabled row, calls `onCancelTouch` if given. The panel
-does not cancel React Native's touches, and is not cancelled by them. When content is taller than
-`maxHeight` the rows scroll natively; once they scroll, the touch no longer selects.
+## Menu panel: Apple's menu at a frame you choose (0.1.6)
 
-**Layout.** `width` is a number or `'intrinsic'` (default, the system menu width). The height comes
-from the items: `GlassMenuPanel.measure(items, {width, maxHeight, fontScale})` returns it
-synchronously and the panel uses the same value, so nothing jumps. `fontScale` defaults to the
-current text size. The panel renders correctly under transformed ancestors; do not fade it with
-`opacity` on iOS, because glass does not render inside a fading view (`appearFrom` animates with
-transforms only).
+`GlassMenuPanel` opens the system menu (the same `UIMenu` as `GlassMenuButton`) at an exact frame.
+It is an invisible anchor: give it the menu's frame with `style`, then call `ref.open()`. iOS 26
+grows its menu out of the anchor and fits it over the anchor, whichever way it opens.
 
-**Motion.** `appearFrom="top" | "bottom"` springs the panel in from that edge when it mounts
-(`'none'` by default; skipped under Reduce Motion or with Android animations off). The ref's
-`dismiss()` animates it out and then calls `onDismissed`; unmount it there.
+```tsx
+const size = GlassMenuPanel.measure(items);              // {width, height} of Apple's menu
+<GlassMenuPanel ref={menu} items={items} onAction={handle}
+  style={{position: 'absolute', left: x, top: y, width: size.width, height: size.height}} />
+menu.current?.open();
+```
 
-**Accessibility.** Each row is a button element labelled by its title; destructive rows say so,
-disabled rows are disabled, and VoiceOver or TalkBack can activate them. `autoFocus` moves the
-screen reader to the first row when the panel appears; `accessibilityModal` makes it the only
-thing VoiceOver reads (on Android it becomes an accessibility pane). VoiceOver's escape gesture
-calls `onRequestClose`.
-
-**Dismissal is yours.** The panel does not close itself, dim the screen or handle Android Back. Put
-it in your own overlay, for example a full-screen `Pressable` that closes it on an outside tap.
+- `GlassMenuPanel.measure(items, {fontScale?, maxHeight?})` predicts the menu's size before it
+  opens, from Apple's menu measured at every system text size on iOS 26.5 (250 points wide, 400 at
+  accessibility sizes). Titles must fit on one line; a wrapped title makes the menu taller.
+- `computeFocusMenuLayout(input)` is a pure function that places a pressed message and its menu so
+  the menu is 10 points below the message, moving the message only as far as needed (it is exported
+  for apps that lay the menu out themselves).
+- `open()` uses `performPrimaryAction()` (iOS 17.4+). Before 17.4 it shows the plain fallback menu
+  over the anchor. Android shows the menu popup over the anchor's frame.
+- This is a button-style menu: UIKit draws it above other content and grows it from the anchor. For
+  a message's own long-press menu, prefer `GlassContextMenu` with `menuPlacement="below"` above.
 
 ### `GlassLongPress`
 
 Wraps any content and recognises a native long press (`minimumDuration` in ms, default 500;
-`allowableMovement` in points, default 10; `disabled`; `haptic`: `'none' | 'light' | 'medium' |
-'heavy' | 'soft' | 'rigid'`, Android uses its standard long-press haptic for any value except none).
-
-- Before it is recognised it stays out of the way: the children's `onPress`, an enclosing list's
-  scroll and gesture-handler pans keep working, and moving further than `allowableMovement` fails it.
-- On recognition `onLongPress({frame})` reports the wrapper's frame in window points, measured
-  natively, and the children's touches are cancelled, so they do not fire `onPress` on release.
-- While the finger stays down, its movement and release go to the most recently mounted
-  `GlassMenuPanel`. If the panel is not mounted yet, the latest point is kept and applied when it
-  mounts. Lifting on a row chooses it; lifting anywhere else leaves the panel open for a tap.
+`allowableMovement` in points, default 10; `disabled`; `haptic`). Until it is recognised the
+children's taps and an enclosing list's scroll keep working; on recognition it cancels the
+children's touch and calls `onLongPress({frame})` with the content's frame in window points.
 
 ## Android menu appearance
 

@@ -207,6 +207,14 @@ export interface GlassContextMenuProps extends ViewProps, GlassRefProp {
   /** iOS: a radius per corner for the lifted preview, for example a grouped bubble's tight corner.
    * Corners left out use previewCornerRadius. */
   previewCornerRadii?: {topLeft?: number; topRight?: number; bottomLeft?: number; bottomRight?: number};
+  /**
+   * iOS: where the menu opens. 'system' (default) is UIKit's placement around the content in place,
+   * which puts the menu above content in the lower half of the screen. 'below' opens it below the
+   * content, as Messages does: the press-in plays in place, then the lifted content glides up only as
+   * far as the menu needs and the menu emerges from behind it; both return on close. UIKit lays out
+   * and animates both. Android opens its popup below the content whenever it fits.
+   */
+  menuPlacement?: 'system' | 'below';
   /** The menu opened. */
   onOpen?: () => void;
   /** The menu closed, after its dismissal animation, with or without an action. */
@@ -326,57 +334,91 @@ export interface GlassExpandingTabsProps extends Omit<ViewProps, 'children'>, Gl
 }
 /** Ref handle for GlassMenuPanel: the host view's measurement, plus a native dismissal. */
 export interface GlassMenuPanelHandle extends Pick<GlassHostRef, 'measure' | 'measureInWindow' | 'measureLayout'> {
-  /** Animates the panel out toward the edge it appeared from, then calls onDismissed. */
-  dismiss(): void;
+  /**
+   * Presents the menu over the panel's frame: Apple's native UIMenu on iOS 17.4+, the menu popup on
+   * Android, the plain fallback menu on older iOS. A no-op while disabled, without items, or before
+   * the panel is on screen.
+   */
+  open(): void;
 }
 /**
- * The system menu as a view the app places: drawn natively (UIKit rows on the iOS 26 glass
- * platter, system material below 26, the Material popup look on Android), laid out by React Native
- * like any view, never presented by the system. Rows drag-select with a haptic tick per row.
+ * An invisible anchor for the native menu. Give it the menu's exact frame with `style` (position
+ * from computeFocusMenuLayout or your own layout, size from GlassMenuPanel.measure), then call
+ * `ref.open()`: iOS 26 grows its own menu out of the anchor and covers it exactly, whichever way it
+ * opens, so the menu appears where the anchor is.
  */
 export interface GlassMenuPanelProps extends Omit<ViewProps, 'children'> {
   ref?: React.Ref<GlassMenuPanelHandle>;
-  /** Actions and sections (titled or untitled). Submenus are not supported in a panel. */
+  /** Actions, sections and submenus, as for GlassMenuButton. */
   items: readonly GlassMenuElement[];
-  /** An enabled row was chosen, by lifting a finger on it or by VoiceOver/TalkBack. */
+  /** An enabled item was chosen. */
   onAction: (id: string) => void;
-  /** A touch ended off the rows or on a disabled row. */
-  onCancelTouch?: () => void;
-  /** iOS: VoiceOver's escape gesture; close the menu. Android Back stays with the app (BackHandler). */
-  onRequestClose?: () => void;
-  /** After dismiss() finishes its animation. */
-  onDismissed?: () => void;
-  /** Points, or 'intrinsic' for the system menu's width (250 at the default text size). */
-  width?: number | 'intrinsic';
-  /** Taller content scrolls natively. */
-  maxHeight?: number;
-  colorScheme?: 'system' | 'light' | 'dark';
-  /** Blocks every row. */
+  /** The menu was presented. */
+  onOpen?: () => void;
+  /** The menu was dismissed, after its closing animation, with or without an action. */
+  onClose?: () => void;
+  /** Blocks the menu. */
   disabled?: boolean;
-  /** A native spring in from this edge on mount, like the system menu. Defaults to 'none'. */
-  appearFrom?: 'none' | 'top' | 'bottom';
-  /** Moves VoiceOver/TalkBack focus to the first row when the panel appears. */
-  autoFocus?: boolean;
-  /** Screen readers ignore everything outside the panel while it is shown (iOS). */
-  accessibilityModal?: boolean;
-  /** Android: corner radius and colours; iOS keeps the system look. */
+  /** Use the plain fallback menu on every platform. Default false. */
+  forceFallback?: boolean;
+  /** Android: corner radius and colours of the menu popup; iOS keeps the system menu. */
   androidMenuStyle?: GlassMenuStyle;
 }
-/** Options for GlassMenuPanel.measure(); pass the same width and maxHeight as the panel. */
-export interface GlassMenuPanelMeasureOptions {
-  width?: number | 'intrinsic';
-  maxHeight?: number;
-  /** The system text size multiplier. Defaults to PixelRatio.getFontScale(). */
-  fontScale?: number;
-}
 /** Window-point frame of the view a long press began on. */
+export interface GlassMenuPanelMeasureOptions {
+  /** The system text-size multiplier; defaults to the current one (PixelRatio.getFontScale()). */
+  fontScale?: number;
+  /** Caps the height; UIKit scrolls a taller menu. */
+  maxHeight?: number;
+}
+/** The platform menu's size in points, before it opens. */
+export interface GlassMenuSize {
+  width: number;
+  height: number;
+}
+export interface FocusMenuRect {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+/** Everything in window points, measured after the keyboard is down. */
+export interface FocusMenuLayoutInput {
+  /** The pressed message where it sits now (GlassLongPress's `frame`). */
+  bubble: FocusMenuRect;
+  /** Sent by the viewer (right side): the menu hugs the message's right edge; otherwise its left. */
+  isOwn: boolean;
+  window: {width: number; height: number};
+  /** Safe-area insets; the top limit is `topLimit`. */
+  insets?: {left?: number; right?: number; bottom?: number};
+  /** The bottom edge of the app's header: a message never sits above `topLimit + topGap`. */
+  topLimit: number;
+  /** GlassMenuPanel.measure(items).height. */
+  menuHeight: number;
+  /** GlassMenuPanel.measure(items).width, the width the menu is drawn at. Default min(248, window − 32). */
+  menuWidth?: number;
+  /** Message bottom to menu top. Default 10. */
+  menuGap?: number;
+  /** Header bottom to the highest a message may sit. Default 12. */
+  topGap?: number;
+  /** Closest the menu comes to a side of the window, inside the safe area. Default 8. */
+  edge?: number;
+}
+export interface FocusMenuLayout {
+  /** Where the message (or its lifted copy) goes: same x, same size; only y changes. */
+  bubble: FocusMenuRect;
+  /** The menu's frame: give it to GlassMenuPanel as its style. */
+  menu: FocusMenuRect;
+  /** Clip the lifted copy above this y (the header's bottom edge). */
+  clipTop: number;
+}
 export interface GlassLongPressEvent {
   frame: {x: number; y: number; width: number; height: number};
 }
 /**
  * A native long press around React children. Before it is recognised the children's own taps and
- * an enclosing list's scroll keep working; once recognised it cancels the children's touch, and the
- * same finger drives the most recently mounted GlassMenuPanel until it lifts.
+ * an enclosing list's scroll keep working; once recognised it cancels the children's touch and
+ * reports their frame, for example to place a GlassMenuPanel and open the native menu.
  */
 export interface GlassLongPressProps extends ViewProps {
   children?: React.ReactNode;

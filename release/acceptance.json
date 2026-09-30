@@ -1,7 +1,7 @@
 {
   "schemaVersion": 2,
-  "version": "0.1.5",
-  "sourceDigest": "cc10d7aa15e884ced1ac394d02715af70543cdb1356bfb442c1862c7d007163b",
+  "version": "0.1.6",
+  "sourceDigest": "ad4d26952d2865d0101c329a817bd22f3f597df76418e92dc3336d4e6560ead4",
   "checks": {
     "ios-current-profile": {
       "status": "deferred",
@@ -192,11 +192,11 @@
       "reviewer": "Claude Code",
       "device": "Independent React Native 0.87.1 consumer",
       "os": "iOS and Android native Release builds",
-      "date": "2026-09-29",
+      "date": "2026-09-30",
       "configuration": "Release",
-      "summary": "345-file archive SHA-256 916e2ab81eb75e8dd12fa28512b0cd14c404b932fc062d18af6d4dbc53e537ab passed consumer TypeScript, both production bundles and both native Release builds from the 0.1.5 source. No Expo or navigation dependency.",
+      "summary": "346-file archive SHA-256 ddbc3c7d9cd12dc989b242f0f43d9f472111c2b26a79f4f536de403628833cd3 passed consumer TypeScript, both production bundles and both native Release builds from the 0.1.6 source. No Expo or navigation dependency.",
       "evidence": [
-        "release/verification-0.1.5.md"
+        "release/verification-0.1.6.md"
       ]
     },
     "ios-source-review": {
@@ -204,36 +204,35 @@
       "reviewer": "Claude Code source review",
       "device": "Source review",
       "os": "iOS guarded APIs",
-      "date": "2026-09-29",
+      "date": "2026-09-30",
       "configuration": "Source review",
-      "summary": "Reviewed the 0.1.5 changes: new ALGMenuPanel (UIGlassEffect behind iOS 26 availability checks, UIBlurEffect/opaque fallback, a non-cancelling UIGestureRecognizer for row tracking, UISelectionFeedbackGenerator) and ALGLongPress (UILongPressGestureRecognizer; cancels React Native touches by toggling its touch handler recognizer) Fabric components, and UIContextMenuInteraction delegate open/close plus a per-corner preview path on ALGMenu. Android counterparts use public View APIs and React Native NativeGestureUtil. No private APIs or new runtime dependencies. Runtime evidence is recorded separately.",
+      "summary": "Reviewed the 0.1.6 changes: the 0.1.5 custom panel (ALGMenuPanel) is removed; GlassMenuPanel is an invisible UIButton anchor for UIMenu (performPrimaryAction, iOS 17.4+ guard); GlassContextMenu menuPlacement below uses public UIContextMenuInteraction API only (previewProvider with a snapshot, targeted previews on an invisible stand-in and on the content, iOS 26 availability guard for the preview margin); GlassLongPress loses its tracker; the fallback action cluster reports Expanded/Collapsed on iOS. Android: popup lift with ViewPropertyAnimator and a 208 dp minimum for long-press menus. No private APIs or new runtime dependencies.",
       "evidence": [
-        "release/verification-0.1.5.md"
+        "release/verification-0.1.6.md"
       ]
     },
     "ios-swiftui-runtime": {
       "status": "passed",
       "reviewer": "Claude Code",
-      "device": "iPhone 17 Pro Max simulator; GitHub macOS runner iPhone simulator",
+      "device": "iPhone 17 Pro Max simulator; iPad Pro 11-inch (M5) simulator",
       "os": "iOS 26.5",
-      "date": "2026-09-29",
+      "date": "2026-09-30",
       "configuration": "Release",
-      "summary": "Release UI tests passed on 26.5: tab lifecycle and first tap, tab artwork and tints, icon buttons and programmatic menus, visual tiers, menu panel (placement, tap and press-slide-lift selection, lift off the panel, steady platter brightness), context menu with onOpen/onClose and its plain fallback. Device tests run locally; hosted device tests were removed by owner decision (September 29).",
+      "summary": "All 32 UI tests on iOS 26.5 in Release: 29 passed, 3 skipped (iPad, older-iOS and physical tests); the iPad test passed on an iPad simulator; the 8 action-cluster tests passed again after the fallback fix. Message menu recorded frame by frame.",
       "evidence": [
-        "release/verification-0.1.5.md"
+        "release/verification-0.1.6.md"
       ]
     },
     "ios-fallback-runtime": {
       "status": "passed",
       "reviewer": "Claude Code",
-      "device": "iPhone 16 Pro Max simulator",
+      "device": "iPhone 16 Pro Max simulator; iPad Pro 11-inch (M4) simulator",
       "os": "iOS 18.6",
-      "date": "2026-09-29",
+      "date": "2026-09-30",
       "configuration": "Release",
-      "summary": "0.1.5 on 18.6 in Release: menu panel (system-material look, full selection flow, steady brightness), context menu and plain fallback passed. Earlier 18.6 evidence (tab artwork and tints, visual tiers, tab lifecycle and navigation, pills, badges, toolbar and menus) is carried from 0.1.3; those paths are unchanged. iOS 15-17 remains unexecuted.",
+      "summary": "All 32 UI tests on iOS 18.6 in Release: 23 passed, 7 skipped (iOS 26-only and hardware tests), 2 action-cluster failures fixed (fallback spoken value) and re-run with 2 related tests: all passed. The iPad test passed. iOS 15-17 remains unexecuted.",
       "evidence": [
-        "release/verification-0.1.3.md",
-        "release/verification-0.1.5.md"
+        "release/verification-0.1.6.md"
       ]
     }
   },

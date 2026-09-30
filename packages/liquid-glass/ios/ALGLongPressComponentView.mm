@@ -61,13 +61,10 @@ using namespace facebook::react;
   }
 }
 - (void)handle:(UILongPressGestureRecognizer *)recognizer {
-  CGPoint point = [recognizer locationInView:nil];
-  ALGMenuPanelTracker *tracker = ALGMenuPanelTracker.shared;
   switch (recognizer.state) {
     case UIGestureRecognizerStateBegan: {
       [self impact];
       [self cancelReactTouches];
-      [tracker begin];
       CGRect frame = [self convertRect:self.bounds toView:nil];
       if (_eventEmitter) {
         ALGLongPressEventEmitter::OnLongPress event{};
@@ -77,10 +74,6 @@ using namespace facebook::react;
       }
       break;
     }
-    case UIGestureRecognizerStateChanged: [tracker moveTo:point]; break;
-    case UIGestureRecognizerStateEnded: [tracker endAt:point]; break;
-    case UIGestureRecognizerStateCancelled:
-    case UIGestureRecognizerStateFailed: [tracker cancel]; break;
     default: break;
   }
 }

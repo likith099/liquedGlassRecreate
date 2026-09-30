@@ -1,99 +1,57 @@
 import React, {useImperativeHandle, useRef} from 'react';
-import {PixelRatio, Platform, useWindowDimensions} from 'react-native';
-import NativeMenuPanel, {Commands} from './specs/ALGMenuPanelNativeComponent';
+import {Platform, View} from 'react-native';
+import NativeMenu, {Commands} from './specs/ALGMenuNativeComponent';
+import FallbackContextMenu, {type FallbackMenuOpener} from './fallback/GlassContextMenu';
 import {enabledMenuAction, menuStyleJSON, validateMenuItems} from './menuTree';
-import type {GlassMenuElement, GlassMenuPanelHandle, GlassMenuPanelMeasureOptions, GlassMenuPanelProps} from './types';
+import {measureMenu} from './menuMetrics';
+import type {GlassHostRef, GlassMenuPanelProps} from './types';
 
-/**
- * Row metrics of the native panel. iOS values are measured from UIKit's own menu on iOS 26
- * (ALGMenuPanelView.swift, PanelMetrics); Android's from the package's menu popup (ALGMenuPanelView.kt).
- * Change them together with the native code: the app lays out around the measured height.
- */
-const metrics = Platform.OS === 'ios'
-  ? {width: 250, paddingVertical: 9, row: 40, separator: 21, title: 30}
-  : {width: 250, paddingVertical: 8, row: 52, separator: 17, title: 36};
-
-type Line = 'row' | 'title' | 'separator';
-/** Sections become an optional title between separators; the native views lay out the same lines. */
-function lines(items: readonly GlassMenuElement[]): Line[] {
-  const out: Line[] = [];
-  for (const item of items) {
-    if (item.kind === 'section') {
-      if (out.length && out[out.length - 1] !== 'separator') out.push('separator');
-      if (item.title) out.push('title');
-      out.push(...lines(item.items));
-      out.push('separator');
-    } else out.push('row');
-  }
-  while (out[out.length - 1] === 'separator') out.pop();
-  return out;
+/** UIKit opens a button's menu from code from iOS 17.4 (performPrimaryAction); Android always can. */
+function canOpenNatively() {
+  if (Platform.OS === 'android') return true;
+  return Platform.OS === 'ios' && parseFloat(String(Platform.Version)) >= 17.4;
 }
 
-function validatePanel(items: readonly GlassMenuElement[]) {
+/**
+ * The system menu, opened exactly where the app wants it. The panel is an invisible anchor the app
+ * gives the menu's frame with `style`; `open()` presents Apple's own UIMenu (the same native menu as
+ * GlassMenuButton), which iOS 26 grows out of the anchor and fits over it whichever way it opens.
+ * UIKit draws the menu, its rows, highlight and animation. Android shows the package's menu popup
+ * over the anchor's frame. Where iOS cannot open a menu from code (before 17.4), open() shows the
+ * plain fallback menu over the anchor.
+ */
+function GlassMenuPanel({ref, items, onAction, onOpen, onClose, disabled = false,
+  forceFallback = false, androidMenuStyle, testID, style, ...props}: GlassMenuPanelProps) {
   validateMenuItems(items);
-  const visit = (elements: readonly GlassMenuElement[]) => {
-    for (const item of elements) {
-      if (item.kind === 'submenu') throw new Error('GlassMenuPanel does not support submenus; use sections.');
-      if (item.kind === 'section') visit(item.items);
-    }
-  };
-  visit(items);
-}
-
-const resolveWidth = (width: number | 'intrinsic' | undefined) => width === undefined || width === 'intrinsic' ? metrics.width : width;
-
-/**
- * The panel's height for these items, before it is drawn: the app can place the menu, and move the
- * content it belongs to, in the same frame the panel first appears.
- */
-function measure(items: readonly GlassMenuElement[], options: GlassMenuPanelMeasureOptions = {}) {
-  const scale = Math.max(1, options.fontScale ?? PixelRatio.getFontScale());
-  let height = 2 * metrics.paddingVertical;
-  for (const line of lines(items)) {
-    height += line === 'row' ? Math.round(metrics.row * scale)
-      : line === 'title' ? Math.round(metrics.title * scale) : metrics.separator;
-  }
-  return options.maxHeight !== undefined ? Math.min(height, options.maxHeight) : height;
-}
-
-/**
- * The system menu as a view you place. It is drawn natively (UIKit rows on the iOS 26 glass
- * platter, the system material below 26, the package's Material popup look on Android), laid out
- * by React Native like any view and never presented by the system: put it under a message, above
- * it, or anywhere else. Touching a row highlights it, sliding moves the highlight with a selection
- * tick per row, and lifting on an enabled row calls onAction. Inside a GlassLongPress, the finger
- * that pressed can slide straight onto a row.
- */
-function GlassMenuPanel({ref, items, onAction, onCancelTouch, onRequestClose, onDismissed, width, maxHeight,
-  colorScheme = 'system', disabled = false, appearFrom = 'none', autoFocus = false, accessibilityModal = false,
-  androidMenuStyle, testID, style, ...props}: GlassMenuPanelProps) {
-  validatePanel(items);
-  const resolvedWidth = resolveWidth(width);
-  if (!(Number.isFinite(resolvedWidth) && resolvedWidth > 0)) throw new Error('GlassMenuPanel width must be a positive number.');
-  if (maxHeight !== undefined && !(Number.isFinite(maxHeight) && maxHeight > 0)) {
-    throw new Error('GlassMenuPanel maxHeight must be a positive number.');
-  }
-  const {fontScale} = useWindowDimensions();
-  const host = useRef<React.ComponentRef<typeof NativeMenuPanel>>(null);
+  const host = useRef<GlassHostRef>(null);
+  const fallbackMenu = useRef<FallbackMenuOpener>(null);
+  const fallback = forceFallback || !canOpenNatively();
   useImperativeHandle(ref, () => ({
-    dismiss: () => { if (host.current) Commands.dismiss(host.current); },
+    open: () => {
+      if (fallback) fallbackMenu.current?.open();
+      else if (host.current) Commands.open(host.current as never);
+    },
     measure: callback => host.current?.measure(callback),
     measureInWindow: callback => host.current?.measureInWindow(callback),
     measureLayout: (relativeTo, onSuccess, onFail) => host.current?.measureLayout(relativeTo, onSuccess, onFail),
-  }), []);
-  return <NativeMenuPanel {...props} ref={host} accessibilityRole="menu"
-    style={[{width: resolvedWidth, height: measure(items, {width, maxHeight, fontScale})}, style]}
-    itemsJSON={JSON.stringify(items)} fontScale={fontScale} colorScheme={colorScheme} disabled={disabled}
-    appearFrom={appearFrom} autoFocus={autoFocus} menuModal={accessibilityModal}
-    menuStyleJSON={menuStyleJSON(androidMenuStyle)} controlTestID={testID}
-    onMenuAction={event => {
-      // Only enabled leaves of the current items act.
-      const item = enabledMenuAction(items, event.nativeEvent.id);
-      if (!disabled && item) onAction(item.id);
-    }}
-    onCancelTouch={onCancelTouch && (() => onCancelTouch())}
-    onRequestClose={onRequestClose && (() => onRequestClose())}
-    onDismissed={onDismissed && (() => onDismissed())} />;
+  }), [fallback]);
+  // An anchor with no size gives the menu nothing to attach to.
+  const anchorStyle = [{minWidth: 1, minHeight: 1}, style];
+  const choose = (id: string) => {
+    const item = enabledMenuAction(items, id);
+    if (!disabled && item) onAction(item.id);
+  };
+  if (fallback) {
+    return <FallbackContextMenu {...props} openRef={fallbackMenu} coverAnchor items={items}
+      onAction={choose} onOpen={onOpen} onClose={onClose} disabled={disabled} testID={testID}
+      style={anchorStyle} pointerEvents="none" accessible={false}><View /></FallbackContextMenu>;
+  }
+  return <NativeMenu {...props} ref={host as never} menuAnchor pointerEvents="none" accessible={false}
+    style={anchorStyle} title="" itemsJSON={JSON.stringify(items)} menuStyleJSON={menuStyleJSON(androidMenuStyle)}
+    disabled={disabled || items.length === 0} controlTestID={testID}
+    onMenuAction={event => choose(event.nativeEvent.id)}
+    onMenuOpen={onOpen && (() => onOpen())} onMenuClose={onClose && (() => onClose())} />;
 }
-GlassMenuPanel.measure = measure;
+/** The platform menu's size for these items before it opens; see menuMetrics.ts. */
+GlassMenuPanel.measure = measureMenu;
 export default GlassMenuPanel;

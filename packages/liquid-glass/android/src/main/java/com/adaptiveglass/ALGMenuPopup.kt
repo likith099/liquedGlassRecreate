@@ -95,6 +95,8 @@ internal class ALGMenuPopup(
   private val allDisabled: Boolean,
   /** Title colour for ordinary items; the style's text colour when null. */
   private val tint: Int?,
+  /** Narrowest the popup may be, in dp; Material's minimum is 112. */
+  private val minWidthDp: Float = 112f,
   private val onSelect: (MenuEntry) -> Unit,
   onDismiss: () -> Unit,
 ) {
@@ -221,7 +223,8 @@ internal class ALGMenuPopup(
       }
     }
     val screen = context.resources.displayMetrics.widthPixels
-    return widest.coerceIn(dp(112f), minOf(dp(280f), screen - dp(32f)))
+    val max = minOf(dp(280f), screen - dp(32f))
+    return widest.coerceIn(minOf(dp(minWidthDp), max), max)
   }
 
   private fun contentHeight(width: Int): Int {
@@ -244,6 +247,13 @@ internal class ALGMenuPopup(
 
   val isShowing get() = window.isShowing
 
+  /** The space the popup needs below its anchor: its height plus the 6 dp gap. */
+  fun heightBelowAnchor(): Int {
+    val width = measuredWidth()
+    rows = rows(entries)
+    return contentHeight(width) + dp(6f)
+  }
+
   /**
    * Shows the popup below [anchor], aligned to its nearer screen edge; the window moves above the
    * anchor when there is no room below.
@@ -257,6 +267,21 @@ internal class ALGMenuPopup(
     val location = IntArray(2).also { anchor.getLocationOnScreen(it) }
     val onRight = location[0] + anchor.width / 2 > context.resources.displayMetrics.widthPixels / 2
     window.showAsDropDown(anchor, 0, dp(6f), if (onRight) Gravity.END else Gravity.START)
+  }
+
+  /**
+   * Shows the popup over [anchor]'s frame, at its position and width: GlassMenuPanel gives the anchor
+   * the menu's own frame, so the menu appears exactly there.
+   */
+  fun showOver(anchor: View) {
+    rows = rows(entries)
+    adapter.notifyDataSetChanged()
+    val width = anchor.width.coerceAtLeast(dp(112f))
+    val location = IntArray(2).also { anchor.getLocationInWindow(it) }
+    val below = context.resources.displayMetrics.heightPixels - location[1]
+    window.width = width
+    window.height = minOf(contentHeight(width), maxOf(below, dp(48f)))
+    window.showAtLocation(anchor, Gravity.NO_GRAVITY, location[0], location[1])
   }
 
   fun dismiss() = window.dismiss()
