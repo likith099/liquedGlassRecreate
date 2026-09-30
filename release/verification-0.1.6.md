@@ -1,8 +1,6 @@
 # 0.1.6 verification
 
-**Status: candidate.** The owner authorized publishing once every test on this machine passes
-(September 30, 2026). No hosted device tests run (removed in 0.1.5); all native evidence below is
-local.
+**Status: published to npm on September 30, 2026** from tag `v0.1.6` (`58d4649`) by the release workflow ([run 36658971674](https://github.com/likith099/liquedGlassRecreate/actions/runs/36658971674), 1.2 minutes), with provenance. The registry tarball (shasum `18ea285be810985e66f63f348ce4d87ffce4b892`, 346 files) has contents identical to the tarball that passed the Release packed-consumer check. The owner authorized publishing once every test on this machine passed; no hosted device tests run, so all native evidence below is local.
 
 ## Candidate
 
