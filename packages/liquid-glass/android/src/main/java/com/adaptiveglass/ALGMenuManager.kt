@@ -20,6 +20,7 @@ class ALGMenuManager : ViewGroupManager<ALGMenuView>(), ALGMenuManagerInterface<
   override fun needsCustomLayoutForChildren() = false
   override fun setContextMenu(view: ALGMenuView, value: Boolean) { view.contextMenu = value }
   override fun setPreviewCornerRadius(view: ALGMenuView, value: Float) { /* iOS preview outline only. */ }
+  override fun setMenuPlacement(view: ALGMenuView, value: String?) { view.menuPlacement = value ?: "system" }
   override fun setPreviewCornerTopLeft(view: ALGMenuView, value: Float) { /* iOS preview outline only. */ }
   override fun setPreviewCornerTopRight(view: ALGMenuView, value: Float) { /* iOS preview outline only. */ }
   override fun setPreviewCornerBottomLeft(view: ALGMenuView, value: Float) { /* iOS preview outline only. */ }
@@ -31,6 +32,7 @@ class ALGMenuManager : ViewGroupManager<ALGMenuView>(), ALGMenuManagerInterface<
   override fun setMergingEnabled(view: ALGMenuView, value: Boolean) { /* Native Android toolbar appearance. */ }
   override fun setSystemImage(view: ALGMenuView, value: String?) { /* SF Symbols are iOS-only. */ }
   override fun setIconMode(view: ALGMenuView, value: Boolean) { view.iconMode = value }
+  override fun setMenuAnchor(view: ALGMenuView, value: Boolean) { view.menuAnchor = value }
   override fun setSymbolPointSize(view: ALGMenuView, value: Float) { /* The Android drawable keeps its size. */ }
   override fun setColorScheme(view: ALGMenuView, value: String?) { view.colorScheme = value ?: "system" }
   override fun setAndroidIcon(view: ALGMenuView, value: String?) { view.androidIcon = value ?: "" }

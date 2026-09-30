@@ -1046,83 +1046,54 @@ final class GlassInteractionTests: XCTestCase {
   }
 
   // GlassMenuPanel: the menu with no trigger, placed by the app. Placements are checked from frames.
+  // Menu panel (0.1.6): the message is a context menu with menuPlacement "below". Apple's own menu
+  // opens below the lifted message, 20 pt from it, and the message moves only vertically (UIKit lifts
+  // a low message just enough for the menu). Frame-by-frame motion was checked from recordings.
   func testGlassMenuPanel() throws {
     continueAfterFailure = false
     let app = XCUIApplication(); app.launch()
-    func capture(_ name: String) {
-      let attachment = XCTAttachment(screenshot: app.screenshot())
-      attachment.name = name; attachment.lifetime = .keepAlways; add(attachment)
-    }
-    func element(_ id: String) -> XCUIElement { app.descendants(matching: .any)[id].firstMatch }
     let open = app.buttons["open-context-demo"]
     XCTAssertTrue(open.waitForExistence(timeout: launchTimeout)); open.tap()
-    let toggle = app.switches["panel-toggle"]
-    XCTAssertTrue(app.scrollIntoView(toggle)); toggle.tap()
-    let panel = element("menu-panel"), message = element("panel-message")
-    XCTAssertTrue(element("menu-panel-forward").waitForExistence(timeout: 5))
-    XCTAssertTrue(app.scrollIntoView(panel, band: 0.05...0.95))
-    Thread.sleep(forTimeInterval: 0.6) // entrance spring
-    // Default placement: below the message, right edges aligned.
-    XCTAssertGreaterThanOrEqual(panel.frame.minY, message.frame.maxY)
-    XCTAssertEqual(panel.frame.maxX, message.frame.maxX, accuracy: 2)
-    XCTAssertTrue(element("menu-panel-delete").exists)
-    capture("Menu panel below right")
-    // Above left: above the message, left edges aligned.
-    // Native segments (iOS 26) are buttons by label; the fallback below 26 has a test ID per option.
-    func placement(_ label: String, _ value: String) -> XCUIElement {
-      let fallback = element("panel-placement-\(value)")
-      return fallback.exists ? fallback : app.buttons[label]
-    }
-    let aboveLeft = placement("Above left", "above-left")
-    XCTAssertTrue(app.scrollIntoView(aboveLeft)); aboveLeft.tap()
-    XCTAssertTrue(app.scrollIntoView(panel, band: 0.05...0.95))
-    Thread.sleep(forTimeInterval: 0.6)
-    XCTAssertLessThanOrEqual(panel.frame.maxY, message.frame.minY)
-    XCTAssertEqual(panel.frame.minX, message.frame.minX, accuracy: 2)
-    capture("Menu panel above left")
-    // Choosing an action reports it; this demo then hides the panel.
-    element("menu-panel-copy").tap()
-    XCTAssertTrue(app.staticTexts["Panel selected: copy"].waitForExistence(timeout: 5))
-    XCTAssertFalse(element("menu-panel").exists)
-    // "Open on long press" wraps the message in GlassLongPress: a tap still reaches the message,
-    // a long press opens the panel with the message's window frame, and a tap closes it.
+    func element(_ id: String) -> XCUIElement { app.descendants(matching: .any)[id].firstMatch }
     let longPress = app.switches["panel-longpress"]
     XCTAssertTrue(app.scrollIntoView(longPress)); longPress.tap()
-    let belowRight = placement("Below right", "below-right")
-    XCTAssertTrue(app.scrollIntoView(belowRight)); belowRight.tap()
-    XCTAssertTrue(app.scrollIntoView(message, band: 0.2...0.45))
-    message.tap()
-    XCTAssertTrue(app.staticTexts["Message tapped"].waitForExistence(timeout: 3))
-    XCTAssertFalse(element("menu-panel").exists)
-    message.press(forDuration: 0.8)
-    XCTAssertTrue(element("menu-panel-forward").waitForExistence(timeout: 3))
-    let reported = "Long press at \(Int(message.frame.width.rounded()))×\(Int(message.frame.height.rounded()))"
-    XCTAssertTrue(app.staticTexts[reported].waitForExistence(timeout: 3), "Expected \(reported)")
-    // The material is final from the first frame: after the entrance spring, the platter's
-    // brightness does not change (UIKit's own menu brightened ~0.9 s after opening).
-    let platter = element("menu-panel").frame.insetBy(dx: 12, dy: 12)
-    var levels: [CGFloat] = []
-    for delay in [0.6, 0.7, 1.0] {
-      Thread.sleep(forTimeInterval: delay)
-      levels.append(meanLuminance(app.screenshot(), in: platter))
+    let message = element("panel-message")
+    // The native segmented control (iOS 26) exposes buttons by label; the fallback has test IDs.
+    func side(_ label: String, _ value: String) -> XCUIElement {
+      let fallback = element("panel-side-\(value)")
+      return fallback.exists ? fallback : app.buttons[label]
     }
-    XCTAssertLessThan(levels.max()! - levels.min()!, 0.006, "Panel luminance over time: \(levels)")
-    capture("Menu panel opened by long press")
-    let star = element("menu-panel-star").frame, source = message.frame
-    message.tap()
-    XCTAssertTrue(element("menu-panel").waitForNonExistence(timeout: 3))
-    XCTAssertEqual(message.frame, source, "The demo reserves the panel's room, so the message stays put")
-    // The finger that pressed slides onto a row and lifts: that row is chosen.
-    let start = message.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
-    start.press(forDuration: 0.8, thenDragTo: start.withOffset(CGVector(dx: star.midX - source.midX, dy: star.midY - source.midY)))
-    XCTAssertTrue(app.staticTexts["Panel selected: star"].waitForExistence(timeout: 5))
-    XCTAssertTrue(element("menu-panel").waitForNonExistence(timeout: 3))
-    // Lifting off the panel chooses nothing and leaves it open for a tap.
-    start.press(forDuration: 0.8, thenDragTo: start.withOffset(CGVector(dx: -source.width / 2 - 40, dy: -source.height / 2 - 30)))
-    XCTAssertTrue(element("menu-panel-copy").waitForExistence(timeout: 3))
-    XCTAssertFalse(app.staticTexts["Panel selected: copy"].exists)
-    element("menu-panel-copy").tap()
-    XCTAssertTrue(app.staticTexts["Panel selected: copy"].waitForExistence(timeout: 5))
+    for (label, value) in [("Received", "received"), ("Sent", "sent")] {
+      let control = side(label, value)
+      XCTAssertTrue(app.scrollIntoView(control)); control.tap()
+      for band in [0.12...0.22, 0.45...0.55, 0.8...0.9] as [ClosedRange<CGFloat>] {
+        XCTAssertTrue(app.scrollIntoView(message, band: band))
+        let original = message.frame
+        message.press(forDuration: 1.0)
+        let forward = app.buttons["Forward"], delete = app.buttons["Delete"]
+        XCTAssertTrue(forward.waitForExistence(timeout: 5), "menu did not open (\(value), \(band))")
+        Thread.sleep(forTimeInterval: 0.8)
+        let preview = app.descendants(matching: .any).matching(NSPredicate(format: "label == 'Preview'")).firstMatch
+        XCTAssertTrue(preview.exists)
+        // On iOS 26 the lifted preview's container has a clear margin (5 pt for 20 pt corners) that keeps
+        // UIKit's corner clip off the bubble; the bubble itself is inset by it. Earlier iOS has none.
+        let margin: CGFloat = glassEra ? 5 : 0
+        let lifted = preview.frame.insetBy(dx: margin, dy: margin), menuTop = forward.frame.minY - 10
+        // Below the message, at the system's own spacing (iOS 26: 20 pt from the copy's container; iOS 18
+        // is tighter).
+        let gap = menuTop - lifted.maxY
+        XCTAssertTrue((5...30).contains(gap), "menu not below the message (\(value), \(band)): gap \(gap)")
+        XCTAssertEqual(lifted.minX, original.minX, accuracy: 1.5)
+        XCTAssertLessThanOrEqual(lifted.minY, original.minY + 1)
+        XCTAssertLessThanOrEqual(delete.frame.maxY, app.frame.maxY)
+        let attachment = XCTAttachment(screenshot: app.screenshot())
+        attachment.name = "Menu below \(value) \(band)"; attachment.lifetime = .keepAlways; add(attachment)
+        app.buttons["Copy"].tap()
+        XCTAssertTrue(app.staticTexts["Panel selected: copy"].waitForExistence(timeout: 5))
+        XCTAssertTrue(forward.waitForNonExistence(timeout: 3))
+        Thread.sleep(forTimeInterval: 0.8)
+      }
+    }
   }
 
   // Visual tiers (R18): the native tier (glass on 26, blur below) and the standard opaque surface, in

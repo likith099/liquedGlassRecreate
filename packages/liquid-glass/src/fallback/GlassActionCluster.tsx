@@ -1,5 +1,5 @@
 import React from 'react';
-import {Text, View} from 'react-native';
+import {Platform, Text, View} from 'react-native';
 import {useFallbackColors} from '../fallbackTheme';
 import GlassButton from '../GlassButton';
 import {validateActions} from '../validateActions';
@@ -18,8 +18,11 @@ export default function GlassActionCluster({actions, expanded, onExpandedChange,
       onPress={() => onAction(action.id)} contentStyle={{paddingHorizontal: 16}}>
       <Text style={textStyle}>{action.title}</Text>
     </GlassButton>)}
+    {/* VoiceOver hears "Collapsed"/"Expanded", as from the native iOS 26 cluster; TalkBack announces
+        Android's standard expanded state. */}
     <GlassButton forceFallback testID="glass-cluster-toggle" accessibilityLabel={toggleLabel}
-      accessibilityState={{expanded}} onPress={() => onExpandedChange(!expanded)}>
+      {...(Platform.OS === 'ios' ? {accessibilityValue: {text: expanded ? 'Expanded' : 'Collapsed'}} : {accessibilityState: {expanded}})}
+      onPress={() => onExpandedChange(!expanded)}>
       <Text style={textStyle}>{expanded ? 'Close' : toggleLabel}</Text>
     </GlassButton>
   </View>;

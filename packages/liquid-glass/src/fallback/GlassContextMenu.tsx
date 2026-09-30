@@ -1,4 +1,4 @@
-import React, {useEffect, useRef, useState} from 'react';
+import React, {useEffect, useImperativeHandle, useRef, useState} from 'react';
 import {Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View,
   useWindowDimensions} from 'react-native';
 import {useFallbackColors} from '../fallbackTheme';
@@ -7,11 +7,14 @@ import {enabledMenuAction} from '../menuTree';
 
 type Anchor = {x: number; y: number; width: number; height: number};
 
+/** Opens the popup from code; GlassMenuPanel uses it where the native menu cannot be opened. */
+export type FallbackMenuOpener = {open(): void};
+
 /** Shared plain popup: preserves the source content and uses no glass or lift. */
 export default function FallbackContextMenu({children, items, onAction, disabled = false,
   forceFallback: _fallback, previewCornerRadius: _radius, previewCornerRadii: _radii, onOpen, onClose, accessibilityLabel,
-  accessibilityHint, accessibilityActions, onAccessibilityAction, testID,
-  ...props}: GlassContextMenuProps) {
+  accessibilityHint, accessibilityActions, onAccessibilityAction, testID, openRef, coverAnchor = false,
+  ...props}: GlassContextMenuProps & {openRef?: React.Ref<FallbackMenuOpener>; coverAnchor?: boolean}) {
   const trigger = useRef<React.ElementRef<typeof View>>(null);
   const [anchor, setAnchor] = useState<Anchor | null>(null);
   const [submenu, setSubmenu] = useState<string | null>(null);
@@ -43,6 +46,7 @@ export default function FallbackContextMenu({children, items, onAction, disabled
       setSubmenu(null); setAnchor({x, y, width: measuredWidth, height: measuredHeight});
     });
   };
+  useImperativeHandle(openRef, () => ({open}));
   const findSubmenu = (nodes: readonly GlassMenuElement[]): GlassMenuElement | undefined => {
     for (const node of nodes) {
       if (node.id === submenu && node.kind === 'submenu' && !node.disabled) return node;
@@ -83,7 +87,8 @@ export default function FallbackContextMenu({children, items, onAction, disabled
   const placeBelow = below >= Math.min(240 * fontScale, above);
   const availableHeight = Math.max(48, placeBelow ? below : above);
   const menuWidth = Math.min(300, width - margin * 2);
-  const placement = anchor ? {
+  // GlassMenuPanel's anchor is the menu's own frame: the popup covers it instead of sitting beside it.
+  const placement = anchor && coverAnchor ? {left: anchor.x, top: anchor.y} : anchor ? {
     left: Math.max(margin, Math.min(anchor.x, width - menuWidth - margin)),
     ...(placeBelow ? {top: anchor.y + anchor.height + 8} : {bottom: height - anchor.y + 8}),
   } : {};
@@ -102,7 +107,8 @@ export default function FallbackContextMenu({children, items, onAction, disabled
         <Pressable testID={testID ? `${testID}-dismiss` : undefined} accessibilityRole="button"
           accessibilityLabel="Dismiss menu" onPress={close} style={StyleSheet.absoluteFill} />
         <View testID={testID ? `${testID}-popup` : undefined} style={[styles.popup, placement,
-          {width: menuWidth, maxHeight: availableHeight, backgroundColor: surface ?? (dark ? '#25272D' : '#FFFFFF')}]}>
+          coverAnchor && anchor ? {width: anchor.width, maxHeight: Math.max(48, height - anchor.y - margin)}
+            : {width: menuWidth, maxHeight: availableHeight}, {backgroundColor: surface ?? (dark ? '#25272D' : '#FFFFFF')}]}>
           <ScrollView bounces={false} keyboardShouldPersistTaps="handled">
             {group && <Pressable accessibilityRole="button" accessibilityLabel="Back to actions"
               onPress={() => setSubmenu(null)} style={styles.row}><Text style={color}>‹ Back</Text></Pressable>}

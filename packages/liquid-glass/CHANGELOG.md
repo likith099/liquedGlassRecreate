@@ -4,6 +4,34 @@ All notable changes to `@likith99/react-native-adaptive-liquid-glass`. Versions 
 [semantic versioning](https://semver.org); while the major version is 0, minor versions may
 change the API.
 
+## 0.1.6 — September 30, 2026
+
+The message menu is Apple's own menu now: the package no longer draws a menu of its own.
+
+### Added
+
+- `GlassContextMenu` `menuPlacement="below"`: the long-press menu opens below the content, as in
+  Messages. Content low on the screen glides up only as far as the menu needs, the menu emerges
+  from behind it, and both return on close; UIKit lays out and animates them. The content keeps its
+  size (no press-in scaling) and shape. Android lifts the content the same way when its popup would
+  not fit below.
+- `computeFocusMenuLayout(input)`: a pure function that places a pressed message and its menu 10
+  points apart, moving the message only as far as needed.
+
+### Changed
+
+- **Breaking:** `GlassMenuPanel` is now an invisible anchor for Apple's `UIMenu` (the same menu as
+  `GlassMenuButton`): give it the menu's frame with `style` and call `ref.open()`. The 0.1.5 panel,
+  which drew its own glass and rows, is removed, with its props (`width`, `maxHeight`, `colorScheme`,
+  `appearFrom`, `autoFocus`, `accessibilityModal`, `onCancelTouch`, `onRequestClose`,
+  `onDismissed`) and `dismiss()`. `GlassMenuPanel.measure(items)` now returns `{width, height}` of
+  Apple's menu, measured at every system text size.
+- **Breaking:** `GlassLongPress` no longer hands its finger to a panel; it reports the content's
+  frame and cancels the content's touch, as before.
+- Android long-press menus are at least 208 dp wide (was 112).
+
+Rebuild both native apps: native components changed.
+
 ## 0.1.5 — September 29, 2026
 
 ### Added

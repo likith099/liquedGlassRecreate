@@ -25,8 +25,8 @@ private class LongPressEvent(surfaceId: Int, tag: Int, private val frame: FloatA
 /**
  * GlassLongPress on Android. The press is observed in dispatchTouchEvent without taking the touch,
  * so the children's taps and an enclosing list's scroll work until it is recognised. Then the
- * children's touches (native and JavaScript) are cancelled and the same finger is handed to the
- * latest GlassMenuPanel through ALGMenuPanelTracker.
+ * children's touches (native and JavaScript) are cancelled, so they do not fire onPress when the
+ * finger lifts, and the press reports the view's frame in window points.
  */
 class ALGLongPressView(private val reactContext: ThemedReactContext) : ReactViewGroup(reactContext) {
   var minimumDuration = 500
@@ -65,7 +65,6 @@ class ALGLongPressView(private val reactContext: ThemedReactContext) : ReactView
     super.dispatchTouchEvent(cancel)
     cancel.recycle()
     parent?.requestDisallowInterceptTouchEvent(true)
-    ALGMenuPanelTracker.begin()
     val location = IntArray(2).also { getLocationInWindow(it) }
     val frame = floatArrayOf(location[0] / density, location[1] / density, width * scaleX / density, height * scaleY / density)
     UIManagerHelper.getEventDispatcherForReactTag(reactContext, id)?.dispatchEvent(
@@ -75,9 +74,7 @@ class ALGLongPressView(private val reactContext: ThemedReactContext) : ReactView
   override fun dispatchTouchEvent(event: MotionEvent): Boolean {
     if (recognized) {
       when (event.actionMasked) {
-        MotionEvent.ACTION_MOVE -> ALGMenuPanelTracker.move(event.rawX, event.rawY)
-        MotionEvent.ACTION_UP -> { ALGMenuPanelTracker.end(event.rawX, event.rawY); finish(event) }
-        MotionEvent.ACTION_CANCEL -> { ALGMenuPanelTracker.cancel(); finish(event) }
+        MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> finish(event)
       }
       return true
     }
@@ -105,7 +102,6 @@ class ALGLongPressView(private val reactContext: ThemedReactContext) : ReactView
   }
 
   override fun onDetachedFromWindow() {
-    if (recognized) ALGMenuPanelTracker.cancel()
     reset()
     super.onDetachedFromWindow()
   }

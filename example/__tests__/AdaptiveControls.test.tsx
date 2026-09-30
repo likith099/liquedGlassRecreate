@@ -64,7 +64,8 @@ test('fallback cluster keeps child actions exposed and reports expansion and dis
   act(() => {tree = Renderer.create(<Cluster accessible expanded actions={[{id: 'locked', title: 'Locked', systemImage: 'lock', disabled: true}]}
     onExpandedChange={() => {}} onAction={() => {}} />);});
   expect(tree.root.findByType(RN.View).props.accessible).toBe(false);
-  expect(tree.root.findAll(n => n.props.testID === 'glass-cluster-toggle' && n.props.accessibilityState)[0].props.accessibilityState.expanded).toBe(true);
+  // iOS: the same spoken value as the native cluster (Android reports the expanded state instead).
+  expect(tree.root.findAll(n => n.props.testID === 'glass-cluster-toggle' && n.props.accessibilityValue)[0].props.accessibilityValue).toEqual({text: 'Expanded'});
   expect(tree.root.findAll(n => n.props.testID === 'glass-action-locked' && n.props.accessibilityState)[0].props.accessibilityState.disabled).toBe(true);
   act(() => tree.unmount());
 });

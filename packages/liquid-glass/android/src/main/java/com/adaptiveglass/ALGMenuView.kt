@@ -69,6 +69,12 @@ class ALGMenuView(private val reactContext: ThemedReactContext) : FrameLayout(re
   var colorScheme = "system"
   var androidIcon = ""
   var iconProminent = false
+  /** Context menu: "below" keeps the popup below the content, lifting the content if needed. */
+  var menuPlacement = "system"
+  /** How far the content is lifted for the open popup, in pixels. */
+  private var lifted = 0f
+  /** An invisible anchor for GlassMenuPanel: open() shows the popup attached to this view's frame. */
+  var menuAnchor = false
   /** Corner radius and light/dark colours of the menu popup, as JSON; empty for the defaults. */
   var menuStyleJSON = ""
   /** Icon mode without items is a plain button. */
@@ -128,14 +134,16 @@ class ALGMenuView(private val reactContext: ThemedReactContext) : FrameLayout(re
   }
   fun applyConfiguration() {
     val configuration = listOf(itemsJSON, disabled, toolbar, maxVisibleItems, glassTint, controlTestID, contextMenu,
-      iconMode, colorScheme, androidIcon, iconProminent, menuStyleJSON)
+      iconMode, colorScheme, androidIcon, iconProminent, menuStyleJSON, menuAnchor)
     val changed = configuration != appliedConfiguration
     if (appliedJSON != itemsJSON) {
       appliedJSON = itemsJSON
       entries = try { decode(JSONArray(itemsJSON)) } catch (_: Exception) { emptyList() }
     }
     if (changed) { revision += 1; dismissMenus(); appliedConfiguration = configuration }
-    button.visibility = if (toolbar || contextMenu) View.GONE else View.VISIBLE
+    // An anchor keeps its button laid out but unseen; only the popup it opens is shown.
+    button.visibility = if (toolbar || contextMenu) View.GONE else if (menuAnchor) View.INVISIBLE else View.VISIBLE
+    button.importantForAccessibility = if (menuAnchor) View.IMPORTANT_FOR_ACCESSIBILITY_NO else View.IMPORTANT_FOR_ACCESSIBILITY_AUTO
     bar.visibility = if (toolbar && !contextMenu) View.VISIBLE else View.GONE
     reactContent.visibility = if (contextMenu) View.VISIBLE else View.GONE
     isLongClickable = contextMenu && !disabled && entries.isNotEmpty()
@@ -281,7 +289,10 @@ class ALGMenuView(private val reactContext: ThemedReactContext) : FrameLayout(re
     dismissMenus()
     val version = revision
     lateinit var menu: ALGMenuPopup
+    // Long-press menus get a wider floor (208 dp) so short action lists are not narrow beside the
+    // content, closer to the system menu's width on iOS; menu buttons keep Material's 112 dp.
     menu = ALGMenuPopup(context, entries, MenuStyle.from(menuStyleJSON, isDark()), allDisabled = disabled, tint = glassTint,
+      minWidthDp = if (contextMenu) 208f else 112f,
       onSelect = { entry ->
         if (!disabled && version == revision && isAttachedToWindow && enabledAction(entry.id, entries) != null) {
           UIManagerHelper.getEventDispatcherForReactTag(reactContext, id)?.dispatchEvent(
@@ -290,11 +301,38 @@ class ALGMenuView(private val reactContext: ThemedReactContext) : FrameLayout(re
       },
       onDismiss = {
         if (popup === menu) popup = null
+        lower()
         dispatchLifecycle("topMenuClose")
       })
     popup = menu
-    menu.showAt(if (contextMenu) this else button)
+    when {
+      menuAnchor -> menu.showOver(this)
+      contextMenu && menuPlacement == "below" -> liftThenShow(menu)
+      else -> menu.showAt(if (contextMenu) this else button)
+    }
     dispatchLifecycle("topMenuOpen")
+  }
+  /**
+   * The popup always opens below the content: when it would not fit, the content glides up just
+   * enough first (the counterpart of iOS lifting its preview), and glides back when the popup closes.
+   */
+  private fun liftThenShow(menu: ALGMenuPopup) {
+    val density = resources.displayMetrics.density
+    val location = IntArray(2).also { getLocationOnScreen(it) }
+    val visible = android.graphics.Rect().also { getWindowVisibleDisplayFrame(it) }
+    val bottom = location[1] + height
+    val overflow = bottom + menu.heightBelowAnchor() - (visible.bottom - 8 * density)
+    val room = location[1] - (visible.top + 8 * density)
+    val shift = if (overflow > 0) minOf(overflow, maxOf(0f, room)) else 0f
+    if (shift <= 0f) { menu.showAt(this); return }
+    lifted = shift
+    animate().translationY(-shift).setDuration(180).setInterpolator(android.view.animation.DecelerateInterpolator())
+      .withEndAction { if (popup === menu && isAttachedToWindow) menu.showAt(this) }.start()
+  }
+  private fun lower() {
+    if (lifted == 0f) return
+    lifted = 0f
+    animate().translationY(0f).setDuration(150).setInterpolator(android.view.animation.DecelerateInterpolator()).start()
   }
   override fun dispatchTouchEvent(event: MotionEvent): Boolean {
     if (contextMenu) longPress.onTouchEvent(event)

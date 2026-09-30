@@ -5,10 +5,9 @@ import type {GlassLongPressProps} from './types';
 /**
  * A native long press around React children. Before it is recognised it stays out of the way:
  * the children's own taps work and an enclosing list scrolls when the finger moves more than
- * `allowableMovement`. Once recognised it reports the children's frame in window points, cancels
- * their touch (they do not fire onPress on release), and hands the same finger to the most recently
- * mounted GlassMenuPanel: sliding highlights rows, lifting on a row chooses it, and lifting
- * anywhere else leaves the panel open for a tap.
+ * `allowableMovement`. Once recognised it reports the children's frame in window points and cancels
+ * their touch (they do not fire onPress on release), so the app can place a GlassMenuPanel against
+ * that frame and open the native menu.
  */
 export default function GlassLongPress({children, minimumDuration = 500, allowableMovement = 10, disabled = false,
   haptic = 'none', onLongPress, ...props}: GlassLongPressProps) {

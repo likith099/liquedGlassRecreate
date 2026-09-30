@@ -6,6 +6,8 @@ export interface NativeProps extends ViewProps {
   itemsJSON: string;
   contextMenu?: CodegenTypes.WithDefault<boolean, false>;
   previewCornerRadius?: CodegenTypes.WithDefault<CodegenTypes.Float, 16>;
+  /** Context menu: 'below' keeps the menu below the content (the content moves up if needed). */
+  menuPlacement?: CodegenTypes.WithDefault<'system' | 'below', 'system'>;
   /** Per-corner preview radii; -1 uses previewCornerRadius. */
   previewCornerTopLeft?: CodegenTypes.WithDefault<CodegenTypes.Float, -1>;
   previewCornerTopRight?: CodegenTypes.WithDefault<CodegenTypes.Float, -1>;
@@ -14,6 +16,8 @@ export interface NativeProps extends ViewProps {
   toolbar?: CodegenTypes.WithDefault<boolean, false>;
   maxVisibleItems?: CodegenTypes.WithDefault<CodegenTypes.Int32, 3>;
   mergingEnabled?: CodegenTypes.WithDefault<boolean, false>;
+  /** An invisible anchor the app positions; open() presents the native menu attached to it. */
+  menuAnchor?: CodegenTypes.WithDefault<boolean, false>;
   /** Round icon-only control: SF Symbol alone, square frame, capsule corners. */
   iconMode?: CodegenTypes.WithDefault<boolean, false>;
   /** Icon-mode glyph size in points. */
