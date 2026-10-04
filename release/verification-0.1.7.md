@@ -1,7 +1,7 @@
 # 0.1.7 focused release verification
 
 October 3, 2026. Publication authorized by the owner, with only local checks of changed features.
-Local verification complete; publication is authorized and pending the matching tag workflow.
+**Published 0.1.7**, tagged `v0.1.7` at commit `68147e7`. The [release workflow](https://github.com/likith099/liquedGlassRecreate/actions/runs/37166257751) completed successfully without hosted tests. npm reports `latest: 0.1.7` and a provenance attestation. The downloaded registry archive is byte-identical to the local verified archive.
 
 Changes: preserve the pending B17 native menu transition/action timing work; remove targeted
 preview shadows, resolve preview traits before presentation, and expose `GlassContextMenu`
