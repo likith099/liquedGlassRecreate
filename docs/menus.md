@@ -97,16 +97,16 @@ menu.current?.open();
 
 The preceding flat-menu revision passed TypeScript checks, 19 JavaScript tests, and native UI tests on the iOS simulator, physical iPhone, and Android emulator. The earlier physical-iPhone result does not cover these additions. After building and opening a fresh Android demo, reproduce the flat regression with `python3 scripts/verify-android-menu.py`, or the consolidated batch with `python3 scripts/verify-android-toolbar.py`. Metro uses port 8093. Older iOS runtime testing and full VoiceOver/TalkBack review remain outstanding.
 
-## Long-press message menus (0.1.6)
+## Long-press message menus
 
 For a message (or any content) that opens its actions on a long press, wrap it in
-`GlassContextMenu` with `menuPlacement="below"`. It is Apple's own context menu, placed the way
-Messages places it:
+`GlassContextMenu` with `menuPlacement="below"`. It gives Apple's context menu a separate content
+preview; UIKit controls its final position:
 
 ```tsx
 import {GlassContextMenu} from '@likith99/react-native-adaptive-liquid-glass';
 
-<GlassContextMenu menuPlacement="below" previewCornerRadius={18}
+<GlassContextMenu menuPlacement="below" previewCornerRadius={18} actionTiming="afterClose"
   items={[
     {id: 'reply', title: 'Reply', systemImage: 'arrowshape.turn.up.left', androidIcon: 'ic_reply'},
     {id: 'copy', title: 'Copy', systemImage: 'doc.on.doc', androidIcon: 'ic_copy'},
@@ -119,32 +119,61 @@ import {GlassContextMenu} from '@likith99/react-native-adaptive-liquid-glass';
 </GlassContextMenu>
 ```
 
-- **The menu opens below the message.** A message low on the screen glides up only as far as the
-  menu needs; the menu emerges from behind it; both return when the menu closes. UIKit lays out and
-  animates the lift and the menu. The message stays above the menu, and the same finger can slide
-  from the long press onto a row.
-- **No scaling.** The message keeps its size: the press-in effect UIKit plays while the finger is
-  down runs on an invisible stand-in. An app that wants a scale effect can add its own.
+- **Native lift and return.** Both transitions target the actual content with the same outline.
+  UIKit owns press-in scaling, source visibility, timing and row tracking. Keep the same finger
+  down to slide onto an action; releasing selects it. Do not add a competing scale or opacity
+  animation to the wrapped content.
+- **Placement is a preference.** `below` supplies a separate snapshot preview so UIKit can make
+  room for the menu. It usually appears below short messages, but Apple exposes no public API to
+  force that placement for every image, keyboard state, text size or window. The earlier 0.1.6
+  “always below” claim was too strong. No exact Messages animation or layout match is promised.
 - **Shape.** Set `previewCornerRadius` (or `previewCornerRadii`) to the bubble's corner radius: it
   shapes the press and return outlines, and on iOS 26 it sizes a small clear margin around the lifted
   copy so UIKit's own corner clip (about 32 points) does not round a small bubble into a circle.
-- **Spacing is the system's**: 20 points from the lifted copy on iOS 26, tighter on iOS 18. iOS 18
-  also blurs the screen behind the menu, as its context menus always do.
+- **Spacing is the system's**: roughly 20 points from the lifted copy on the measured iOS 26
+  configuration, plus the clear shape margin; tighter on iOS 18. An exact 10-point gap is not
+  available through the public context-menu API. Removing the margin clips small/asymmetric
+  bubbles. `computeFocusMenuLayout({..., menuGap: 10})` computes app-owned frames, but cannot force
+  the actual native menu rim to those frames. iOS 18 also blurs the screen behind the menu.
+- **Shadow.** The targeted lift and return use an empty shadow path in 0.1.7. With `below`, the
+  separate preview platter still has UIKit's shadow: there is no public switch to remove it.
+  `system` uses only the targeted content preview, but gives up the separate preview's placement.
+  Neither exact no-scaling animation nor a shadowless `below` presentation is guaranteed.
+- **Appearance.** `colorScheme="system"` (default), `"light"` or `"dark"` controls preview appearance.
+  iOS resolves the source, snapshot host and preview controller traits before presentation.
+  `system` inherits the content's appearance. React children must render their own matching theme.
+  Android and the plain fallback use the same option for menu colors.
+  UIKit's menu rows inherit the app window's theme, so apply `Appearance.setColorScheme('dark')`
+  (or `'light'`) in the host app when overriding the system. The component does not mutate the
+  app-wide window theme. A preview-only override does not recolor those native menu rows.
 - **Android** opens the menu popup below the message, lifting the message just enough first (180 ms)
   when the popup would not fit, and lowering it when the popup closes. Long-press menus are at least
   208 dp wide.
 - The default, `menuPlacement="system"`, keeps UIKit's placement around the content in place, which
-  opens above content in the lower half of the screen.
+  can open above content in the lower half of the screen.
 
-Measured on iOS 26.5 and 18.6 and the Android emulator for received and sent messages at the top,
-middle and bottom of the screen; see the UI test `testGlassMenuPanel` and
-`scripts/verify-android-menu-panel.py`.
+The original 0.1.6 placement checks covered short received and sent text bubbles at three screen
+positions. They did not establish image, keyboard or recycling-list behavior. See
+[the implementation research](message-menu-research.md) for the public API boundaries.
+
+Keep the source mounted and its geometry stable while the menu is open. In particular, calling
+`Keyboard.dismiss()` in `onOpen` changes the list geometry after UIKit has begun the lift. Either
+keep the keyboard as it is, or dismiss it before the interaction starts. Set
+`actionTiming="afterClose"` to run `onAction` after the native return and `onClose`, so navigation,
+deletion or composer focus does not interrupt that animation. The default, `"selection"`, keeps
+the original immediate timing. Delivery requires a mounted wrapper and an enabled action still
+present at close. Accessibility actions without a presented menu run immediately. This new option
+is unreleased. On iOS, close follows the UIKit return animation; Android and the plain fallback
+use their existing close callbacks and do not promise completion of an animated source return. The example's
+**Open conversation menu demo** demonstrates it in a `FlatList`.
 
 ## Menu panel: Apple's menu at a frame you choose (0.1.6)
 
-`GlassMenuPanel` opens the system menu (the same `UIMenu` as `GlassMenuButton`) at an exact frame.
-It is an invisible anchor: give it the menu's frame with `style`, then call `ref.open()`. iOS 26
-grows its menu out of the anchor and fits it over the anchor, whichever way it opens.
+`GlassMenuPanel` opens the system menu (the same `UIMenu` as `GlassMenuButton`) from an invisible
+button anchor. Give the anchor a frame with `style`, then call `ref.open()`. UIKit controls the
+final menu frame and morphs toward this anchor on dismissal. A menu-sized anchor can create a
+wide collapsing glass effect; it does not provide a message preview or a Messages-style return.
+Use `GlassContextMenu` around the message for that interaction.
 
 ```tsx
 const size = GlassMenuPanel.measure(items);              // {width, height} of Apple's menu

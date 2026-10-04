@@ -13,9 +13,9 @@ function canOpenNatively() {
 }
 
 /**
- * The system menu, opened exactly where the app wants it. The panel is an invisible anchor the app
- * gives the menu's frame with `style`; `open()` presents Apple's own UIMenu (the same native menu as
- * GlassMenuButton), which iOS 26 grows out of the anchor and fits over it whichever way it opens.
+ * An invisible button anchor positioned with `style`; `open()` presents Apple's own UIMenu.
+ * UIKit chooses the final frame and morphs toward this anchor. Use GlassContextMenu for a content
+ * preview and native return to a message; a menu-sized button anchor has a different morph.
  * UIKit draws the menu, its rows, highlight and animation. Android shows the package's menu popup
  * over the anchor's frame. Where iOS cannot open a menu from code (before 17.4), open() shows the
  * plain fallback menu over the anchor.
@@ -52,6 +52,6 @@ function GlassMenuPanel({ref, items, onAction, onOpen, onClose, disabled = false
     onMenuAction={event => choose(event.nativeEvent.id)}
     onMenuOpen={onOpen && (() => onOpen())} onMenuClose={onClose && (() => onClose())} />;
 }
-/** The platform menu's size for these items before it opens; see menuMetrics.ts. */
+/** Predicts the platform menu's size from measured metrics; UIKit owns the actual size. */
 GlassMenuPanel.measure = measureMenu;
 export default GlassMenuPanel;

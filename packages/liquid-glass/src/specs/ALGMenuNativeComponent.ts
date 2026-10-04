@@ -6,7 +6,7 @@ export interface NativeProps extends ViewProps {
   itemsJSON: string;
   contextMenu?: CodegenTypes.WithDefault<boolean, false>;
   previewCornerRadius?: CodegenTypes.WithDefault<CodegenTypes.Float, 16>;
-  /** Context menu: 'below' keeps the menu below the content (the content moves up if needed). */
+  /** Context menu: 'below' supplies a separate preview; UIKit owns final placement. */
   menuPlacement?: CodegenTypes.WithDefault<'system' | 'below', 'system'>;
   /** Per-corner preview radii; -1 uses previewCornerRadius. */
   previewCornerTopLeft?: CodegenTypes.WithDefault<CodegenTypes.Float, -1>;

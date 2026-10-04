@@ -1,6 +1,7 @@
 import React, {useEffect, useRef, useState} from 'react';
 import {Platform, Pressable, ScrollView, Switch, Text, View, useColorScheme, useWindowDimensions} from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
+import MessageMenuDemo from './MessageMenuDemo';
 import {GlassContextMenu, GlassSegmentedControl, type GlassMenuElement,
   type GlassMenuStyle} from '@likith99/react-native-adaptive-liquid-glass';
 
@@ -45,6 +46,7 @@ export default function ContextMenuDemo({onClose}: {onClose: () => void}) {
   const [side, setSide] = useState<string | null>('received');
   const [panelStatus, setPanelStatus] = useState('No panel action');
   const [panelOnLongPress, setPanelOnLongPress] = useState(false);
+  const [conversation, setConversation] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   useEffect(() => () => clearTimeout(timer.current), []);
   const items: GlassMenuElement[] = replacement ? [{id: 'new', title: 'New action'}] : [
@@ -57,6 +59,7 @@ export default function ContextMenuDemo({onClose}: {onClose: () => void}) {
     {id: 'blocked', title: 'Unavailable message action', disabled: true},
     {id: 'delete', title: 'Delete message', systemImage: 'trash', androidIcon: 'demo_delete', destructive: true},
   ];
+  if (conversation) return <MessageMenuDemo onClose={() => setConversation(false)} />;
   return <SafeAreaView style={{flex: 1, backgroundColor: dark ? '#11141B' : '#F7F8FC'}}>
     {/* Room below the last message so it can be scrolled to the top of the screen. */}
     <ScrollView contentContainerStyle={{padding: 24, paddingBottom: screenHeight * 0.85, gap: 20}}>
@@ -99,9 +102,12 @@ export default function ContextMenuDemo({onClose}: {onClose: () => void}) {
         clearTimeout(timer.current); setStatus('Removal pending');
         timer.current = setTimeout(() => {setMounted(false); setStatus('Message removed');}, 8000);
       }}><Text style={{color}}>Remove message in 8 seconds</Text></Pressable>
-      <Text style={{color, fontSize: 22, fontWeight: '700', marginTop: 12}}>Menu panel</Text>
-      <Text style={{color}}>Touch and hold the message: Apple's own menu opens below it, behind the
-        message. A message in the lower half of the screen moves up first. Scroll to try it anywhere.</Text>
+      <Pressable testID="open-chat-menu-demo" accessibilityRole="button" onPress={() => setConversation(true)}>
+        <Text style={{color}}>Open conversation menu demo</Text>
+      </Pressable>
+      <Text style={{color, fontSize: 22, fontWeight: '700', marginTop: 12}}>Message preview</Text>
+      <Text style={{color}}>Touch and hold the message, then slide to an action. Scroll to try
+        different positions.</Text>
       <View style={{flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between'}}>
         <Text style={{color}}>Open on long press</Text>
         <Switch testID="panel-longpress" accessibilityLabel="Open on long press" value={panelOnLongPress}

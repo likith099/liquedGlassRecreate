@@ -42,14 +42,13 @@ using namespace facebook::react;
   [_menu setMenuAnchor:p.menuAnchor];
   [_menu setIcon:p.iconMode pointSize:p.symbolPointSize colorScheme:@(toString(p.colorScheme).c_str())
     prominent:p.iconVariant == ALGMenuIconVariant::Prominent];
+  [_menu setContextPreview:@(toString(p.menuPlacement).c_str())
+    radii:@[@(p.previewCornerTopLeft), @(p.previewCornerTopRight), @(p.previewCornerBottomLeft), @(p.previewCornerBottomRight)]];
   [_menu configure:@(p.title.c_str()) itemsJSON:@(p.itemsJSON.c_str()) symbol:@(p.systemImage.c_str())
     disabled:p.disabled tint:RCTUIColorFromSharedColor(p.glassTint) forceFallback:p.forceFallback
     label:@(p.controlLabel.c_str()) hint:@(p.controlHint.c_str()) identifier:@(p.controlTestID.c_str())
     toolbar:p.toolbar maxVisibleItems:p.maxVisibleItems mergingEnabled:p.mergingEnabled
     contextMenu:p.contextMenu previewCornerRadius:p.previewCornerRadius];
-  _menu.menuPlacement = @(toString(p.menuPlacement).c_str());
-  _menu.previewCornerRadii = @[@(p.previewCornerTopLeft), @(p.previewCornerTopRight), @(p.previewCornerBottomLeft),
-    @(p.previewCornerBottomRight)];
   [super updateProps:props oldProps:oldProps];
 }
 - (void)mountChildComponentView:(UIView<RCTComponentViewProtocol> *)child index:(NSInteger)index {

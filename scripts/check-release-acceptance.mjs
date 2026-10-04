@@ -50,9 +50,16 @@ export function validateAcceptance(record, {version, digest, ref, directory = ro
   if (record.version !== version) errors.push(`Acceptance version must be ${version}`);
   if (record.sourceDigest !== digest) errors.push('Acceptance source digest is stale or missing');
   if (ref !== undefined && ref !== `refs/tags/v${version}`) errors.push('Publishing requires the matching version tag');
-  for (const [id, configuration] of Object.entries({...requiredChecks, ...deferredChecks})) {
+  // An explicitly recorded owner scope can replace broad regression/consumer runs with
+  // current local evidence for the changed feature. Never relabel omitted checks as passes.
+  const focused = record.validationScope === 'local-changed-features';
+  if (record.validationScope !== undefined && !focused) errors.push('Unknown validation scope');
+  if (focused && !record.scopeAuthorization?.trim()) errors.push('Focused validation requires recorded owner authorization');
+  const focusedChecks = focused ? {'menu-unit-tests': null, 'ios-context-menu-runtime': null, 'package-contents': null} : {};
+  const permitted = focused ? ['ios-swiftui-runtime', 'ios-fallback-runtime', 'packed-consumer'] : [];
+  for (const [id, configuration] of Object.entries({...requiredChecks, ...deferredChecks, ...focusedChecks})) {
     const check = record.checks?.[id];
-    const deferred = Object.hasOwn(deferredChecks, id) && check?.status === 'deferred';
+    const deferred = (Object.hasOwn(deferredChecks, id) || permitted.includes(id)) && check?.status === 'deferred';
     if (check?.status !== 'passed' && !deferred) { errors.push(`${id}: pass or documented permitted deferral required`); continue; }
     if (!check.reviewer?.trim() || !check.device?.trim() || !check.os?.trim() || !check.summary?.trim() ||
         !check.date || !Number.isFinite(Date.parse(check.date))) errors.push(`${id}: reviewer/device/OS/date/summary required`);

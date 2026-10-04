@@ -45,6 +45,82 @@ extension XCUIApplication {
 import UIKit
 
 final class GlassInteractionTests: XCTestCase {
+  func testConversationMenuAppearance() throws {
+    continueAfterFailure = false
+    let app = XCUIApplication(); app.launch()
+    defer { app.terminate() }
+    let open = app.buttons["open-context-demo"]
+    XCTAssertTrue(open.waitForExistence(timeout: launchTimeout)); open.tap()
+    let chat = app.buttons["open-chat-menu-demo"]
+    XCTAssertTrue(app.scrollIntoView(chat)); chat.tap()
+    app.buttons["chat-latest"].tap()
+    let message = app.descendants(matching: .any)["chat-message-29"].firstMatch
+    XCTAssertTrue(message.waitForExistence(timeout: 5))
+    for scheme in ["system", "dark", "light"] {
+      if scheme != "system" { app.buttons["chat-theme"].tap() }
+      let original = message.frame
+      let before = XCTAttachment(screenshot: app.screenshot())
+      before.name = "Appearance \(scheme) before"; before.lifetime = .keepAlways; add(before)
+      message.press(forDuration: 1)
+      XCTAssertTrue(app.buttons["Copy"].waitForExistence(timeout: 5))
+      let capture = XCTAttachment(screenshot: app.screenshot())
+      capture.name = "Appearance \(scheme) open"; capture.lifetime = .keepAlways; add(capture)
+      app.coordinate(withNormalizedOffset: CGVector(dx: 0.05, dy: 0.35)).tap()
+      XCTAssertTrue(app.buttons["Copy"].waitForNonExistence(timeout: 5))
+      XCTAssertEqual(message.frame, original)
+    }
+  }
+
+  func testConversationMenuTransitions() throws {
+    continueAfterFailure = false
+    let app = XCUIApplication(); app.launch()
+    defer { app.terminate() }
+    let open = app.buttons["open-context-demo"]
+    XCTAssertTrue(open.waitForExistence(timeout: launchTimeout)); open.tap()
+    let chat = app.buttons["open-chat-menu-demo"]
+    XCTAssertTrue(app.scrollIntoView(chat)); chat.tap()
+    let message = app.descendants(matching: .any)["chat-message-29"].firstMatch
+    let status = app.staticTexts["chat-status"]
+    app.buttons["chat-latest"].tap()
+    XCTAssertTrue(message.waitForExistence(timeout: 5))
+    let original = message.frame
+    for index in 1...3 {
+      message.press(forDuration: 1)
+      XCTAssertTrue(app.buttons["Copy"].waitForExistence(timeout: 5))
+      XCTAssertFalse(app.buttons["Unavailable"].isEnabled)
+      let preview = app.descendants(matching: .any).matching(NSPredicate(format: "label == 'Preview'")).firstMatch
+      XCTAssertTrue(preview.exists)
+      XCTAssertGreaterThan(app.buttons["Reply"].frame.minY, preview.frame.maxY,
+        "The menu must not cover this bottom message's preview")
+      let capture = XCTAttachment(screenshot: app.screenshot())
+      capture.name = "Conversation preview \(index)"; capture.lifetime = .keepAlways; add(capture)
+      app.coordinate(withNormalizedOffset: CGVector(dx: 0.05, dy: 0.35)).tap()
+      XCTAssertTrue(app.buttons["Copy"].waitForNonExistence(timeout: 5))
+      let closed = XCTNSPredicateExpectation(predicate: NSPredicate(format: "label CONTAINS %@", "closed \(index)"), object: status)
+      XCTAssertEqual(XCTWaiter.wait(for: [closed], timeout: 5), .completed, "Close must follow UIKit's dismissal")
+      XCTAssertEqual(message.frame, original)
+    }
+    // Apply the action after the native close, then test image layout and deletion separately.
+    message.press(forDuration: 1)
+    XCTAssertTrue(app.buttons["Copy"].waitForExistence(timeout: 5))
+    app.buttons["Copy"].tap()
+    expectation(for: NSPredicate(format: "label CONTAINS 'copy 29'"), evaluatedWith: status)
+    waitForExpectations(timeout: 5)
+    XCTAssertTrue(app.buttons["Copy"].waitForNonExistence(timeout: 5))
+    // Exercise a real Image child and source removal after the return animation.
+    app.buttons["chat-image"].tap(); app.buttons["chat-latest"].tap()
+    message.press(forDuration: 1)
+    XCTAssertTrue(app.buttons["Copy"].waitForExistence(timeout: 5))
+    let preview = app.descendants(matching: .any).matching(NSPredicate(format: "label == 'Preview'")).firstMatch
+    XCTAssertTrue(preview.exists)
+    XCTAssertGreaterThan(app.buttons["Reply"].frame.minY, preview.frame.maxY, "Menu must not cover this image preview")
+    let capture = XCTAttachment(screenshot: app.screenshot())
+    capture.name = "Conversation image preview"; capture.lifetime = .keepAlways; add(capture)
+    app.buttons["Delete"].tap()
+    XCTAssertTrue(message.waitForNonExistence(timeout: 5))
+    XCTAssertTrue(app.buttons["Copy"].waitForNonExistence(timeout: 5))
+  }
+
   func testLongPressContextMenu() throws { exerciseContextMenu(fallback: false) }
   func testLongPressContextMenuFallback() throws { exerciseContextMenu(fallback: true) }
 

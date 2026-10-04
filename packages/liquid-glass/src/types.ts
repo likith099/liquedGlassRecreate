@@ -197,8 +197,18 @@ export interface GlassToolbarProps extends Omit<ViewProps, 'children'>, GlassRef
   forceFallback?: boolean;
 }
 export interface GlassContextMenuProps extends ViewProps, GlassRefProp {
+  /** Preview appearance on iOS; menu colors on Android and the plain fallback. Default 'system'.
+   * iOS menu rows inherit the app window: also apply Appearance.setColorScheme for an app override.
+   * iOS resolves preview traits before presentation; this does not recolor React children. */
+  colorScheme?: 'system' | 'light' | 'dark';
   items: readonly GlassMenuElement[];
   onAction: (id: string) => void;
+  /** 'selection' (default) reports immediately. 'afterClose' waits for dismissal, after onClose,
+   * before reporting an action. Recommended for message deletion, navigation and composer focus.
+   * Delivery requires a mounted wrapper and an enabled action still present at close. Accessibility
+   * actions without an open menu report immediately. iOS close follows UIKit's return animation;
+   * Android and plain fallback menus use their existing close lifecycle. */
+  actionTiming?: 'selection' | 'afterClose';
   disabled?: boolean;
   /** Shared plain anchored menu on either platform; content stays in place. Default false. */
   forceFallback?: boolean;
@@ -208,11 +218,11 @@ export interface GlassContextMenuProps extends ViewProps, GlassRefProp {
    * Corners left out use previewCornerRadius. */
   previewCornerRadii?: {topLeft?: number; topRight?: number; bottomLeft?: number; bottomRight?: number};
   /**
-   * iOS: where the menu opens. 'system' (default) is UIKit's placement around the content in place,
-   * which puts the menu above content in the lower half of the screen. 'below' opens it below the
-   * content, as Messages does: the press-in plays in place, then the lifted content glides up only as
-   * far as the menu needs and the menu emerges from behind it; both return on close. UIKit lays out
-   * and animates both. Android opens its popup below the content whenever it fits.
+   * iOS: 'system' (default) uses the content's native targeted preview. 'below' supplies a separate
+   * snapshot preview so UIKit can move content to make room for the menu. Both use the native lift,
+   * return and drag selection. 'below' is a preference: UIKit owns final placement and may choose
+   * another position based on content, keyboard, text size and available space. Android opens its
+   * popup below the content whenever it fits.
    */
   menuPlacement?: 'system' | 'below';
   /** The menu opened. */
@@ -335,17 +345,16 @@ export interface GlassExpandingTabsProps extends Omit<ViewProps, 'children'>, Gl
 /** Ref handle for GlassMenuPanel: the host view's measurement, plus a native dismissal. */
 export interface GlassMenuPanelHandle extends Pick<GlassHostRef, 'measure' | 'measureInWindow' | 'measureLayout'> {
   /**
-   * Presents the menu over the panel's frame: Apple's native UIMenu on iOS 17.4+, the menu popup on
+   * Presents the menu from the panel's anchor: Apple's native UIMenu on iOS 17.4+, the menu popup on
    * Android, the plain fallback menu on older iOS. A no-op while disabled, without items, or before
    * the panel is on screen.
    */
   open(): void;
 }
 /**
- * An invisible anchor for the native menu. Give it the menu's exact frame with `style` (position
- * from computeFocusMenuLayout or your own layout, size from GlassMenuPanel.measure), then call
- * `ref.open()`: iOS 26 grows its own menu out of the anchor and covers it exactly, whichever way it
- * opens, so the menu appears where the anchor is.
+ * An invisible button anchor for the native menu. Set its frame with `style`, then call ref.open().
+ * UIKit owns final placement and morphs toward the anchor on dismissal. For a message preview
+ * and return animation use GlassContextMenu. GlassMenuPanel.measure predicts, not guarantees, size.
  */
 export interface GlassMenuPanelProps extends Omit<ViewProps, 'children'> {
   ref?: React.Ref<GlassMenuPanelHandle>;

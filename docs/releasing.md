@@ -17,10 +17,9 @@ now use the tag workflow; an interactive publish would bypass its checks.
 
 ## Cutting the next release
 
-1. Review the [release policy](release-acceptance.md) and the previous release's
-   [verification report](../release/verification-0.1.6.md). Run the SwiftUI/current-iOS, older-iOS fallback and packed Release consumer
-   checks. The owner authorized testing and publishing; remaining manual/device
-   deferrals are coverage limits and must not be relabeled as passes.
+1. Review the [release policy](release-acceptance.md) and record the owner's verification scope.
+   For 0.1.7 the owner requested local changed-feature checks only: menu tests, affected iOS runtime
+   behavior, and package contents. Broad regression and a fresh packed consumer are deferred.
 2. Keep the package version, example dependency and npm lockfile synchronized.
    Screenshot and doc URLs in the package README are pinned to a tag; point new
    ones at the version being released.
@@ -30,9 +29,8 @@ now use the tag workflow; an interactive publish would bypass its checks.
    reviewed source; it does not mean tests passed. Commit the candidate and its
    durable review report together so the evidence survives a clean clone.
 4. Push the candidate commit and its matching `v<version>` tag when proceeding with
-   publication. The tag triggers the shared checks (a few minutes), then OIDC publishing
-   with provenance. Native builds and device tests are the local checks in step 1; they
-   are not repeated on GitHub. Do not bypass a CI failure with manual publish.
+   publication. The tag verifies the matching source digest and recorded local evidence, then builds and
+   publishes with OIDC provenance. Tests run locally and are not repeated on GitHub. Do not bypass a CI failure with manual publish.
    Push only the intended tag. A branch dispatch cannot publish, and published
    name/version pairs cannot be reused.
 5. Inspect Actions results and verify the registry artifact as described below.

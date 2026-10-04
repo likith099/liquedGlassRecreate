@@ -33,18 +33,15 @@ private final class MenuButton: UIButton {
 @objc(ALGMenuView)
 public final class ALGMenuView: UIView, UIContextMenuInteractionDelegate {
   @objc public let reactContentView = UIView()
-  /// With the menu below: an invisible stand-in exactly over the content. UIKit's press-in plays on it
-  /// (UIKit enlarges its highlight preview while the finger is down), so the content keeps its size.
-  private let pressStandIn = UIView()
   private lazy var contextInteraction = UIContextMenuInteraction(delegate: self)
   private var contextMenu = false
   private var previewCornerRadius: CGFloat = 16
   /// Per-corner preview radii (top left, top right, bottom left, bottom right); a negative value
   /// uses previewCornerRadius.
-  @objc public var previewCornerRadii: [NSNumber] = []
-  /// "below": the context menu opens below the content, which glides up only as far as the menu
-  /// needs (Messages-style); "system": UIKit's default placement around the content in place.
-  @objc public var menuPlacement = "system"
+  private var previewCornerRadii: [NSNumber] = []
+  /// "below" supplies a separate content preview. UIKit still owns its final placement.
+  private var menuPlacement = "system"
+  private var previewChanged = false
   private let button = MenuButton(type: .system)
   private let bar = UIToolbar()
   // iOS 26 glass controls. Kept out of the UIToolbar, which restyles hosted
@@ -87,9 +84,6 @@ public final class ALGMenuView: UIView, UIContextMenuInteractionDelegate {
     addSubview(bar)
     addSubview(glassRow)
     addSubview(reactContentView)
-    pressStandIn.isUserInteractionEnabled = false
-    pressStandIn.backgroundColor = .clear
-    addSubview(pressStandIn)
     reactContentView.isHidden = true
     reactContentView.addInteraction(contextInteraction)
     bar.isHidden = true
@@ -120,6 +114,13 @@ public final class ALGMenuView: UIView, UIContextMenuInteractionDelegate {
   required init?(coder: NSCoder) { fatalError("init(coder:) is unavailable") }
   deinit { NotificationCenter.default.removeObserver(self) }
 
+  /// Apply before configure so preview changes invalidate the same revision as the menu tree.
+  @objc public func setContextPreview(_ placement: String, radii: [NSNumber]) {
+    previewChanged = previewChanged || menuPlacement != placement || previewCornerRadii != radii
+    menuPlacement = placement
+    previewCornerRadii = radii
+  }
+
   /// Anchor mode; call before configure(...), which applies it.
   @objc public func setMenuAnchor(_ enabled: Bool) {
     iconChanged = iconChanged || menuAnchor != enabled
@@ -146,7 +147,7 @@ public final class ALGMenuView: UIView, UIContextMenuInteractionDelegate {
     toolbar: Bool, maxVisibleItems: Int, mergingEnabled: Bool,
     contextMenu: Bool, previewCornerRadius: CGFloat) {
     let appearanceChanged = !configured || iconChanged || self.title != title || self.symbol != symbol || self.tint != tint || self.forceFallback != forceFallback
-    let structureChanged = lastJSON != itemsJSON || self.toolbar != toolbar || self.disabled != disabled ||
+    let structureChanged = previewChanged || lastJSON != itemsJSON || self.toolbar != toolbar || self.disabled != disabled ||
       self.maxVisibleItems != maxVisibleItems || self.mergingEnabled != mergingEnabled || self.identifier != identifier ||
       self.contextMenu != contextMenu || self.previewCornerRadius != previewCornerRadius
     self.title = title; self.symbol = symbol; self.tint = tint; self.forceFallback = forceFallback
@@ -158,6 +159,7 @@ public final class ALGMenuView: UIView, UIContextMenuInteractionDelegate {
       items = (try? JSONDecoder().decode([MenuItem].self, from: Data(itemsJSON.utf8))) ?? []
     }
     iconChanged = false
+    previewChanged = false
     if structureChanged || appearanceChanged {
       revision += 1
       dismissMenus()
@@ -201,32 +203,41 @@ public final class ALGMenuView: UIView, UIContextMenuInteractionDelegate {
 
   public func contextMenuInteraction(_ interaction: UIContextMenuInteraction,
     configurationForMenuAtLocation location: CGPoint) -> UIContextMenuConfiguration? {
-    guard contextMenu, !disabled, !items.isEmpty else { return nil }
+    guard contextMenu, !disabled, !items.isEmpty, window != nil,
+      reactContentView.bounds.width > 0, reactContentView.bounds.height > 0 else { return nil }
     let version = revision
-    // "below": UIKit gets a separate preview (a snapshot of the content) and lays it out with the menu
-    // itself, the way Messages does: the menu opens below the preview, and the preview glides up only
-    // as far as the menu needs (measured on iOS 26.5). The press-in stays on the content, in place.
-    // (Moving the targeted preview instead makes it jump at touch-down: UIKit asks for it then.)
+    // A separate preview lets UIKit lay out the content and menu together. This is a preference,
+    // not a public placement constraint. Keep the actual content as BOTH transition targets: an
+    // invisible highlight target followed by a real dismissal target produces a mismatched morph.
     let provider: UIContextMenuContentPreviewProvider? = menuPlacement == "below" ? { [weak self] in
-      guard let self, let snapshot = self.reactContentView.snapshotView(afterScreenUpdates: false) else { return nil }
+      guard let self, self.revision == version, self.window != nil,
+        let snapshot = self.reactContentView.snapshotView(afterScreenUpdates: false) else { return nil }
       // UIKit clips the lifted preview to its own continuous corner (about 32 pt, measured on iOS
       // 26.5), which would round a small bubble into a circle. A clear margin sized from the content's
       // own corner radius keeps that clip outside the content, so it keeps its shape.
       let size = self.reactContentView.bounds.size
       let margin = self.previewMargin()
       let host = UIView(frame: CGRect(x: 0, y: 0, width: size.width + 2 * margin, height: size.height + 2 * margin))
+      // Resolve appearance before UIKit attaches the preview to its presentation window.
+      // A new controller otherwise starts with unspecified traits during the lift.
+      let style = self.reactContentView.traitCollection.userInterfaceStyle
+      host.overrideUserInterfaceStyle = style
+      snapshot.overrideUserInterfaceStyle = style
       host.backgroundColor = .clear
       snapshot.frame.origin = CGPoint(x: margin, y: margin)
       host.addSubview(snapshot)
       let controller = UIViewController()
+      controller.overrideUserInterfaceStyle = style
       controller.view = host
       controller.preferredContentSize = host.bounds.size
       return controller
     } : nil
-    return UIContextMenuConfiguration(identifier: nil, previewProvider: provider) { [weak self] _ in
+    let configuration = UIContextMenuConfiguration(identifier: nil, previewProvider: provider) { [weak self] _ in
       guard let self, self.revision == version, !self.disabled else { return nil }
       return UIMenu(children: self.elements(self.items, revision: version))
     }
+    if #available(iOS 16.0, *) { configuration.preferredMenuElementOrder = .fixed }
+    return configuration
   }
   /// Clear space around the lifted preview so UIKit's corner clip misses the content's corners:
   /// 10 pt for square content, less as the content's own (smallest) corner radius grows.
@@ -241,20 +252,14 @@ public final class ALGMenuView: UIView, UIContextMenuInteractionDelegate {
     return max(4, ceil(10 - (corners.min() ?? 0) / 4))
   }
 
-  /// The content as the context menu's preview, in place: the press-in and the return on dismissal.
-  /// With the menu below, the return morphs from the lifted preview's padded container; its outline
-  /// keeps the same clear margin, so the shrinking clip never cuts into the content.
-  private func contentPreview(dismissing: Bool = false) -> UITargetedPreview? {
+  /// One source and outline for the native lift and return. UIKit owns source visibility and timing.
+  private func contentPreview() -> UITargetedPreview? {
     guard reactContentView.window != nil else { return nil }
     let parameters = UIPreviewParameters()
     parameters.backgroundColor = .clear
-    if dismissing, menuPlacement == "below" {
-      let margin = previewMargin()
-      parameters.visiblePath = UIBezierPath(roundedRect: reactContentView.bounds.insetBy(dx: -margin, dy: -margin),
-        cornerRadius: previewCornerRadius + margin)
-    } else {
-      parameters.visiblePath = previewPath(in: reactContentView.bounds)
-    }
+    parameters.visiblePath = previewPath(in: reactContentView.bounds)
+    // Applies to both targeted transitions, not UIKit's separate preview-provider platter.
+    parameters.shadowPath = UIBezierPath()
     return UITargetedPreview(view: reactContentView, parameters: parameters)
   }
   /// A rounded rectangle with its own radius per corner, so a grouped bubble keeps its tight
@@ -288,40 +293,34 @@ public final class ALGMenuView: UIView, UIContextMenuInteractionDelegate {
   // The long-press menu's own open and close, like the menu button's.
   public func contextMenuInteraction(_ interaction: UIContextMenuInteraction,
     willDisplayMenuFor configuration: UIContextMenuConfiguration, animator: UIContextMenuInteractionAnimating?) {
-    // The lifted copy now stands for the content, which is hidden until the copy returns. UIKit fades
-    // the copy in over the first frames, so the content fades out over the same time: no gap.
-    if menuPlacement == "below" {
-      UIView.animate(withDuration: 0.1, delay: 0, options: [.beginFromCurrentState, .allowUserInteraction]) {
-        self.reactContentView.alpha = 0
-      }
-    }
     onMenuOpen?()
   }
   public func contextMenuInteraction(_ interaction: UIContextMenuInteraction,
     willEndFor configuration: UIContextMenuConfiguration, animator: UIContextMenuInteractionAnimating?) {
     let finish = { [weak self] in
       guard let self else { return }
-      self.reactContentView.alpha = 1
       self.onMenuClose?()
     }
     if let animator { animator.addCompletion(finish) } else { finish() }
   }
   public func contextMenuInteraction(_ interaction: UIContextMenuInteraction,
     previewForHighlightingMenuWithConfiguration configuration: UIContextMenuConfiguration) -> UITargetedPreview? {
-    guard menuPlacement == "below" else { return contentPreview() }
-    // No press-in scaling: UIKit's press-in plays on the invisible stand-in, without a shadow.
-    guard pressStandIn.window != nil else { return nil }
-    let parameters = UIPreviewParameters()
-    parameters.backgroundColor = .clear
-    parameters.visiblePath = UIBezierPath(roundedRect: pressStandIn.bounds, cornerRadius: previewCornerRadius + previewMargin())
-    parameters.shadowPath = UIBezierPath()
-    return UITargetedPreview(view: pressStandIn, parameters: parameters)
+    return contentPreview()
   }
   public func contextMenuInteraction(_ interaction: UIContextMenuInteraction,
     previewForDismissingMenuWithConfiguration configuration: UIContextMenuConfiguration) -> UITargetedPreview? {
-    // The copy returns onto the content, which UIKit shows again when the return finishes.
-    if menuPlacement == "below" { reactContentView.alpha = 1 }
-    return contentPreview(dismissing: true)
+    return contentPreview()
+  }
+
+  @available(iOS 16.0, *)
+  public func contextMenuInteraction(_ interaction: UIContextMenuInteraction,
+    configuration: UIContextMenuConfiguration, highlightPreviewForItemWithIdentifier identifier: NSCopying) -> UITargetedPreview? {
+    return contentPreview()
+  }
+  @available(iOS 16.0, *)
+  public func contextMenuInteraction(_ interaction: UIContextMenuInteraction,
+    configuration: UIContextMenuConfiguration, dismissalPreviewForItemWithIdentifier identifier: NSCopying) -> UITargetedPreview? {
+    return contentPreview()
   }
 
   private func enabledAction(_ id: String, in nodes: [MenuItem]) -> MenuItem? {
@@ -354,6 +353,10 @@ public final class ALGMenuView: UIView, UIContextMenuInteractionDelegate {
     }
   }
   @objc private func updateAppearance() {
+    // Apply on the interaction's source before touch-down; targeted previews inherit its traits.
+    reactContentView.overrideUserInterfaceStyle = contextMenu
+      ? (colorScheme == "dark" ? .dark : colorScheme == "light" ? .light : .unspecified)
+      : .unspecified
     if menuAnchor {
       // No title, image or background: only the native menu this button owns is ever seen.
       button.overrideUserInterfaceStyle = .unspecified
@@ -586,9 +589,6 @@ public final class ALGMenuView: UIView, UIContextMenuInteractionDelegate {
     button.frame = iconMode || menuAnchor ? bounds : bounds.insetBy(dx: 4, dy: min(8, bounds.height / 4))
     bar.frame = bounds
     reactContentView.frame = bounds
-    // Same frame as the lifted copy's container (content plus its clear margin), so UIKit's hand-over
-    // from the stand-in to the copy starts exactly over the content.
-    pressStandIn.frame = menuPlacement == "below" ? bounds.insetBy(dx: -previewMargin(), dy: -previewMargin()) : bounds
     updateBar()
   }
   public override func didMoveToWindow() {

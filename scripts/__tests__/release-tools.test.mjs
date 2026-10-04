@@ -88,3 +88,21 @@ test('deferrals still require a reviewer, explanation and durable record', () =>
   record.scope = 'unknown';
   assert.ok(validateAcceptance(record, context).some(e => e.includes('scope')));
 });
+
+test('focused local release requires authorization and current feature evidence', () => {
+  const record = completeRecord();
+  record.validationScope = 'local-changed-features';
+  record.scopeAuthorization = 'Owner requested only local changed-feature checks on October 3, 2026.';
+  for (const id of ['ios-swiftui-runtime', 'ios-fallback-runtime', 'packed-consumer']) record.checks[id].status = 'deferred';
+  for (const id of ['menu-unit-tests', 'ios-context-menu-runtime', 'package-contents']) {
+    record.checks[id] = {...record.checks['ios-source-review']};
+  }
+  assert.deepEqual(validateAcceptance(record, context), []);
+  record.scopeAuthorization = '';
+  assert.ok(validateAcceptance(record, context).some(e => e.includes('authorization')));
+  record.scopeAuthorization = 'Owner authorized';
+  record.checks['ios-context-menu-runtime'].status = 'deferred';
+  assert.ok(validateAcceptance(record, context).some(e => e.startsWith('ios-context-menu-runtime:')));
+  record.checks['ios-source-review'].status = 'deferred';
+  assert.ok(validateAcceptance(record, context).some(e => e.startsWith('ios-source-review:')));
+});

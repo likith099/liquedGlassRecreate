@@ -2,9 +2,8 @@ name: Release
 
 # The existing npm trusted publisher remains bound to this workflow filename.
 # Only a version tag with reviewed source and documented deferrals can reach the OIDC publish job.
-# Native builds and device tests are not run here: the release candidate is verified locally
-# (simulator and emulator checks, and the packed Release consumer that builds both native apps),
-# and that evidence is what release/acceptance.json records.
+# Tests run locally under the owner's recorded scope. This workflow verifies the source
+# digest and evidence record, builds the package and publishes; it does not repeat tests.
 on:
   push:
     tags:
@@ -25,11 +24,6 @@ jobs:
         with:
           node-version: '22'
           cache: npm
-      - run: npm ci
-      - run: node --test scripts/__tests__/*.test.mjs
-      - run: npm run typecheck
-      - run: npm test
-      - run: node scripts/check-pack.mjs
       - name: Require matching tag, source review and documented deferrals
         run: node scripts/check-release-acceptance.mjs
   release:

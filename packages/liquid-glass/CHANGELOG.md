@@ -4,6 +4,23 @@ All notable changes to `@likith99/react-native-adaptive-liquid-glass`. Versions 
 [semantic versioning](https://semver.org); while the major version is 0, minor versions may
 change the API.
 
+## 0.1.7 — October 3, 2026
+
+- Add `GlassContextMenu colorScheme` and resolve iOS preview appearance before presentation.
+  Android and the shared plain fallback use the selected menu colors.
+- Remove the targeted content preview shadow during lift and return. UIKit still owns the
+  separate `below` preview platter's shadow and spacing; an exact 10 pt gap and a completely
+  shadowless `below` preview are not available through the public API.
+
+- Add `GlassContextMenu actionTiming="afterClose"` for actions that delete the source, navigate or
+  focus a composer after iOS's return animation (existing close lifecycle on other platforms).
+  Existing immediate timing remains the default.
+- Restore UIKit's content lift and return for message menus, replacing the invisible highlight
+  stand-in and independent source fade. Keep native menu rows and drag selection.
+- Invalidate menus when preview options change; keep context actions in authored order on iOS 16+.
+- Clarify that `menuPlacement="below"` is a preference and panel measurements are estimates, not
+  public UIKit placement guarantees. Add a conversation demo with deferred actions and image content.
+
 ## 0.1.6 — September 30, 2026
 
 The message menu is Apple's own menu now: the package no longer draws a menu of its own.

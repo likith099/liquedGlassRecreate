@@ -7,25 +7,19 @@ The source of truth for publish eligibility is the tracked
 
 ## Release integration
 
-The owner selected an **iPhone-first 0.1.2 release** and subsequently authorized
-SwiftUI runtime testing, broad regression verification and publication once passing.
-This supersedes the earlier no-testing instruction. Use installed simulators only;
-VoiceOver and unavailable older physical devices remain deferred.
+For 0.1.7 the owner explicitly requested **local testing of changed features only**, followed by
+publication. `validationScope: "local-changed-features"` records that narrower scope, with a required
+`scopeAuthorization` explanation. It requires source review, `menu-unit-tests`,
+`ios-context-menu-runtime` and `package-contents` evidence. Unchanged SwiftUI coverage, older-iOS
+regression and a fresh packed consumer may be documented as deferred; no historical pass is
+represented as execution of this candidate. Without this explicit scope the existing broad
+acceptance gates remain required. Schema 2 retains `scope: "iphone-first"`.
 
-The tag workflow requires matching package version, tag and reviewed-source digest,
-plus completed `ios-source-review`, `ios-swiftui-runtime`, `ios-fallback-runtime`
-and Release `packed-consumer` entries. Schema 2 uses `scope: "iphone-first"`.
-Remaining manual/device categories may have documented owner deferrals; these are
-not passes. Each entry needs reviewer, date, summary and durable evidence. Current
-results are in [0.1.2 verification](../release/verification-0.1.2.md).
-
-The shared checks (release tools, typecheck, Jest, pack, acceptance) must still succeed on GitHub
-before OIDC publishing starts; they run after a tag push and take a few minutes. Native builds and
-device tests are not repeated on GitHub (owner decision, September 29, 2026): they are verified
-locally before the tag, on simulators, the emulator and the packed Release consumer, and recorded
-here. Branch workflow dispatch cannot publish. The
-trusted-publisher identity and workflow filename remain unchanged. 0.1.2 passed
-these hosted gates and was published on September 22, 2026; see the verification report.
+The release workflow verifies version, tag, source digest and durable evidence, builds the npm
+package and publishes with provenance. Tests are local only; the tag does not run a hosted test
+suite. Ordinary branch/PR CI is unchanged. Branch workflow dispatch cannot publish. The trusted
+publisher identity and workflow filename remain unchanged. Manual/device categories stay deferred.
+See [0.1.7 verification](../release/verification-0.1.7.md) for this candidate's evidence.
 
 Use `node scripts/check-release-acceptance.mjs --print-digest` after final source
 changes and update the acceptance record. This identifies reviewed source, not
@@ -55,8 +49,8 @@ result. The script checks record completeness, not the truth of a test result.
 
 ## Repeatable commands
 
-Run these at a coherent release candidate and reuse build caches. The owner has
-authorized the current verification pass; do not download new simulator runtimes.
+These are available broad verification commands, not required execution for the focused 0.1.7
+release. Reuse caches and installed runtimes when a future scope calls for them.
 
 ```sh
 npm run test:release-tools

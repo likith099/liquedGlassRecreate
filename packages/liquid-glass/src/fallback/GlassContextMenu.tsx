@@ -12,14 +12,14 @@ export type FallbackMenuOpener = {open(): void};
 
 /** Shared plain popup: preserves the source content and uses no glass or lift. */
 export default function FallbackContextMenu({children, items, onAction, disabled = false,
-  forceFallback: _fallback, previewCornerRadius: _radius, previewCornerRadii: _radii, onOpen, onClose, accessibilityLabel,
+  forceFallback: _fallback, colorScheme = 'system', previewCornerRadius: _radius, previewCornerRadii: _radii, onOpen, onClose, accessibilityLabel,
   accessibilityHint, accessibilityActions, onAccessibilityAction, testID, openRef, coverAnchor = false,
   ...props}: GlassContextMenuProps & {openRef?: React.Ref<FallbackMenuOpener>; coverAnchor?: boolean}) {
   const trigger = useRef<React.ElementRef<typeof View>>(null);
   const [anchor, setAnchor] = useState<Anchor | null>(null);
   const [submenu, setSubmenu] = useState<string | null>(null);
   const {width, height, fontScale} = useWindowDimensions();
-  const {dark, surface, foreground: themed} = useFallbackColors();
+  const {dark, surface, foreground: themed} = useFallbackColors(colorScheme);
   const json = JSON.stringify(items);
   const request = useRef(0);
   const close = () => {request.current += 1; setAnchor(null); setSubmenu(null);};
