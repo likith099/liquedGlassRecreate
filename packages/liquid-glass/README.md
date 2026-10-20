@@ -35,6 +35,14 @@ where glass is not available.
 - **Native menus and tabs:** `UIMenu` on iOS and a Material-style popup on Android (icons,
   custom corner radius and colours) with sections, checkmarks and destructive
   items; a native tab bar with badges, custom artwork and per-tab colours.
+- **New in 0.2.0:** glass that changes shape instead of disappearing — `GlassMorphButton`
+  (⋯ → "Select"), `GlassPresence` (materialize / dematerialize) and `GlassHeaderHost`, which
+  morphs header controls across native-stack pushes and pops and scrubs with the swipe-back
+  gesture. Also `GlassIconGroup` (several icons in one capsule), `GlassPillBar` (header scope
+  pills), full SF Symbol control (weight, scale, rendering, replace transitions, bounce), badges
+  that ride the glass, standard `controlSize`s with exported `GlassMetrics`, tab bar
+  minimization and bottom accessories. Controls are measured natively during layout, so they
+  have their final size in the first frame and morph even while JavaScript is busy.
 - **New in 0.1.6:** long-press message menus with a separate content preview, using
   Apple's own context menu (`GlassContextMenu` `menuPlacement="below"`), and `GlassMenuPanel` to
   open Apple's menu from a positioned anchor. UIKit controls final placement.
@@ -55,7 +63,7 @@ where glass is not available.
 
 > Some React Native versions need host app settings: 0.81 uses prebuilt iOS dependencies, 0.87
 > builds React from source, and iOS 27 requires the UIScene lifecycle. See
-> [compatibility](https://github.com/likith099/liquedGlassRecreate/blob/v0.1.7/docs/compatibility.md#host-app-setup).
+> [compatibility](https://github.com/likith099/liquedGlassRecreate/blob/v0.2.0/docs/compatibility.md#host-app-setup).
 
 ## Installation
 
@@ -91,16 +99,36 @@ Every component is controlled: pass the current value and update it in the callb
 
 | Component | What it is | Docs |
 | --- | --- | --- |
-| `GlassView`, `GlassContainer`, `GlassPressable` | Glass surfaces for your own content; opt-in merging; pressable cards | [Surfaces](https://github.com/likith099/liquedGlassRecreate/blob/v0.1.7/docs/surfaces.md) |
-| `GlassNavigationView`, `GlassProgressiveBlur` | Native collapsing iOS navigation header, actions/search, and independent progressive blur | [Navigation](https://github.com/likith099/liquedGlassRecreate/blob/main/docs/navigation.md) |
-| `GlassBadge`, `GlassToastProvider`, `GlassScrollEdge`, `GlassScrollHeader` | Labels over imagery, confirmation toasts, content fading under floating bars | [Surfaces](https://github.com/likith099/liquedGlassRecreate/blob/v0.1.7/docs/surfaces.md) |
-| `GlassButton`, `GlassSegmentedControl`, `GlassSlider` | Native button, segmented control (with counts) and slider | [Controls](https://github.com/likith099/liquedGlassRecreate/blob/v0.1.7/docs/controls.md) |
-| `GlassSearchField`, `GlassExpandingTabs` | Search field; pill tabs where the selected pill shows its label | [Controls](https://github.com/likith099/liquedGlassRecreate/blob/v0.1.7/docs/controls.md) |
-| `GlassMenuButton`, `GlassIconButton`, `GlassContextMenu`, `GlassMenuPanel`, `GlassLongPress` | Menu buttons, round icon buttons and floating action buttons, long-press content previews and Apple's menu from a positioned anchor | [Menus](https://github.com/likith099/liquedGlassRecreate/blob/v0.1.7/docs/menus.md) |
-| `GlassToolbar` | Toolbar with actions, menus and automatic overflow | [Toolbars](https://github.com/likith099/liquedGlassRecreate/blob/v0.1.7/docs/toolbars.md) |
-| `GlassTabBar` | Native tab bar with badges, custom images and per-tab colours | [Tabs](https://github.com/likith099/liquedGlassRecreate/blob/v0.1.7/docs/tabs.md) |
-| `GlassActionCluster` | A button that expands into a row of glass actions | [Action clusters](https://github.com/likith099/liquedGlassRecreate/blob/v0.1.7/docs/action-clusters.md) |
-| `useGlassTier()`, `GlassFallbackThemeProvider` | Which material is showing (`glass`, `blur`, `solid`); theme colours for the opaque tier | [Surfaces](https://github.com/likith099/liquedGlassRecreate/blob/v0.1.7/docs/surfaces.md#theming-the-opaque-tier) |
+| `GlassView`, `GlassContainer`, `GlassPressable` | Glass surfaces for your own content; opt-in merging; pressable cards | [Surfaces](https://github.com/likith099/liquedGlassRecreate/blob/v0.2.0/docs/surfaces.md) |
+| `GlassNavigationView`, `GlassProgressiveBlur` | Native collapsing iOS navigation header, actions/search, and independent progressive blur | [Navigation](https://github.com/likith099/liquedGlassRecreate/blob/v0.2.0/docs/navigation.md) |
+| `GlassBadge`, `GlassToastProvider`, `GlassScrollEdge`, `GlassScrollHeader` | Labels over imagery, confirmation toasts, content fading under floating bars | [Surfaces](https://github.com/likith099/liquedGlassRecreate/blob/v0.2.0/docs/surfaces.md) |
+| `GlassButton`, `GlassSegmentedControl`, `GlassSlider` | Native button, segmented control (with counts) and slider | [Controls](https://github.com/likith099/liquedGlassRecreate/blob/v0.2.0/docs/controls.md) |
+| `GlassSearchField`, `GlassExpandingTabs` | Search field; pill tabs where the selected pill shows its label | [Controls](https://github.com/likith099/liquedGlassRecreate/blob/v0.2.0/docs/controls.md) |
+| `GlassMenuButton`, `GlassIconButton`, `GlassContextMenu`, `GlassMenuPanel`, `GlassLongPress` | Menu buttons, round icon buttons and floating action buttons, long-press content previews and Apple's menu from a positioned anchor | [Menus](https://github.com/likith099/liquedGlassRecreate/blob/v0.2.0/docs/menus.md) |
+| `GlassToolbar` | Toolbar with actions, menus and automatic overflow | [Toolbars](https://github.com/likith099/liquedGlassRecreate/blob/v0.2.0/docs/toolbars.md) |
+| `GlassTabBar` | Native tab bar with badges, custom images, per-tab colours, minimize on scroll (`minimizeBehavior`) and a bottom accessory | [Tabs](https://github.com/likith099/liquedGlassRecreate/blob/v0.2.0/docs/tabs.md) |
+| `GlassIconGroup`, `GlassPillBar` | Several icons in one glass capsule (Calendar, Wallet); header scope pills (Fitness+) | [0.2.0 guide](https://github.com/likith099/liquedGlassRecreate/blob/v0.2.0/docs/upgrade-0.2.0.md) |
+| `GlassMorphButton`, `GlassPresence`, `GlassHeaderHost` / `useGlassHeader` | A control whose glass reshapes with its content; materialize on mount; header controls that morph between screens | [0.2.0 guide](https://github.com/likith099/liquedGlassRecreate/blob/v0.2.0/docs/upgrade-0.2.0.md) |
+| `GlassMetrics`, `GlassBackgroundExtension` | Standard sizes and spacing constants; background extension under sidebars and inspectors | [0.2.0 guide](https://github.com/likith099/liquedGlassRecreate/blob/v0.2.0/docs/upgrade-0.2.0.md) |
+| `GlassActionCluster` | A button that expands into a row of glass actions | [Action clusters](https://github.com/likith099/liquedGlassRecreate/blob/v0.2.0/docs/action-clusters.md) |
+| `useGlassTier()`, `GlassFallbackThemeProvider` | Which material is showing (`glass`, `blur`, `solid`); theme colours for the opaque tier | [Surfaces](https://github.com/likith099/liquedGlassRecreate/blob/v0.2.0/docs/surfaces.md#theming-the-opaque-tier) |
+
+## Sizes
+
+Icon buttons and grouped controls take `controlSize`. These are package constants, exported as
+`GlassMetrics.control`, measured on the iPhone 17 Pro Max simulator (iOS 26.5) as the laid-out
+frame of an icon button (accessibility frame, ±0.5 pt):
+
+| `controlSize` | mini | small | regular (default) | large | extraLarge |
+| --- | --- | --- | --- | --- | --- |
+| Diameter (pt / dp) | 28 | 36 | 44 | 50 | 56 |
+
+`GlassMetrics` also exports pill geometry (42 pt tall, 15 pt label padding, 10 pt gap, 49 pt
+icon capsule), group spacing (14 pt ends, 35 pt between glyph inks), the header inset (20 pt on
+phones 414 pt and wider, 16 pt below) and the symbol presets (`barItemPointSize` 17,
+`backPointSize` 17 — with `weight: 'semibold'` and `scale: 'large'` this reproduces UIKit's back
+indicator). Group and pill widths were checked against Calendar, Wallet and Fitness+ within
+±1 pt; see the [0.2.0 guide](https://github.com/likith099/liquedGlassRecreate/blob/v0.2.0/docs/upgrade-0.2.0.md#acceptance-status).
 
 ## Platform behaviour
 
@@ -112,21 +140,17 @@ Every component is controlled: pass the current value and update it in the callb
 
 ## Documentation
 
-- [Accessibility](https://github.com/likith099/liquedGlassRecreate/blob/v0.1.7/docs/accessibility.md): text size, Reduce Motion and Transparency, screen readers
-- [Migrating from expo-glass-effect](https://github.com/likith099/liquedGlassRecreate/blob/v0.1.7/docs/migrating-from-expo-glass-effect.md)
-- [Compatibility](https://github.com/likith099/liquedGlassRecreate/blob/v0.1.7/docs/compatibility.md): tested versions and known gaps
-- [Changelog](https://github.com/likith099/liquedGlassRecreate/blob/v0.1.7/packages/liquid-glass/CHANGELOG.md)
+- [Accessibility](https://github.com/likith099/liquedGlassRecreate/blob/v0.2.0/docs/accessibility.md): text size, Reduce Motion and Transparency, screen readers
+- [Migrating from expo-glass-effect](https://github.com/likith099/liquedGlassRecreate/blob/v0.2.0/docs/migrating-from-expo-glass-effect.md)
+- [Compatibility](https://github.com/likith099/liquedGlassRecreate/blob/v0.2.0/docs/compatibility.md): tested versions and known gaps
+- [Changelog](https://github.com/likith099/liquedGlassRecreate/blob/v0.2.0/packages/liquid-glass/CHANGELOG.md)
 
 ## Contributing
 
 The [repository](https://github.com/likith099/liquedGlassRecreate) includes a demo app that
 exercises every component, and the UI tests that run in CI on iOS and Android. See
-[developing the package](https://github.com/likith099/liquedGlassRecreate/blob/v0.1.7/docs/development.md).
+[developing the package](https://github.com/likith099/liquedGlassRecreate/blob/v0.2.0/docs/development.md).
 
 ## License
 
 MIT
-
-## 0.2.0 development
-
-Unpublished additions: GlassIconGroup, GlassPillBar, GlassMorphButton, GlassPresence, GlassHeaderHost/useGlassHeader, GlassMetrics and GlassBackgroundExtension. Read the [development API and limitations](https://github.com/likith099/liquedGlassRecreate/blob/main/docs/upgrade-0.2.0.md) before adoption. Native rebuild required; navigation morph fidelity is experimental.

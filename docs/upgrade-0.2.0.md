@@ -100,7 +100,7 @@ useGlassHeader({routeKey: route.key, active: isFocused,
 });
 ```
 
-This is an **experimental integration**. Keep slot names stable and memoize item arrays. The host does not replace a navigator delegate or depend on a router package. It uses a discoverable UIKit transition coordinator when available. Registration-before-push, interactive cancellation, accessibility focus, exact navigation-bar bulging and a JS-stall recording are not established; do not assume Passwords-equivalent transitions. The example's persistent-header section demonstrates state changes, not a native-stack swipe test.
+Pass `routeKey: route.key`: react-native-screens publishes the same key as each native screen's `screenId`, which is how the iOS host knows which screen a transition is bringing in. Every registered screen's items are sent to native at once, so the host runs the slot diff inside the stack's own transition coordinator: a slot both screens use morphs, a control only the incoming screen has appears at full size, and one only the outgoing screen has shrinks to its centre (≈70 ms). An interactive swipe back is followed through the stack's pop gesture recognizers, so UIKit scrubs the morph with the finger and reverses it on cancel; JavaScript does nothing per frame, and a 500 ms JavaScript stall during the push does not affect it. After a programmatic push or pop the host watches natively (at most 1.5 s) for react-native-screens to begin the transition, since it can start a few frames after the commit. The host never replaces the navigator's delegate and has no router dependency. Keep slot names stable and memoize item arrays. A screen that registers no items shows no header controls. Android has no transition coordinator: it morphs the same slots with native animators when the focused screen changes. Every header control posts VoiceOver focus to the incoming screen's first control after the transition; verify focus order on a device.
 
 On iOS, morph buttons and header slots use independent glass buttons. A retained slot reuses its material configuration when its content changes. New titles are laid out on one line before the width animation, and content layout completes with the resize. Native control and React Native wrapper width changes share a 0.25-second critically damped animation so the lens finishes resizing before the native release-lighting tail; Reduce Motion applies the final geometry immediately. Native press lighting remains enabled. Use the fields for the chosen content kind: `{kind: 'title', title: 'Done', ...}` or `{kind: 'symbol', symbol: 'ellipsis', ...}`; the demo switches between these rather than showing both together. On Android, a slot whose content changes keeps one capsule and animates its width from the edge it is anchored to while the icon and title cross-fade (Material emphasized easing, 300 ms; `GlassMorphButton` 420 ms); a slot that appears fades in at full size and one that leaves shrinks to its centre and fades. `kind: 'back'` uses the package's Material back arrow on Android.
 
@@ -118,9 +118,32 @@ Additional gaps found in the Apple review:
 
 ## Acceptance status
 
-Implementation is not visual acceptance. Track current runs in `.agent/development.md` in the working copy. Verified locally: iOS 26.5 builds, new-control interactions, header state changes, badge hold recording, AXXXL light/increased-contrast interaction, and existing icon/menu/tab tests. Optimized G1 after-images are pixel-identical to the original implementation; both have six before/after rim channels at 3/255, so the literal ±2 criterion remains open. Android builds and the new group/menu/pill/morph/presence interaction test pass, along with menu, tab navigation, context-menu and existing feature regressions. The tab test needed a launcher-scrolling helper correction before passing. Remaining acceptance includes G1 profiling, G2 ink/transition frames, G3/G4 reference geometry, G5/G6 uninterrupted glass and interrupted-exit recordings, G7 real stack push/pop/cancel, G9 scroll minimization, and exact badge tracking tolerance. Older-iOS device testing remains deferred.
+Measured on the iPhone 17 Pro Max simulator (iOS 26.5, 3×, dark) with the example app's
+**0.2.0 acceptance** screen (`example/AcceptanceDemo.tsx`), XCUITest frames, and 60 fps screen
+recordings analysed frame by frame (`scripts/record-ios-ui-test.sh`, `scripts/trace-glass.py`,
+`scripts/acceptance-images.py`, `scripts/profile-reattach.sh`). Older-iOS fallbacks were run on
+the iOS 18.6 simulator and Android on the Pixel emulator; see the release record for device runs.
 
-G10: the referenced 0.1.7 request file contains menu R1/R2/R2b, not R3–R5. Android long-press cancellation and tab background tint are addressed from source analysis. The exact consumer tab-badge patch is absent and has not been claimed as upstreamed.
+| Item | Criterion | Result |
+| --- | --- | --- |
+| G1 cost | Pop over 20+ surfaces well under ~24 ms | ≈1 ms total in `ALGSurfaceView` across 10 re-attaches of 20 surfaces (no `setEffect` samples) |
+| G1 pixels | ±2 per channel after the pop | Simulator: noise floor 0; 6 channels differ by 3/255 on two surfaces' rims (UIKit regenerates the rim highlight). iPhone 13 Pro (iOS 26.7.1): re-attached glass is settled (0 change a second later) but each fresh effect lands within 17/255 of its earlier look on 20–40 % of glass pixels. Keeping the old effect instead keeps drifting (16/255 within a second), so a fresh effect stays. **Not met as written**; no public API restores UIKit's earlier glass state |
+| G2 | Back chevron like UIKit's; replace never empty | UIKit back indicator measured 11.0 × 18.7 pt, 63.3 pt²; `{pointSize: 17, weight: 'semibold', scale: 'large'}` reproduces it (now `kind: 'back'`). The request's 55.1 pt² came from the app's own tool; this tool reads the app's 0.1.7 sample within 2 %. Replace: minimum 79 % ink in every frame |
+| G3 | Calendar / Wallet within ±1 pt | 162.0 / 162.7 pt and 102.3 / 101.7 pt; items separately hittable, menus per item, VoiceOver per item |
+| G4 | Fitness+ pills within ±1 pt | For You 87.7, Explore 86.7, Plans 71.3, Library 83.0 (87 / 87 / 71 / 84); search 49 × 42; gap 10; inset 20; "1 of 4"; selection switches in one frame |
+| G5 | ≤ 0.6 s, trailing edge fixed, glass every frame, ≤ ±5 % overshoot; same with JS blocked 500 ms; Reduce Motion 0.2 s cross-fade | ≈0.2 s, drift 0 pt, glass in every frame, no overshoot; identical with a 500 ms stall; Reduce Motion: final size in one frame, ≈0.18 s cross-fade |
+| G6 | Glass every frame; exit ≤ 0.2 s; `onExited` once, incl. unmount mid-exit | Exit ≈40 ms, enter from the first frame; `onExited` once in both cases |
+| G7 | Push/pop trace; back appears in one frame, leaves ≤ 0.1 s; swipe scrubs and cancels; JS stall | Trailing glass every frame; back appears at full size; back leaves in ≈70 ms; swipe scrubs (77 → 70 pt during the drag) and restores on cancel; identical with a 500 ms stall during the push. VoiceOver focus posts to the first header control (device check) |
+| G8 | Each `controlSize` ±0.5 pt | All exact |
+| G9 | Default unchanged; `onScrollDown` minimizes | Minimizes; re-expands when tapped (scrolling up does not re-expand while the list lives outside the native tab controller) |
+| G11 | Badge centre on the circle's top-right edge ±1 pt, every frame of a hold | Max 0.75 pt over 128 frames, including the release dip |
+
+JavaScript stalls are measured starting in the next JS task: React Native mounts UI changes at
+the end of the JavaScript task that made them, so work in that same task delays any library.
+
+G10: the referenced 0.1.7 request file contains menu R1/R2/R2b, not R3–R5. Android long-press
+cancellation and tab background tint are addressed; the consumer's tab-badge patch is
+superseded by the unified badge API.
 
 ## Official sources checked October 16, 2026
 

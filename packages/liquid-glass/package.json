@@ -1,6 +1,6 @@
 {
   "name": "@likith99/react-native-adaptive-liquid-glass",
-  "version": "0.1.7",
+  "version": "0.2.0",
   "description": "Native iOS Liquid Glass surfaces and controls with standard Android counterparts.",
   "license": "MIT",
   "author": "Likith Kanneganti",
@@ -49,6 +49,7 @@
     "android",
     "!android/build",
     "!android/.gradle",
+    "common",
     "AdaptiveLiquidGlass.podspec",
     "react-native.config.js",
     "README.md",

@@ -22,15 +22,35 @@ using namespace facebook::react;
     if (generation != self->_generation || self->_visible) return;
     if (self->_eventEmitter) std::static_pointer_cast<const ALGPresenceEventEmitter>(self->_eventEmitter)->onExited({});
   };
-  if (!_animated || !self.window || UIAccessibilityIsReduceMotionEnabled()) { self.transform = target; complete(YES); return; }
+  if (!_animated || !self.window) { self.transform = target; [self setContentHidden:NO]; complete(YES); return; }
+  if (UIAccessibilityIsReduceMotionEnabled()) {
+    // Reduce Motion: a 0.2 s cross-fade at full size. A view transition keeps the glass rendered,
+    // where fading an ancestor's alpha would flatten it.
+    self.transform = CGAffineTransformIdentity;
+    BOOL show = _visible;
+    [UIView transitionWithView:self duration:0.2 options:UIViewAnimationOptionTransitionCrossDissolve | UIViewAnimationOptionAllowUserInteraction
+      animations:^{ [self setContentHidden:!show]; } completion:complete];
+    return;
+  }
+  [self setContentHidden:NO];
   // Ancestor alpha must remain 1: fading it disables a descendant's live glass compositing.
   [UIView animateWithDuration:_visible ? 0.35 : 0.12 delay:0 usingSpringWithDamping:1 initialSpringVelocity:0
     options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
     animations:^{ self.transform = target; } completion:complete];
 }
+- (void)setContentHidden:(BOOL)hidden {
+  for (UIView *child in self.subviews) child.hidden = hidden;
+}
 - (void)didMoveToWindow {
   [super didMoveToWindow];
-  if (self.window && !_appeared) { _appeared = YES; if (_visible && _animated && !UIAccessibilityIsReduceMotionEnabled()) self.transform = CGAffineTransformMakeScale(0.5, 0.5); [self animatePresence]; }
+  if (self.window && !_appeared) {
+    _appeared = YES;
+    if (_visible && _animated) {
+      if (UIAccessibilityIsReduceMotionEnabled()) [self setContentHidden:YES];
+      else self.transform = CGAffineTransformMakeScale(0.5, 0.5);
+    }
+    [self animatePresence];
+  }
   else if (!self.window && !_visible) [self animatePresence];
 }
 + (BOOL)shouldBeRecycled { return NO; }

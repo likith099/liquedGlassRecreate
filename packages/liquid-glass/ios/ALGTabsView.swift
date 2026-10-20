@@ -122,7 +122,9 @@ public final class ALGTabsView: UIView, UITabBarControllerDelegate {
     }
   }
   @objc public func setScrollView(_ scroll: UIScrollView?, identifier: String) {
-    if #available(iOS 26.0, *), let destination = destinations[identifier] {
+    // Register only on change: re-registering on every layout pass (minimizing resizes the bar)
+    // resets UIKit's scroll tracking, so the bar would never expand again.
+    if #available(iOS 26.0, *), let destination = destinations[identifier], destination.contentScrollView(for: .bottom) !== scroll {
       destination.setContentScrollView(scroll, for: .bottom)
     }
   }

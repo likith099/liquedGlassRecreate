@@ -35,6 +35,14 @@ where glass is not available.
 - **Native menus and tabs:** `UIMenu` on iOS and a Material-style popup on Android (icons,
   custom corner radius and colours) with sections, checkmarks and destructive
   items; a native tab bar with badges, custom artwork and per-tab colours.
+- **New in 0.2.0:** glass that changes shape instead of disappearing — `GlassMorphButton`
+  (⋯ → "Select"), `GlassPresence` (materialize / dematerialize) and `GlassHeaderHost`, which
+  morphs header controls across native-stack pushes and pops and scrubs with the swipe-back
+  gesture. Also `GlassIconGroup` (several icons in one capsule), `GlassPillBar` (header scope
+  pills), full SF Symbol control (weight, scale, rendering, replace transitions, bounce), badges
+  that ride the glass, standard `controlSize`s with exported `GlassMetrics`, tab bar
+  minimization and bottom accessories. Controls are measured natively during layout, so they
+  have their final size in the first frame and morph even while JavaScript is busy.
 - **New in 0.1.6:** long-press message menus with a separate content preview, using
   Apple's own context menu (`GlassContextMenu` `menuPlacement="below"`), and `GlassMenuPanel` to
   open Apple's menu from a positioned anchor. UIKit controls final placement.
@@ -97,9 +105,29 @@ Every component is controlled: pass the current value and update it in the callb
 | `GlassSearchField`, `GlassExpandingTabs` | Search field; pill tabs where the selected pill shows its label | [Controls](docs/controls.md) |
 | `GlassMenuButton`, `GlassIconButton`, `GlassContextMenu`, `GlassMenuPanel`, `GlassLongPress` | Menu buttons, round icon buttons and floating action buttons, long-press content previews and Apple's menu from a positioned anchor | [Menus](docs/menus.md) |
 | `GlassToolbar` | Toolbar with actions, menus and automatic overflow | [Toolbars](docs/toolbars.md) |
-| `GlassTabBar` | Native tab bar with badges, custom images and per-tab colours | [Tabs](docs/tabs.md) |
+| `GlassTabBar` | Native tab bar with badges, custom images, per-tab colours, minimize on scroll (`minimizeBehavior`) and a bottom accessory | [Tabs](docs/tabs.md) |
+| `GlassIconGroup`, `GlassPillBar` | Several icons in one glass capsule (Calendar, Wallet); header scope pills (Fitness+) | [0.2.0 guide](docs/upgrade-0.2.0.md) |
+| `GlassMorphButton`, `GlassPresence`, `GlassHeaderHost` / `useGlassHeader` | A control whose glass reshapes with its content; materialize on mount; header controls that morph between screens | [0.2.0 guide](docs/upgrade-0.2.0.md) |
+| `GlassMetrics`, `GlassBackgroundExtension` | Standard sizes and spacing constants; background extension under sidebars and inspectors | [0.2.0 guide](docs/upgrade-0.2.0.md) |
 | `GlassActionCluster` | A button that expands into a row of glass actions | [Action clusters](docs/action-clusters.md) |
 | `useGlassTier()`, `GlassFallbackThemeProvider` | Which material is showing (`glass`, `blur`, `solid`); theme colours for the opaque tier | [Surfaces](docs/surfaces.md#theming-the-opaque-tier) |
+
+## Sizes
+
+Icon buttons and grouped controls take `controlSize`. These are package constants, exported as
+`GlassMetrics.control`, measured on the iPhone 17 Pro Max simulator (iOS 26.5) as the laid-out
+frame of an icon button (accessibility frame, ±0.5 pt):
+
+| `controlSize` | mini | small | regular (default) | large | extraLarge |
+| --- | --- | --- | --- | --- | --- |
+| Diameter (pt / dp) | 28 | 36 | 44 | 50 | 56 |
+
+`GlassMetrics` also exports pill geometry (42 pt tall, 15 pt label padding, 10 pt gap, 49 pt
+icon capsule), group spacing (14 pt ends, 35 pt between glyph inks), the header inset (20 pt on
+phones 414 pt and wider, 16 pt below) and the symbol presets (`barItemPointSize` 17,
+`backPointSize` 17 — with `weight: 'semibold'` and `scale: 'large'` this reproduces UIKit's back
+indicator). Group and pill widths were checked against Calendar, Wallet and Fitness+ within
+±1 pt; see the [0.2.0 guide](docs/upgrade-0.2.0.md#acceptance-status).
 
 ## Platform behaviour
 
@@ -129,7 +157,3 @@ Every component is controlled: pass the current value and update it in the callb
 ## License
 
 MIT
-
-## 0.2.0 development
-
-The unpublished [0.2.0 API, Apple research and acceptance gaps](docs/upgrade-0.2.0.md) cover symbols, badges, grouped controls, pills, morphs, presence, persistent headers and tab accessories. Native rebuild required.

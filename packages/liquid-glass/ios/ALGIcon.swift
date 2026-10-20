@@ -14,13 +14,14 @@ struct ALGSymbol: Decodable, Equatable {
   func image(defaultSize: CGFloat = 17, tint: UIColor = .label) -> UIImage? {
     let weights: [String: UIImage.SymbolWeight] = ["ultraLight": .ultraLight, "thin": .thin, "light": .light,
       "regular": .regular, "medium": .medium, "semibold": .semibold, "bold": .bold, "heavy": .heavy, "black": .black]
-    let key = "\(pointSize ?? Double(defaultSize))/\(weight ?? "medium")/\(scale ?? "medium")" as NSString
+    let key = "\(pointSize ?? Double(defaultSize))/\(weight ?? "medium")/\(scale ?? "default")" as NSString
     let base: UIImage.SymbolConfiguration
     if let cached = Self.configurations.object(forKey: key) { base = cached }
     else {
       base = UIImage.SymbolConfiguration(pointSize: CGFloat(pointSize ?? Double(defaultSize)),
         weight: weights[weight ?? "medium"] ?? .medium,
-        scale: scale == "small" ? .small : scale == "large" ? .large : .medium)
+        // Unset keeps UIKit's default scale (0.1.x output): a button draws it at its own symbol scale.
+        scale: scale == "small" ? .small : scale == "large" ? .large : scale == "medium" ? .medium : .default)
       Self.configurations.countLimit = 128
       Self.configurations.setObject(base, forKey: key)
     }
@@ -211,6 +212,9 @@ class ALGDecoratedButton: UIButton {
   private var badgeScaleVelocity: CGFloat = 0
   private let badgeSpringResponse: CGFloat = 0.32
   private let badgeSpringDamping: CGFloat = 0.6
+  private var badgeLastProxy: CGFloat = 1
+  private var badgeLastProxyTime: CFTimeInterval = 0
+  private var badgeProxyVelocity: CGFloat = 0
   override init(frame: CGRect) {
     super.init(frame: frame); addSubview(badgeLabel)
     addTarget(self, action: #selector(beginBadgeTouch), for: [.touchDown, .touchDragEnter, .touchDragInside, .touchDragOutside])
@@ -244,7 +248,7 @@ class ALGDecoratedButton: UIButton {
   }
   private func stopBadgeTracking() {
     badgeLink?.invalidate(); badgeLink = nil; badgeLean = .zero; badgeTouchPoint = nil
-    badgeScale = 1; badgePeak = 1; badgeScaleVelocity = 0
+    badgeScale = 1; badgePeak = 1; badgeScaleVelocity = 0; badgeLastProxy = 1; badgeLastProxyTime = 0; badgeProxyVelocity = 0
     UIView.performWithoutAnimation { badgeLabel.place(in: self, host: badgeHost) }
   }
   fileprivate func updateBadgePresentation() {
@@ -306,6 +310,13 @@ class ALGDecoratedButton: UIButton {
     guard proxyScale.isFinite, proxyScale > 0 else { return }
     let pressed = badgeTouchActive || isHighlighted
     let dt = CGFloat(min(1.0 / 30, max(1.0 / 120, badgeLink?.duration ?? 1.0 / 60)))
+    // Layout and the display link can both sample one frame: time the proxy's velocity by
+    // elapsed time and ignore same-frame repeats.
+    let now = CACurrentMediaTime()
+    if now - badgeLastProxyTime > 0.004 {
+      if badgeLastProxyTime > 0 { badgeProxyVelocity = (proxyScale - badgeLastProxy) / CGFloat(now - badgeLastProxyTime) }
+      badgeLastProxy = proxyScale; badgeLastProxyTime = now
+    }
     if pressed {
       // Finger down: ride the glass directly and remember the peak (the proxy relaxes early on an
       // in-place hold, so the peak keeps the badge enlarged while the glass stays enlarged).
@@ -313,17 +324,26 @@ class ALGDecoratedButton: UIButton {
     } else if proxyScale > 1.05 {
       // Finger lifted off the button but the glass is still enlarged (its own drag gesture took the
       // touch): keep following the live glass scale.
-      badgePeak = proxyScale; badgeScale = proxyScale; badgeScaleVelocity = 0
+      badgePeak = proxyScale; badgeScale = proxyScale
+      // Keep the contraction velocity: the release bounce continues from it.
+      badgeScaleVelocity = badgeTouchActive ? 0 : badgeProxyVelocity
+    } else if content === badgeGeometry {
+      // Released: ride the live glass through its whole release, including the dip below rest
+      // (×0.90) and the swing back, so the badge centre stays on the circle's edge every frame.
+      badgePeak = 1; badgeScale = proxyScale; badgeScaleVelocity = badgeProxyVelocity
     } else {
-      // Released: spring back to rest with the glass's bounce instead of a flat ease.
+      // Legacy content tracking has no reliable background proxy: spring back to rest.
       badgePeak = 1
       let omega = 2 * CGFloat.pi / badgeSpringResponse
       let accel = omega * omega * (1 - badgeScale) - 2 * badgeSpringDamping * omega * badgeScaleVelocity
       badgeScaleVelocity += accel * dt; badgeScale += badgeScaleVelocity * dt
     }
     let s = badgeScale
-    // Stop once the finger is gone and both the glass and the badge (and its spring) are at rest.
-    if !pressed, badgeTouchPoint == nil, proxyScale < 1.05,
+    #if DEBUG
+    if ProcessInfo.processInfo.arguments.contains("-ALGBadgeProbe") { NSLog("[B25badge] t=%.4f pressed=%d proxy=%.4f badge=%.4f", CACurrentMediaTime(), pressed ? 1 : 0, proxyScale, s) }
+    #endif
+    // Stop once the finger is gone and both the glass and the badge are at rest.
+    if !pressed, badgeTouchPoint == nil, abs(proxyScale - 1) < 0.004,
       abs(badgeScale - 1) < 0.004, abs(badgeScaleVelocity) < 0.03 { stopBadgeTracking(); return }
     // Legacy title tracking (no owned attachment) keeps the button centre as its anchor to ignore
     // transient text relayout; the badge attachment is centred on the control.

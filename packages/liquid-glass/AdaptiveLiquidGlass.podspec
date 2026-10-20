@@ -10,9 +10,10 @@ Pod::Spec.new do |s|
   s.platforms = { :ios => '15.1' }
   # Autolinked from node_modules; the source is declared for completeness.
   s.source = { :git => 'https://github.com/likith099/liquedGlassRecreate.git', :tag => "v#{s.version}" }
-  s.source_files = 'ios/**/*.{h,m,mm,swift}'
-  s.private_header_files = 'ios/**/*.h'
+  s.source_files = 'ios/**/*.{h,m,mm,swift}', 'common/cpp/**/*.{h,cpp}'
+  # C++ headers stay private so the Swift module still imports cleanly.
+  s.private_header_files = 'ios/**/*.h', 'common/cpp/**/*.h'
   s.swift_version = '5.0'
-  s.pod_target_xcconfig = { 'DEFINES_MODULE' => 'YES' }
+  s.pod_target_xcconfig = { 'DEFINES_MODULE' => 'YES', 'HEADER_SEARCH_PATHS' => '"$(PODS_TARGET_SRCROOT)/common/cpp"' }
   install_modules_dependencies(s)
 end

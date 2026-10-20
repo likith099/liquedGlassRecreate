@@ -1,5 +1,5 @@
 #import "ALGControlsComponentView.h"
-#import <react/renderer/components/AdaptiveLiquidGlassSpec/ComponentDescriptors.h>
+#import <react/renderer/components/AdaptiveLiquidGlassSpec/ALGControlsComponentDescriptor.h>
 #import <react/renderer/components/AdaptiveLiquidGlassSpec/Props.h>
 #import <react/renderer/components/AdaptiveLiquidGlassSpec/EventEmitters.h>
 #import "AdaptiveLiquidGlass-Swift.h"
@@ -14,10 +14,6 @@ using namespace facebook::react;
     _controls.onAction = ^(NSString *identifier, NSString *action) {
       ALGControlsComponentView *self = weakSelf;
       if (self && self->_eventEmitter) std::static_pointer_cast<const ALGControlsEventEmitter>(self->_eventEmitter)->onControlAction({std::string(identifier.UTF8String), std::string(action.UTF8String)});
-    };
-    _controls.onContentSize = ^(double width, double height) {
-      ALGControlsComponentView *self = weakSelf;
-      if (self && self->_eventEmitter) std::static_pointer_cast<const ALGControlsEventEmitter>(self->_eventEmitter)->onContentSize({width, height});
     };
   } return self;
 }

@@ -1,42 +1,59 @@
 # Changelog
 
-## Unreleased
-
-- Keep native iOS large titles sharp under soft and hard header edges, with or without a pinned accessory: the extended edge region now waits until the native title has collapsed. The hard band now reaches the header separator, so rows no longer show between them.
-- iOS search: `active: true` reliably opens and focuses the field (including integrated placements); adding/removing `search` animates the header and no longer leaves a stale bar height; the morph title no longer draws over a visible stacked search bar. Switching title presentation at the top shows the expanded title.
-- Retry scroll-view binding briefly when a list mounts after the navigation view, so the morph title row and edges no longer go missing until an unrelated update.
-
-- Preserve Android search input connections across controlled query updates and ignore stale queued search activation.
-
-- Fix iOS navigation accessory edge continuity, add a pixel-aligned hard-header separator, and keep pinned filters below active search/scopes while releasing the morph title row.
-
-- Header review: selectable leading/in-bar titles, configurable typography, opt-in native single-raster morph, React title/subtitle/accessory slots, settled bar insets, independent top/bottom edges and standalone hard blur.
-- Native search placements/scopes/state/keyboard options, stable iOS action identity, fitted/original images, standard system actions, toolbar spacers, accessibility escape, configurable test IDs and shared scroll-ref adapters.
-- Android navigation now uses Material toolbar/overflow/search, automatic window insets, optional native collapsing titles and opt-in system Back. GlassScrollHeader remains a compatible deprecated alias.
-
-
-- Add `GlassNavigationView`: native iOS collapsing navigation titles, leading/trailing/bottom actions, menus/badges, integrated controlled search and imperative search/scroll commands; standard Android toolbar counterpart. Add independent top/bottom `GlassProgressiveBlur`. — 0.2.0 development
-
-- Add `GlassScrollHeader`: UIKit’s native soft scroll-edge effect on iOS 26+, with uniform blur/solid fallbacks on Android and older iOS. `GlassScrollEdge` gains `effectStyle="progressive"` and `fallbackMode`.
-
-- Shared symbol configuration, icon badges and named control sizes.
-- Native grouped buttons, scope pills, morph controls, presence and experimental persistent headers.
-- iOS tab minimization/accessories, clear-glass icon buttons and background extension.
-- Reduce redundant surface effect assignments on reattach; Android long-press cancellation and tab tint fixes.
-- Badges everywhere use one shape: `badge` takes a count, text or dot (`{indicator: true}`) on every
-  badge-bearing control, including `GlassPillBar` items and `GlassTabBar` items, with `badgeColor`,
-  `badgeTextColor` and `badgeAccessibilityLabel` (spoken defaults: "3 new", the text, "New").
-  Tab badges gain colours and text badges. Badges on menu rows are ignored with a development warning.
-- **Behaviour change:** tab badge counts now cap at `99+` like every other badge (was `999+`).
-- Android: a dot badge on icon/text/menu buttons is now a dot (it rendered as a tall sliver);
-  visible `GlassToolbar` buttons show badges; the morph button and header slots animate as one
-  capsule anchored to their edge with a content cross-fade (they jumped and clipped); icon-only
-  controls centre their glyph; `kind: 'back'` has a back arrow.
-- Verification and migration limitations: see docs/upgrade-0.2.0.md in the repository.
-
 All notable changes to `@likith99/react-native-adaptive-liquid-glass`. Versions follow
 [semantic versioning](https://semver.org); while the major version is 0, minor versions may
 change the API.
+
+## 0.2.0 — 2026-10-20
+
+Morphing glass, grouped and scoped controls, full icon control and lower cost. Everything from
+0.1.x keeps working; native rebuild required. Full guide and measured acceptance results:
+[docs/upgrade-0.2.0.md](https://github.com/likith099/liquedGlassRecreate/blob/v0.2.0/docs/upgrade-0.2.0.md).
+
+### New
+- `GlassMorphButton`: one control whose glass reshapes with its content (⋯ → "Select"), trailing
+  edge fixed, glass present in every frame; Reduce Motion cross-fades at the final size.
+  `glassID` pairs neighbouring shapes in a `GlassContainer`.
+- `GlassPresence` / `transition`: materialize on mount, dematerialize on unmount; `onExited`
+  fires exactly once, including when the parent unmounts mid-exit.
+- `GlassHeaderHost` / `useGlassHeader`: one persistent header above a native stack. On iOS the
+  host follows react-native-screens' own transition (route key = `screenId`): shared slots
+  morph, new controls appear at full size, leaving ones shrink to their centre, and an
+  interactive swipe back scrubs and cancels the morph natively. Android animates on focus.
+- `GlassIconGroup` (several icons in one capsule) and `GlassPillBar` (header scope pills).
+- Shadow-node measurement for these controls: React Native's layout asks UIKit / the Android
+  view manager for the native size, so the first frame is correct and resizes do not wait for JS.
+- Icon options on every icon-bearing control: weight, scale, rendering, palette, variable value,
+  `contentTransition` (replace), `pressEffect: 'bounce'`, non-SF images.
+- Badges drawn with the glass: `badge` (`{count}`, `{text}`, `{indicator: true}`), `badgeColor`,
+  `badgeTextColor`, `badgeAccessibilityLabel` on every badge-bearing control; on iOS 26 the badge
+  rides the press swell and release bounce.
+- `controlSize` (mini 28 · small 36 · regular 44 · large 50 · extraLarge 56) and `GlassMetrics`.
+- `GlassTabBar`: `minimizeBehavior` with a per-tab `scrollViewRef`, and `bottomAccessory`.
+- `GlassIconButton material="clear"`, `GlassBackgroundExtension`.
+- `GlassNavigationView` (native collapsing iOS header with actions, menus, badges and search;
+  Material toolbar on Android) and `GlassProgressiveBlur`.
+
+### Changed
+- Cheaper glass re-attach: a screen returning from a push assigns one fresh effect per surface.
+- Tab badge counts cap at `99+` like every other badge (was `999+`).
+- `GlassIconGroup` glyphs default to medium symbol scale (Calendar/Wallet geometry);
+  `kind: 'back'` uses UIKit's back-indicator symbol (17 pt semibold, large scale).
+
+### Fixed
+- Android: dot badges, toolbar badges, morph/header capsules animate as one shape, centred
+  icon-only glyphs, long-press cancellation, tab tint; search keeps its input connection.
+- iOS navigation: native large titles stay sharp under soft and hard edges; search opens,
+  focuses and closes without stale header height; scroll binding retries when a list mounts late.
+- Unset symbol scale keeps UIKit's default again (0.1.x rendering).
+
+### Known limits
+- Glass re-attach: re-attached glass is settled, but UIKit does not restore its earlier exact
+  rendering — 3/255 on a few rim pixels on the simulator, up to 17/255 on an iPhone 13 Pro
+  (iOS 26.7.1). Keeping the old effect is worse (it keeps drifting). Cost: ≈0.1 ms per pop for
+  20 surfaces.
+- iOS 26 tab bar re-expands when tapped; scrolling back up does not re-expand it when the list
+  lives outside the native tab controller.
 
 ## 0.1.7 — October 3, 2026
 

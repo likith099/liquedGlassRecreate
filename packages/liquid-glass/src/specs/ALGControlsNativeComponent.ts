@@ -2,6 +2,6 @@ import {codegenNativeComponent, type CodegenTypes, type HostComponent, type View
 export interface NativeProps extends ViewProps {
   configJSON: string;
   onControlAction?: CodegenTypes.DirectEventHandler<Readonly<{id: string; action: string}>>;
-  onContentSize?: CodegenTypes.DirectEventHandler<Readonly<{width: CodegenTypes.Double; height: CodegenTypes.Double}>>;
 }
-export default codegenNativeComponent<NativeProps>('ALGControls') as HostComponent<NativeProps>;
+// interfaceOnly: the shadow node is hand-written (common/cpp) so Yoga measures the control natively.
+export default codegenNativeComponent<NativeProps>('ALGControls', {interfaceOnly: true}) as HostComponent<NativeProps>;

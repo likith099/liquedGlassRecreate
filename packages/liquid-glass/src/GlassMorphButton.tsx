@@ -6,7 +6,7 @@ import type {GlassControlItem, GlassMorphButtonProps} from './types';
 export default function GlassMorphButton({content, anchor = 'trailing', onPress, controlSize = 'regular', disabled = false,
   colorScheme = 'system', tintColor, forceFallback = false, testID, style, ...props}: GlassMorphButtonProps) {
   const item: GlassControlItem = {...content, id: 'content', testID, tintColor,
-    ...(content.kind === 'back' ? {symbol: {name: 'chevron.backward', pointSize: 16.5, weight: 'semibold' as const}, androidIcon: 'alg_back'} : {})};
+    ...(content.kind === 'back' ? {symbol: {name: 'chevron.backward', pointSize: GlassMetrics.symbol.backPointSize, weight: 'semibold' as const, scale: 'large' as const}, androidIcon: 'alg_back'} : {})};
   const height = GlassMetrics.control[controlSize];
   return <NativeControl {...props} minimumHeight={height} style={[{alignSelf: anchor === 'trailing' ? 'flex-end' : anchor === 'leading' ? 'flex-start' : 'center'}, style]}
     configJSON={JSON.stringify({mode: 'morph', items: controlItems([item]).map(entry => ({...entry,

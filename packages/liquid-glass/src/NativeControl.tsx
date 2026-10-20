@@ -1,9 +1,11 @@
-import React, {useState} from 'react';
+import React from 'react';
 import NativeControls, {type NativeProps} from './specs/ALGControlsNativeComponent';
-/** One size event per content/font change, never per animation frame. Explicit layout wins. */
-export default function NativeControl({style, stretch, minimumHeight, ...props}: NativeProps & {stretch?: boolean; minimumHeight: number}) {
-  const [size, setSize] = useState({width: minimumHeight, height: minimumHeight});
-  return <NativeControls {...props} accessible={false}
-    style={[{height: size.height, ...(stretch ? {alignSelf: 'stretch' as const} : {width: size.width})}, style]}
-    onContentSize={({nativeEvent: next}) => setSize(previous => previous.width === next.width && previous.height === next.height ? previous : next)} />;
+/**
+ * The native shadow node measures the control during layout (no JS round trip), so
+ * the first frame has its final size and a content change resizes even while JS is
+ * busy. Explicit layout in `style` still wins; `stretch` fills the cross axis.
+ * `minimumHeight` is part of the native configuration and kept for call-site clarity.
+ */
+export default function NativeControl({style, stretch, minimumHeight: _minimumHeight, ...props}: NativeProps & {stretch?: boolean; minimumHeight: number}) {
+  return <NativeControls {...props} accessible={false} style={[stretch ? {alignSelf: 'stretch' as const} : null, style]} />;
 }

@@ -1,4 +1,5 @@
 import UpgradeDemo from './UpgradeDemo';
+import AcceptanceDemo from './AcceptanceDemo';
 import React, {useEffect, useRef, useState} from 'react';
 import {AccessibilityInfo, Animated, Platform, PlatformColor, Pressable, ScrollView, StatusBar,
   StyleSheet, Switch, Text, View, useColorScheme} from 'react-native';
@@ -21,7 +22,7 @@ const segments = [{value: 'all', label: 'All'}, {value: 'saved', label: 'Saved'}
 const countedSegments = [{value: 'all', label: 'All', count: 12, tintColor: '#6159B7'},
   {value: 'saved', label: 'Saved', count: 3, tintColor: '#2E7D32'}, {value: 'shared', label: 'Shared', count: 0, disabled: true}];
 
-function Lab({onOpenUpgrade, onOpenTabs, onOpenAccessibility, onOpenContext, onOpenSearch}: {onOpenUpgrade: () => void; onOpenTabs: () => void; onOpenAccessibility: () => void;
+function Lab({onOpenAcceptance, onOpenUpgrade, onOpenTabs, onOpenAccessibility, onOpenContext, onOpenSearch}: {onOpenAcceptance: () => void; onOpenUpgrade: () => void; onOpenTabs: () => void; onOpenAccessibility: () => void;
   onOpenContext: () => void; onOpenSearch: () => void}) {
   const [expanded, setExpanded] = useState(false);
   const [interactive, setInteractive] = useState(true);
@@ -71,6 +72,7 @@ function Lab({onOpenUpgrade, onOpenTabs, onOpenAccessibility, onOpenContext, onO
   return <SafeAreaView style={[styles.safe, {backgroundColor: dark ? '#11141B' : '#F7F8FC'}]}>
     <ScrollView contentContainerStyle={styles.page}>
       <Pressable testID="open-upgrade-demo" accessibilityRole="button" onPress={onOpenUpgrade} style={{paddingVertical: 12}}><Text style={{color: foreground, fontWeight: '600'}}>Open 0.2.0 controls →</Text></Pressable>
+      <Pressable testID="open-acceptance-demo" accessibilityRole="button" onPress={onOpenAcceptance} style={{paddingVertical: 12}}><Text style={{color: foreground, fontWeight: '600'}}>Open 0.2.0 acceptance →</Text></Pressable>
       <Pressable testID="open-tabs-demo" accessibilityRole="button" onPress={onOpenTabs} style={{paddingVertical: 12}}>
         <Text style={{color: foreground, fontWeight: '600'}}>Open tab navigation →</Text>
       </Pressable>
@@ -211,7 +213,8 @@ export default function App() {
   const [searchOpen, setSearchOpen] = useState(false);
   const dark = useColorScheme() === 'dark';
   const [upgradeOpen, setUpgradeOpen] = useState(false);
-  return <SafeAreaProvider><StatusBar barStyle={dark ? 'light-content' : 'dark-content'} />{upgradeOpen ? <UpgradeDemo onClose={() => setUpgradeOpen(false)} /> : searchOpen ? <SearchDemo onClose={() => setSearchOpen(false)} /> : contextOpen ? <ContextMenuDemo onClose={() => setContextOpen(false)} /> : accessibilityOpen ? <AccessibilityDemo onClose={() => setAccessibilityOpen(false)} /> : tabsOpen ? <TabNavigationDemo onClose={() => setTabsOpen(false)} /> : <Lab onOpenUpgrade={() => setUpgradeOpen(true)} onOpenSearch={() => setSearchOpen(true)} onOpenContext={() => setContextOpen(true)} onOpenTabs={() => setTabsOpen(true)} onOpenAccessibility={() => setAccessibilityOpen(true)} />}</SafeAreaProvider>;
+  const [acceptanceOpen, setAcceptanceOpen] = useState(false);
+  return <SafeAreaProvider><StatusBar barStyle={dark ? 'light-content' : 'dark-content'} />{acceptanceOpen ? <AcceptanceDemo onClose={() => setAcceptanceOpen(false)} /> : upgradeOpen ? <UpgradeDemo onClose={() => setUpgradeOpen(false)} /> : searchOpen ? <SearchDemo onClose={() => setSearchOpen(false)} /> : contextOpen ? <ContextMenuDemo onClose={() => setContextOpen(false)} /> : accessibilityOpen ? <AccessibilityDemo onClose={() => setAccessibilityOpen(false)} /> : tabsOpen ? <TabNavigationDemo onClose={() => setTabsOpen(false)} /> : <Lab onOpenAcceptance={() => setAcceptanceOpen(true)} onOpenUpgrade={() => setUpgradeOpen(true)} onOpenSearch={() => setSearchOpen(true)} onOpenContext={() => setContextOpen(true)} onOpenTabs={() => setTabsOpen(true)} onOpenAccessibility={() => setAccessibilityOpen(true)} />}</SafeAreaProvider>;
 }
 const styles = StyleSheet.create({
   safe: {flex: 1}, page: {padding: 24, paddingBottom: 40, maxWidth: 620, width: '100%', alignSelf: 'center'},

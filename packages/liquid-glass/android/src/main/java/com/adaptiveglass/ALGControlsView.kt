@@ -66,20 +66,15 @@ class ALGControlsView(private val reactContext: ThemedReactContext) : FrameLayou
   private val slots = mutableMapOf<String, Slot>()
   /** Header slots that left: kept at their last frame while they shrink to their centre. */
   private val exiting = mutableMapOf<View, Rect>()
-  private var lastWidth = -1
-  private var lastHeight = -1
   private var popup: PopupMenu? = null
   private var overlayLaidOut = false
-  // Morph only: React sizes this view from the reported width. Grow it before a capsule opens and
-  // shrink it after the capsule closes, so the shape never extends past the space laid out for it.
-  private var morphReported = -1
-  private var morphPendingReport = -1
-  private var morphHeight = 0
   private val density get() = resources.displayMetrics.density
   private fun dp(n: Double) = (n * density + 0.5).toInt()
   private val mode get() = config.optString("mode", "group")
   /** Morph and header lay their capsules out directly in this view, outside the clipping scroll row. */
   private val isOverlay get() = mode == "morph" || mode == "header"
+  /** Header slots keep one capsule across screens; `id` stays route-qualified for presses. */
+  private fun slotKey(item: JSONObject) = item.optString("slot").ifEmpty { item.getString("id") }
   private fun animationsEnabled() = isAttachedToWindow && (android.os.Build.VERSION.SDK_INT < 26 || ValueAnimator.areAnimatorsEnabled())
   init {
     clipChildren = false; clipToPadding = false
@@ -90,9 +85,6 @@ class ALGControlsView(private val reactContext: ThemedReactContext) : FrameLayou
   private fun emit(name: String, payload: com.facebook.react.bridge.WritableMap) {
     UIManagerHelper.getEventDispatcherForReactTag(reactContext, id)?.dispatchEvent(ControlsEvent(UIManagerHelper.getSurfaceId(reactContext), id, name, payload))
   }
-  private fun emitSize(widthPx: Int, heightPx: Int) {
-    emit("topContentSize", Arguments.createMap().apply { putDouble("width", maxOf(1f, widthPx / density).toDouble()); putDouble("height", maxOf(44f, heightPx / density).toDouble()) })
-  }
   fun applyConfiguration() {
     if (applied == configJSON) return
     applied = configJSON; config = try { JSONObject(configJSON) } catch (_: Exception) { JSONObject() }
@@ -100,7 +92,9 @@ class ALGControlsView(private val reactContext: ThemedReactContext) : FrameLayou
     val overlay = isOverlay
     scroll.visibility = if (overlay) View.GONE else View.VISIBLE
     val items = config.optJSONArray("items") ?: JSONArray()
-    val keys = (0 until items.length()).map { items.getJSONObject(it).getString("id") }.toSet()
+    // The same widths React Native measured for this view (see ALGControlsGeometry).
+    val geometry = ALGControlsGeometry.compute(context, config)
+    val keys = (0 until items.length()).map { slotKey(items.getJSONObject(it)) }.toSet()
     buttons.keys.toList().filter { it !in keys }.forEach { key ->
       val holder = holders.remove(key)
       buttons.remove(key)?.isEnabled = false
@@ -119,7 +113,7 @@ class ALGControlsView(private val reactContext: ThemedReactContext) : FrameLayou
     row.setPadding(dp(inset), 0, dp(inset), 0)
     row.background = if (mode == "group") GradientDrawable().apply { setColor(fill); cornerRadius = dp(100.0).toFloat() } else null
     for (index in 0 until items.length()) {
-      val item = items.getJSONObject(index); val key = item.getString("id")
+      val item = items.getJSONObject(index); val key = slotKey(item); val itemID = item.getString("id")
       val appearing = !holders.containsKey(key)
       val button = buttons.getOrPut(key) { Button(context).apply {
         isAllCaps = false; minWidth = 0; minimumWidth = 0; minHeight = 0; minimumHeight = 0
@@ -161,7 +155,7 @@ class ALGControlsView(private val reactContext: ThemedReactContext) : FrameLayou
       badge.background = GradientDrawable().apply { cornerRadius = badgeHeight / 2f
         setColor(if (item.has("badgeColor")) item.getDouble("badgeColor").toLong().toInt() else Color.RED) }
       badge.setTextColor(if (item.has("badgeTextColor")) item.getDouble("badgeTextColor").toLong().toInt() else Color.WHITE)
-      val selected = item.optBoolean("selected", config.optString("value") == key)
+      val selected = item.optBoolean("selected", config.optString("value") == itemID)
       val emphasized = selected || item.optBoolean("prominent")
       val tint = if (item.has("tint")) item.getDouble("tint").toLong().toInt() else if (config.has("tint")) config.getDouble("tint").toLong().toInt() else ink
       val surface = if (emphasized) tint else fill
@@ -173,7 +167,7 @@ class ALGControlsView(private val reactContext: ThemedReactContext) : FrameLayou
       val labelSize = config.optDouble("labelSize", 17.0).toFloat()
       val textColor = if (emphasized) (if (dark) Color.BLACK else Color.WHITE) else tint
       val typeface = if (emphasized) android.graphics.Typeface.BOLD else android.graphics.Typeface.NORMAL
-      button.textSize = labelSize
+      button.textSize = labelSize; button.letterSpacing = 0f
       button.isSelected = selected; button.isEnabled = !config.optBoolean("disabled") && !item.optBoolean("disabled")
       val label = item.optString("label", item.optString("title"))
       // TalkBack reads the badge as JS spells it ("3 new", the text, "New" for a dot, or the app's label).
@@ -209,10 +203,8 @@ class ALGControlsView(private val reactContext: ThemedReactContext) : FrameLayou
         title.textSize = labelSize; title.setTextColor(tint); title.setTypeface(null, android.graphics.Typeface.NORMAL)
         title.visibility = View.VISIBLE; icon.visibility = View.VISIBLE
         if (!hasTitle) showIcon(drawable)
-        val target = if (hasTitle) {
-          title.measure(MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED), MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED))
-          maxOf(h, title.measuredWidth + padding * 2)
-        } else h
+        title.letterSpacing = 0f
+        val target = geometry.widths[index]
         holder.layoutParams = FrameLayout.LayoutParams(target, h)
         updateSlot(key, if (hasTitle) "title" else "icon", target, h, icon, title)
         // A header control that arrives with the screen fades in at full size, as UIKit's bar does.
@@ -230,7 +222,7 @@ class ALGControlsView(private val reactContext: ThemedReactContext) : FrameLayou
           icon.visibility = if (drawable == null) View.GONE else View.VISIBLE; icon.alpha = 1f
           showIcon(drawable)
         }
-        val w = if (item.has("title")) LayoutParams.WRAP_CONTENT else dp(if (mode == "pills") config.optDouble("iconCapsuleWidth", 49.0) else config.optDouble("height", 44.0))
+        val w = geometry.widths[index]
         holder.layoutParams = LinearLayout.LayoutParams(w, h).apply { marginEnd = if (index < items.length() - 1 && mode == "pills") dp(config.optDouble("gap", 10.0)) else 0 }
       }
       button.setOnClickListener {
@@ -239,8 +231,8 @@ class ALGControlsView(private val reactContext: ThemedReactContext) : FrameLayou
           button.animate().scaleX(1.15f).scaleY(1.15f).setDuration(75).withEndAction { button.animate().scaleX(1f).scaleY(1f).setDuration(150).start() }.start()
         }
         val menu = item.optJSONArray("menu")
-        if (menu != null) showMenu(button, key, menu)
-        else emit("topControlAction", Arguments.createMap().apply { putString("id", key); putString("action", "") })
+        if (menu != null) showMenu(button, itemID, menu)
+        else emit("topControlAction", Arguments.createMap().apply { putString("id", itemID); putString("action", "") })
       }
     }
     requestLayout()
@@ -252,14 +244,12 @@ class ALGControlsView(private val reactContext: ThemedReactContext) : FrameLayou
     val slot = slots.getOrPut(key) { Slot() }
     val morph = mode == "morph"
     slot.height = height
-    if (morph) morphHeight = height
     val iconAlpha = if (kind == "icon") 1f else 0f
     val titleAlpha = if (kind == "title") 1f else 0f
     if (slot.width < 0f || !animationsEnabled()) {
       slot.animator?.cancel(); slot.generation++
       slot.width = target.toFloat(); slot.kind = kind; slot.target = target
       icon.alpha = iconAlpha; title.alpha = titleAlpha
-      if (morph) reportMorph(target)
       return
     }
     // A config re-apply for anything else (badge, tint, label) must not restart the morph.
@@ -269,7 +259,6 @@ class ALGControlsView(private val reactContext: ThemedReactContext) : FrameLayou
     val from = slot.width
     val iconFrom = icon.alpha; val titleFrom = title.alpha
     slot.kind = kind; slot.target = target
-    if (morph && target > morphReported) reportMorph(target)
     val ease = PathInterpolator(0.05f, 0.7f, 0.1f, 1f) // Material emphasized decelerate
     fun fade(from: Float, to: Float, t: Float) = if (to > from)
       from + (to - from) * ((t - 0.2f) / 0.5f).coerceIn(0f, 1f) // incoming: after the shape has opened
@@ -288,7 +277,6 @@ class ALGControlsView(private val reactContext: ThemedReactContext) : FrameLayou
           if (generation != slot.generation) return
           slot.width = target.toFloat(); icon.alpha = iconAlpha; title.alpha = titleAlpha
           layoutOverlay()
-          if (morph && target < morphReported) reportMorph(target)
         }
       })
       start()
@@ -301,15 +289,6 @@ class ALGControlsView(private val reactContext: ThemedReactContext) : FrameLayou
     holder.pivotX = holder.width / 2f; holder.pivotY = holder.height / 2f
     holder.animate().scaleX(0.3f).scaleY(0.3f).alpha(0f).setDuration(120).setInterpolator(AccelerateInterpolator())
       .withEndAction { exiting.remove(holder); removeView(holder) }.start()
-  }
-  private fun reportMorph(widthPx: Int) {
-    morphPendingReport = widthPx
-    if (isAttachedToWindow && width > 0) flushMorphReport()
-  }
-  private fun flushMorphReport() {
-    if (morphPendingReport < 0 || morphPendingReport == morphReported) return
-    morphReported = morphPendingReport
-    emitSize(morphReported, morphHeight)
   }
   private fun placeSlot(key: String, x: Int) {
     val holder = holders[key] ?: return; val slot = slots[key] ?: return
@@ -341,7 +320,7 @@ class ALGControlsView(private val reactContext: ThemedReactContext) : FrameLayou
       // each at its animated width, so a morphing slot keeps the edge it is anchored to.
       var leading = dp(config.optDouble("contentInset", 20.0)); var trailing = width - leading
       for (index in 0 until items.length()) {
-        val item = items.getJSONObject(index); val key = item.getString("id")
+        val item = items.getJSONObject(index); val key = slotKey(item)
         if (!holders.containsKey(key)) continue
         val w = slotWidth(key)
         if (item.optString("side") == "trailing") { trailing -= w; placeSlot(key, trailing); trailing -= dp(12.0) }
@@ -373,14 +352,10 @@ class ALGControlsView(private val reactContext: ThemedReactContext) : FrameLayou
     super.onLayout(changed, l, t, r, b)
     if (isOverlay) {
       // React drives this view's size; each capsule follows its own animated width.
-      layoutOverlay(); overlayLaidOut = true; flushMorphReport(); return
+      layoutOverlay(); overlayLaidOut = true; return
     }
     row.measure(MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED), MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED))
     row.layout(0, 0, row.measuredWidth, row.measuredHeight)
-    if (lastWidth != row.measuredWidth || lastHeight != row.measuredHeight) {
-      lastWidth = row.measuredWidth; lastHeight = row.measuredHeight
-      emitSize(lastWidth, lastHeight)
-    }
     if (mode == "pills" && config.optBoolean("scrollSelectedIntoView", true)) {
       holders[config.optString("value")]?.let { selected ->
         if (selected.left < scroll.scrollX || selected.right > scroll.scrollX + width) scroll.smoothScrollTo(maxOf(0, selected.left - row.paddingLeft), 0)

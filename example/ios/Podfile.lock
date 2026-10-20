@@ -1,5 +1,5 @@
 PODS:
-  - AdaptiveLiquidGlass (0.1.7):
+  - AdaptiveLiquidGlass (0.2.0):
     - hermes-engine
     - RCTRequired
     - RCTTypeSafety
@@ -2018,7 +2018,7 @@ EXTERNAL SOURCES:
     :path: build/rncore-facades/Yoga
 
 SPEC CHECKSUMS:
-  AdaptiveLiquidGlass: 4eb25e3b5e65558dca2f8b6443b3f260ded100e7
+  AdaptiveLiquidGlass: 538d8afdfb11d994f1488189ca52b2c20ef2db02
   boost: 8502bfdc46e2804408af2e163049ece181009af4
   DoubleConversion: 501a575c40c0b50c89685762dd3e415e6bb26fb0
   fast_float: 7c925d1cebf8328d4018d061f49377e9f887e3b4

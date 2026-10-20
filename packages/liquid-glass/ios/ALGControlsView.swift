@@ -17,6 +17,10 @@ private struct ControlItem: Decodable, Equatable {
   var badgeTextColor: Double?
   var badgeAccessibility: String?
   var menu: [ControlMenuItem]?
+  /// Header slot identity (`leading:back`). The same slot on two routes is one native
+  /// button, so it morphs; `id` stays route-qualified so presses reach the right screen.
+  var slot: String?
+  var key: String { slot ?? id }
   var icon: ALGIcon { ALGIcon(symbol: symbol, imageSource: imageSource, contentTransition: contentTransition,
     pressEffect: pressEffect, badge: badge, badgeColor: badgeColor, badgeTextColor: badgeTextColor,
     badgeAccessibility: badgeAccessibility) }
@@ -42,7 +46,84 @@ private struct ControlsConfig: Decodable, Equatable {
   var labelSize: Double?
   var iconCapsuleWidth: Double?
   var scrollSelectedIntoView: Bool?
+  /// Header mode: every registered screen's items, keyed by route key (react-native-screens `screenId`).
+  var routes: [HeaderRoute]?
+  var active: String?
 }
+private struct HeaderRoute: Decodable, Equatable { let key: String; let items: [ControlItem] }
+/// One geometry function shared by `layoutSubviews` and the Fabric measure function,
+/// so Yoga sizes the view exactly as the view lays itself out (no JS round trip).
+/// Pure UIKit value APIs only: it also runs on React Native's layout thread.
+private struct ControlsGeometry {
+  var widths: [CGFloat] = []
+  var inks: [CGFloat] = []
+  var height: CGFloat = 44
+  var contentWidth: CGFloat = 1
+  static func make(_ config: ControlsConfig, scale: CGFloat, category: UIContentSizeCategory) -> ControlsGeometry {
+    let traits = UITraitCollection(preferredContentSizeCategory: category)
+    let metrics = UIFontMetrics(forTextStyle: .body)
+    let labelSize = CGFloat(config.labelSize ?? 17)
+    let base = CGFloat(config.height ?? 44)
+    var geometry = ControlsGeometry()
+    geometry.height = max(base, min(metrics.scaledValue(for: labelSize, compatibleWith: traits), 34) + 20)
+    func font(_ weight: UIFont.Weight) -> UIFont {
+      metrics.scaledFont(for: .systemFont(ofSize: labelSize, weight: weight), maximumPointSize: labelSize * 2, compatibleWith: traits)
+    }
+    func textWidth(_ text: String, _ weights: [UIFont.Weight]) -> CGFloat {
+      weights.map { (text as NSString).size(withAttributes: [.font: font($0)]).width }.max() ?? 0
+    }
+    func pixel(_ value: CGFloat) -> CGFloat { ceil(value * max(1, scale)) / max(1, scale) }
+    let padding = CGFloat(config.horizontalPadding ?? 15)
+    let pillInset = CGFloat(config.contentInset ?? 20)
+    var x: CGFloat = config.mode == "group" ? 14 : config.mode == "pills" ? pillInset : 0
+    for (index, item) in config.items.enumerated() {
+      let ink = ControlsGeometry.imageWidth(item)
+      let width: CGFloat
+      if config.mode == "group" {
+        // Ink-to-ink spacing is 35pt; split it across neighbouring hit areas.
+        width = max(44, (ink ?? 17) + 35)
+      } else if let title = item.title {
+        // Pills size from the regular label, as Fitness+ does (For You 87 pt); the selected
+        // semibold label uses part of its padding, so selection never moves the row or badges.
+        let weights: [UIFont.Weight] = config.mode == "pills" ? [.regular] : [config.value == item.id ? .semibold : .regular]
+        let image = ink.map { $0 + 6 } ?? 0
+        width = max(base, pixel(textWidth(title, weights) + image + padding * 2))
+      } else { width = config.mode == "pills" ? CGFloat(config.iconCapsuleWidth ?? 49) : base }
+      geometry.widths.append(width); geometry.inks.append(ink ?? 17)
+      x += config.mode == "group" ? (ink ?? 17) : width
+      if index < config.items.count - 1 { x += config.mode == "group" ? 35 : CGFloat(config.gap ?? 10) }
+    }
+    x += config.mode == "group" ? 14 : config.mode == "pills" ? pillInset : 0
+    geometry.contentWidth = max(1, x)
+    return geometry
+  }
+  /// A loaded image is drawn in its declared point-size box, so layout never depends on the download.
+  static func imageWidth(_ item: ControlItem) -> CGFloat? {
+    if item.imageSource != nil { return CGFloat(item.symbol?.pointSize ?? 17) }
+    return item.symbol?.image()?.size.width
+  }
+}
+/// React Native's font-size multipliers map one-to-one onto content size categories.
+private let multiplierCategories: [(Double, UIContentSizeCategory)] = [
+  (0.823, .extraSmall), (0.882, .small), (0.941, .medium), (1.0, .large), (1.118, .extraLarge),
+  (1.235, .extraExtraLarge), (1.353, .extraExtraExtraLarge), (1.786, .accessibilityMedium),
+  (2.143, .accessibilityLarge), (2.643, .accessibilityExtraLarge), (3.143, .accessibilityExtraExtraLarge),
+  (3.571, .accessibilityExtraExtraExtraLarge)]
+
+/// Fabric measure entry point, called by the ALGControls shadow node during layout.
+@objc(ALGControlsLayout)
+public final class ALGControlsLayout: NSObject {
+  @objc public static func measure(_ json: String, scale: Double, fontSizeMultiplier: Double, maxWidth: Double) -> CGSize {
+    guard let config = try? JSONDecoder().decode(ControlsConfig.self, from: Data(json.utf8)) else { return CGSize(width: 1, height: 44) }
+    let category = multiplierCategories.min { abs($0.0 - fontSizeMultiplier) < abs($1.0 - fontSizeMultiplier) }?.1 ?? .large
+    let geometry = ControlsGeometry.make(config, scale: CGFloat(scale), category: category)
+    var width = geometry.contentWidth
+    if config.mode == "header" || config.mode == "pills" { width = maxWidth.isFinite ? CGFloat(maxWidth) : width }
+    else if maxWidth.isFinite { width = min(width, CGFloat(maxWidth)) }
+    return CGSize(width: width, height: max(44, geometry.height))
+  }
+}
+
 private final class ControlButton: ALGDecoratedButton {
   let loader = ALGIconLoader()
   override func point(inside point: CGPoint, with event: UIEvent?) -> Bool {
@@ -64,12 +145,19 @@ public final class ALGControlsView: UIView {
   private var buttons: [String: ControlButton] = [:]
   private var lastItems: [String: ControlItem] = [:]
   private var lastJSON = ""
-  private var lastSize = CGSize.zero
   private var materialKey = ""
   private var lastAppearance: ControlsConfig?
   private var lastSelection: String?
+  // Header transitions (G7): driven by the stack's own transition coordinator.
+  private weak var navigation: UINavigationController?
+  private var observedGestures: [ObjectIdentifier] = []
+  private var displayedRoute: String?
+  private var trackedTransition: ObjectIdentifier?
+  private var inTransition = false
+  private var exiting: [(key: String, button: ControlButton)] = []
+  private var watch: CADisplayLink?
+  private var watchDeadline: CFTimeInterval = 0
   @objc public var onAction: ((String, String) -> Void)?
-  @objc public var onContentSize: ((Double, Double) -> Void)?
   // Both the Fabric wrapper and its native controls must settle before UIKit's
   // release lighting tail. A second, longer spring can readapt the lens again.
   @objc public var layoutAnimationDuration: TimeInterval { 0.25 }
@@ -91,32 +179,107 @@ public final class ALGControlsView: UIView {
   @objc public func configure(_ json: String) {
     guard json != lastJSON, let next = try? JSONDecoder().decode(ControlsConfig.self, from: Data(json.utf8)) else { return }
     lastJSON = json
-    let previous = config
     config = next
-    if next.mode == "header", window != nil, let coordinator = transitionCoordinator() {
-      coordinator.animate(alongsideTransition: { [weak self] _ in self?.apply(); self?.layoutIfNeeded() }, completion: { [weak self] context in
-        if context.isCancelled { self?.config = previous; self?.apply() }
-        else if UIAccessibility.isVoiceOverRunning, let self, let first = self.config.items.first, let button = self.buttons[first.id] {
-          UIAccessibility.post(notification: .layoutChanged, argument: button)
-        }
-      })
+    if next.mode == "header" {
+      // The displayed route follows the stack's top screen; a transition retargets it natively.
+      if !inTransition {
+        let key = Self.screenKey(attachNavigation()?.topViewController) ?? next.active
+        if let items = Self.items(next, key) { displayedRoute = key; config.items = items }
+      } else if let items = Self.items(next, displayedRoute) { config.items = items }
+      // react-native-screens starts the push/pop after this commit (sometimes frames later):
+      // watch briefly for its transition instead of switching early.
+      if !inTransition, let active = next.active, active != displayedRoute { watchForTransition() }
     }
     overrideUserInterfaceStyle = next.colorScheme == "dark" ? .dark : next.colorScheme == "light" ? .light : .unspecified
     apply()
   }
-  private func transitionCoordinator() -> UIViewControllerTransitionCoordinator? {
-    var responder: UIResponder? = self
-    while let current = responder {
-      if let controller = current as? UIViewController, let coordinator = controller.transitionCoordinator { return coordinator }
-      responder = current.next
+  private static func items(_ config: ControlsConfig, _ key: String?) -> [ControlItem]? {
+    guard let key, let routes = config.routes else { return nil }
+    return routes.first { $0.key == key }?.items
+  }
+  /// react-native-screens' screen view publishes the navigator route key as `screenId`.
+  private static func screenKey(_ controller: UIViewController?) -> String? {
+    guard let view = controller?.view, view.responds(to: NSSelectorFromString("screenId")) else { return nil }
+    return view.value(forKey: "screenId") as? String
+  }
+  /// The stack this header sits above: a sibling subtree of the host, found once and observed.
+  @discardableResult private func attachNavigation() -> UINavigationController? {
+    if let navigation, navigation.view.window != nil { return navigation }
+    var queue: [UIView] = superview?.superview?.subviews ?? [], depth = 0
+    while !queue.isEmpty, depth < 14, navigation == nil {
+      var next: [UIView] = []
+      for view in queue where view !== superview {
+        if let controller = view.next as? UINavigationController { navigation = controller; break }
+        next.append(contentsOf: view.subviews)
+      }
+      queue = next; depth += 1
     }
-    // A stack wrapped by the host is a descendant, not an ancestor in the responder chain.
-    func find(_ controller: UIViewController) -> UIViewControllerTransitionCoordinator? {
-      if let transition = controller.transitionCoordinator { return transition }
-      for child in controller.children { if let transition = find(child) { return transition } }
-      return nil
+    guard let navigation else { return nil }
+    // Interactive back starts natively; JS learns of it only when it finishes.
+    var gestures = navigation.view.gestureRecognizers ?? []
+    gestures += navigation.view.superview?.gestureRecognizers ?? []
+    if let pop = navigation.interactivePopGestureRecognizer { gestures.append(pop) }
+    for gesture in gestures where gesture is UIPanGestureRecognizer && !observedGestures.contains(ObjectIdentifier(gesture)) {
+      observedGestures.append(ObjectIdentifier(gesture)); gesture.addTarget(self, action: #selector(stackGesture(_:)))
     }
-    return window?.rootViewController.flatMap(find)
+    return navigation
+  }
+  /// Bounded native watch (≤ 1.5 s) for the stack transition that follows a focus change.
+  private func watchForTransition() {
+    watchDeadline = CACurrentMediaTime() + 1.5
+    guard watch == nil else { return }
+    let link = CADisplayLink(target: self, selector: #selector(watchTick)); link.add(to: .main, forMode: .common); watch = link
+  }
+  @objc private func watchTick() {
+    followTransition()
+    let top = Self.screenKey(navigation?.topViewController)
+    if inTransition || window == nil { stopWatching(); return }
+    if let top, top != displayedRoute, let items = Self.items(config, top) {
+      // The stack changed without an animated transition.
+      displayedRoute = top; config.items = items; apply(); stopWatching(); return
+    }
+    if CACurrentMediaTime() > watchDeadline {
+      // No navigation transition: the focus change is the whole update.
+      if let active = config.active, active != displayedRoute, let items = Self.items(config, active) { displayedRoute = active; config.items = items; apply() }
+      stopWatching()
+    }
+  }
+  private func stopWatching() { watch?.invalidate(); watch = nil }
+  public override func willMove(toWindow newWindow: UIWindow?) { super.willMove(toWindow: newWindow); if newWindow == nil { stopWatching() } }
+  @objc private func stackGesture(_ gesture: UIGestureRecognizer) {
+    guard gesture.state == .began || gesture.state == .changed else { return }
+    DispatchQueue.main.async { [weak self] in self?.followTransition() }
+  }
+  /// Runs the slot diff inside the stack's transition, so UIKit times it, scrubs it with an
+  /// interactive swipe and reverses it on cancel. JavaScript does nothing per frame.
+  private func followTransition() {
+    guard config.mode == "header", !inTransition, let coordinator = attachNavigation()?.transitionCoordinator else { return }
+    let identity = ObjectIdentifier(coordinator as AnyObject)
+    guard trackedTransition != identity, let toKey = Self.screenKey(coordinator.viewController(forKey: .to)),
+      toKey != displayedRoute, let toItems = Self.items(config, toKey) else { return }
+    trackedTransition = identity
+    let fromKey = displayedRoute, fromItems = config.items
+    inTransition = true
+    let queued = coordinator.animate(alongsideTransition: { [weak self] _ in
+      guard let self else { return }
+      self.displayedRoute = toKey; self.config.items = toItems; self.apply()
+      self.setNeedsLayout(); self.layoutIfNeeded()
+    }, completion: { [weak self] context in
+      guard let self else { return }
+      self.inTransition = false; self.trackedTransition = nil
+      let leaving = self.exiting; self.exiting = []
+      if context.isCancelled {
+        // UIKit has reversed the animated geometry; restore the outgoing screen's controls.
+        for entry in leaving where self.buttons[entry.key] == nil { entry.button.transform = .identity; entry.button.isUserInteractionEnabled = true; entry.button.accessibilityElementsHidden = false; entry.button.badgeLabel.alpha = 1; self.buttons[entry.key] = entry.button }
+        self.displayedRoute = fromKey; self.config.items = fromItems; self.lastItems = [:]; self.apply()
+      } else {
+        for entry in leaving { entry.button.removeFromSuperview(); entry.button.badgeLabel.removeFromSuperview() }
+        if UIAccessibility.isVoiceOverRunning, let first = self.config.items.first, let button = self.buttons[first.key] {
+          UIAccessibility.post(notification: .layoutChanged, argument: button)
+        }
+      }
+    })
+    if !queued { inTransition = false; trackedTransition = nil; displayedRoute = toKey; config.items = toItems; apply() }
   }
   public override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
     if bounds.contains(point) {
@@ -135,8 +298,29 @@ public final class ALGControlsView: UIView {
     return false
   }
   private func apply() {
-    let keys = Set(config.items.map(\.id))
-    for (id, button) in buttons where !keys.contains(id) { button.badgeHost = nil; button.removeFromSuperview(); button.badgeLabel.removeFromSuperview(); buttons.removeValue(forKey: id); lastItems.removeValue(forKey: id) }
+    let keys = Set(config.items.map(\.key))
+    for (key, button) in buttons where !keys.contains(key) {
+      buttons.removeValue(forKey: key); lastItems.removeValue(forKey: key); button.badgeHost = nil
+      guard config.mode == "header", window != nil else {
+        button.removeFromSuperview(); button.badgeLabel.removeFromSuperview(); continue
+      }
+      if UIAccessibility.isReduceMotionEnabled {
+        // Reduce Motion: fade instead of shrinking.
+        UIView.transition(with: button, duration: 0.2, options: .transitionCrossDissolve, animations: { button.isHidden = true; button.badgeLabel.isHidden = true }) { _ in
+          button.removeFromSuperview(); button.badgeLabel.removeFromSuperview()
+        }
+        continue
+      }
+      // Dematerialize as UIKit's bar items do: shrink to the centre and vanish (~80 ms on pop).
+      button.isUserInteractionEnabled = false; button.accessibilityElementsHidden = true
+      let shrink = { button.transform = CGAffineTransform(scaleX: 0.01, y: 0.01); button.badgeLabel.alpha = 0 }
+      if inTransition { exiting.append((key, button)); shrink() }
+      else {
+        UIView.animate(withDuration: 0.08, delay: 0, options: [.curveEaseIn, .beginFromCurrentState], animations: shrink) { _ in
+          button.removeFromSuperview(); button.badgeLabel.removeFromSuperview()
+        }
+      }
+    }
     let key = "\(glass)/\(config.mode)/\(UIAccessibility.isReduceTransparencyEnabled)"
     if materialKey != key {
       materialKey = key
@@ -164,22 +348,23 @@ public final class ALGControlsView: UIView {
     let appearanceChanged = lastAppearance != appearanceKey
     for (index, item) in config.items.enumerated() {
       let button: ControlButton
-      if let existing = buttons[item.id] { button = existing }
+      if let existing = buttons[item.key] { button = existing }
       else {
-        button = ControlButton(type: .system); buttons[item.id] = button; effect.contentView.addSubview(button)
+        button = ControlButton(type: .system); buttons[item.key] = button; effect.contentView.addSubview(button)
+        let key = item.key
         button.addAction(UIAction { [weak self, weak button] _ in
           guard let self, let button, self.window != nil, self.config.disabled != true,
-            let current = self.config.items.first(where: { $0.id == item.id }), current.disabled != true else { return }
+            let current = self.config.items.first(where: { $0.key == key }), current.disabled != true else { return }
           current.icon.pressed(button)
-          if current.menu == nil { self.onAction?(item.id, "") }
+          if current.menu == nil { self.onAction?(current.id, "") }
         }, for: .primaryActionTriggered)
       }
       button.badgeHost = config.mode == "group" ? self : nil
       let selected = config.value == item.id
-      if !appearanceChanged, lastItems[item.id] == item,
+      if !appearanceChanged, lastItems[item.key] == item,
         (lastSelection == item.id) == selected { continue }
       button.loader.load(item.imageSource) { [weak self] in
-        self?.lastItems.removeValue(forKey: item.id); self?.apply()
+        self?.lastItems.removeValue(forKey: item.key); self?.apply()
       }
       var appearance: UIButton.Configuration
       if morphsContent, !appearanceChanged,
@@ -213,7 +398,14 @@ public final class ALGControlsView: UIView {
       }
       item.icon.applyTransition(to: &appearance)
       button.attachBadgeGeometry(to: &appearance, enabled: item.badge != nil)
-      UIView.performWithoutAnimation {
+      let previousItem = lastItems[item.key]
+      let contentChanged = previousItem != nil && (previousItem?.title != item.title || previousItem?.symbol != item.symbol || previousItem?.imageSource != item.imageSource)
+      if morphsContent, contentChanged, window != nil, UIAccessibility.isReduceMotionEnabled {
+        // Reduce Motion: the morph becomes a 0.2 s cross-fade at the final size.
+        UIView.transition(with: button, duration: 0.2, options: [.transitionCrossDissolve, .allowUserInteraction]) {
+          button.configuration = appearance; button.titleLabel?.numberOfLines = 1; button.layoutIfNeeded()
+        }
+      } else { UIView.performWithoutAnimation {
         button.configuration = appearance
         if morphsContent {
           // UIKit creates the first title label lazily. Lay it out at the current
@@ -222,8 +414,8 @@ public final class ALGControlsView: UIView {
           button.titleLabel?.numberOfLines = 1
           button.layoutIfNeeded()
         }
-      }
-      if lastItems[item.id]?.symbol != item.symbol { item.icon.transitionImage(on: button, image: appearance.image) }
+      } }
+      if lastItems[item.key]?.symbol != item.symbol { item.icon.transitionImage(on: button, image: appearance.image) }
       button.isEnabled = config.disabled != true && item.disabled != true
       button.accessibilityLabel = item.label; button.accessibilityIdentifier = item.testID
       button.accessibilityTraits = selected ? [.button, .selected] : .button
@@ -234,12 +426,12 @@ public final class ALGControlsView: UIView {
       button.accessibilityValue = [position, spokenBadge].compactMap { $0 }.joined(separator: ", ")
       button.badgeLabel.configure(item.badge, color: item.badgeColor.map(ALGIcon.color),
         textColor: item.badgeTextColor.map(ALGIcon.color))
-      if lastItems[item.id]?.menu != item.menu {
+      if lastItems[item.key]?.menu != item.menu || lastItems[item.key]?.id != item.id {
         button.menu = item.menu.map { UIMenu(children: menuElements($0, controlID: item.id)) }
         button.showsMenuAsPrimaryAction = item.menu != nil
         if #available(iOS 16.0, *) { button.preferredMenuElementOrder = .fixed }
       }
-      lastItems[item.id] = item
+      lastItems[item.key] = item
     }
     lastAppearance = appearanceKey; lastSelection = config.value
     setNeedsLayout()
@@ -262,42 +454,33 @@ public final class ALGControlsView: UIView {
   public override func layoutSubviews() {
     super.layoutSubviews()
     scroll.frame = bounds; scroll.isScrollEnabled = config.mode == "pills"
-    let base = CGFloat(config.height ?? 44)
-    let font = UIFontMetrics(forTextStyle: .body).scaledValue(for: CGFloat(config.labelSize ?? 17))
-    let height = max(base, min(font, 34) + 20)
+    let geometry = ControlsGeometry.make(config, scale: traitCollection.displayScale, category: traitCollection.preferredContentSizeCategory)
+    let height = geometry.height
     let inset = config.mode == "pills" ? CGFloat(config.contentInset ?? 20) : 0
     var x: CGFloat = config.mode == "group" ? 14 : inset
     var trailing = bounds.width - CGFloat(config.contentInset ?? 20)
     for (index, item) in config.items.enumerated() {
-      guard let button = buttons[item.id] else { continue }
-      let width: CGFloat
-      if config.mode == "group" {
-        // Ink-to-ink spacing is 35pt; split it across neighbouring hit areas.
-        let ink = button.configuration?.image?.size.width ?? 17
-        width = max(44, ink + 35)
-      } else if item.title == nil { width = config.mode == "pills" ? CGFloat(config.iconCapsuleWidth ?? 49) : base }
-      else if config.mode == "pills", let title = item.title {
-        // Selection changes font weight, not row geometry. Reserve both weights
-        // so this pill's badge and every following pill keep their resting anchor.
-        let size = CGFloat(config.labelSize ?? 17)
-        let titleWidth = [UIFont.Weight.regular, .semibold].map { weight in
-          let font = UIFontMetrics(forTextStyle: .body).scaledFont(
-            for: .systemFont(ofSize: size, weight: weight), maximumPointSize: size * 2)
-          return (title as NSString).size(withAttributes: [.font: font]).width
-        }.max() ?? 0
-        let imageWidth = button.configuration?.image.map { $0.size.width + 6 } ?? 0
-        let scale = traitCollection.displayScale
-        width = max(base, ceil((titleWidth + imageWidth + CGFloat(config.horizontalPadding ?? 15) * 2) * scale) / scale)
+      guard let button = buttons[item.key] else { continue }
+      let width = geometry.widths[index]
+      #if DEBUG
+      if morphsContent, item.title != nil, button.sizeThatFits(CGSize(width: 10000, height: height)).width > width + 0.5 {
+        NSLog("[ALGControls] UIKit wants %.1f pt for '%@'; shared geometry gave %.1f pt.", button.sizeThatFits(CGSize(width: 10000, height: height)).width, item.title ?? "", width)
       }
-      else { width = max(base, button.sizeThatFits(CGSize(width: 10000, height: height)).width) }
+      #endif
       let old = button.frame
       if config.mode == "header" {
         if item.side == "trailing" { trailing -= width; x = trailing }
         else if index == 0 { x = CGFloat(config.contentInset ?? 20) }
       }
-      let ink = button.configuration?.image?.size.width ?? 17
+      let ink = geometry.inks[index]
       let target = CGRect(x: config.mode == "group" ? x + (ink - width) / 2 : x, y: 0, width: width, height: height)
-      if morphsContent, window != nil, old.width > 0, old != target, !UIAccessibility.isReduceMotionEnabled {
+      if old == .zero, config.mode == "header" {
+        // A control that only the incoming screen has appears at full size within one frame,
+        // as UIKit's bar items do, rather than growing from a zero frame inside the transition.
+        UIView.performWithoutAnimation { button.frame = target; button.layoutIfNeeded() }
+      }
+      // Inside a navigation transition the frame inherits UIKit's (scrubbable) timing.
+      if morphsContent, window != nil, old.width > 0, old != target, !UIAccessibility.isReduceMotionEnabled, !inTransition {
         let badgeTransition = button.beginBadgeLayoutTransition(to: target)
         // Share the wrapper's timing; neither layer should keep resizing the
         // lens after UIKit has begun fading its native press illumination.
@@ -323,8 +506,6 @@ public final class ALGControlsView: UIView {
     effect.frame = CGRect(x: 0, y: 0, width: x, height: height)
     scroll.contentSize = CGSize(width: x, height: max(height, 44))
     scroll.alwaysBounceHorizontal = x > bounds.width
-    let size = CGSize(width: max(1, x), height: max(44, height))
-    if size != lastSize { lastSize = size; onContentSize?(Double(size.width), Double(size.height)) }
     if config.mode == "pills", config.scrollSelectedIntoView != false, let value = config.value, let selected = buttons[value],
       !scroll.bounds.contains(selected.frame) { scroll.scrollRectToVisible(selected.frame.insetBy(dx: -inset, dy: 0), animated: window != nil && !UIAccessibility.isReduceMotionEnabled) }
   }

@@ -34,24 +34,30 @@ export function GlassHeaderHost({children, topInset = 0, colorScheme = 'system',
       const next = [...current]; next[index] = {token, options}; return next;
     });
   }}), []);
-  const active = registrations.filter(entry => entry.options.active !== false).at(-1)?.options;
+  const active = registrations.filter(entry => entry.options.active !== false).at(-1);
+  // Every registered screen's items are sent at once. On iOS the native host picks the
+  // incoming screen's set inside the stack's transition (route key = screenId), so an
+  // interactive swipe back scrubs the morph without JavaScript.
   const controls: GlassControlItem[] = [];
-  const items = (['leading', 'trailing'] as const).flatMap(side => (active?.[side] ?? []).map((item, index) => {
-    const control: GlassControlItem = {...item, id: `${side}:${item.slot ?? index}`,
-      ...(item.kind === 'back' ? {symbol: {name: 'chevron.backward', weight: 'semibold' as const, pointSize: 16.5}, androidIcon: 'alg_back'} : {})};
-    controls.push(control);
-    return {...controlItems([control])[0], side, title: item.kind === 'title' ? item.title : undefined};
+  const handlers = new Map<string, (() => void) | undefined>();
+  const itemsFor = (entry: Registration) => (['leading', 'trailing'] as const).flatMap(side => (entry.options[side] ?? []).map((item, index) => {
+    const slot = `${side}:${item.slot ?? index}`;
+    const control: GlassControlItem = {...item, id: `${routeOf(entry)}\u0001${slot}`,
+      ...(item.kind === 'back' ? {symbol: {name: 'chevron.backward', weight: 'semibold' as const, pointSize: GlassMetrics.symbol.backPointSize, scale: 'large' as const}, androidIcon: 'alg_back'} : {})};
+    controls.push(control); handlers.set(control.id, item.onPress);
+    return {...controlItems([control])[0], side, slot, title: item.kind === 'title' ? item.title : undefined};
   }));
+  const routes = registrations.map(entry => ({key: routeOf(entry), items: itemsFor(entry)}));
+  const activeKey = active ? routeOf(active) : undefined;
+  const items = routes.find(route => route.key === activeKey)?.items ?? [];
   return <Context.Provider value={registry}><View {...props} style={[{flex: 1}, style]}>{children}
     <NativeControl minimumHeight={44} pointerEvents="box-none" style={{position: 'absolute', left: 0, right: 0, top: topInset, width: '100%', height: 44}}
-      configJSON={JSON.stringify({mode: 'header', items, height: 44, contentInset: GlassMetrics.pageMargin(width), colorScheme})}
-      onControlAction={({nativeEvent: {id, action}}) => controlAction(controls, id, action, chosen => {
-        const [side, slot] = chosen.split(':');
-        const list = side === 'leading' ? active?.leading : active?.trailing;
-        list?.find((item, index) => (item.slot ?? String(index)) === slot)?.onPress?.();
-      })} />
+      configJSON={JSON.stringify({mode: 'header', items, routes, active: activeKey, height: 44, contentInset: GlassMetrics.pageMargin(width), colorScheme})}
+      onControlAction={({nativeEvent: {id, action}}) => controlAction(controls, id, action, chosen => handlers.get(chosen)?.())} />
   </View></Context.Provider>;
 }
+/** Route key used for native matching: the navigator's route.key, or a per-hook token. */
+function routeOf(entry: Registration) { return entry.options.routeKey ?? entry.token; }
 export function useGlassHeader(options: GlassHeaderOptions) {
   const registry = useContext(Context);
   if (!registry) throw new Error('useGlassHeader must be used inside GlassHeaderHost.');
