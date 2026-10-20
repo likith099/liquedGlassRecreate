@@ -1,3 +1,5 @@
+import {GlassMetrics} from './GlassMetrics';
+import {nativeMenuItems, nativeIcon} from './iconOptions';
 import React from 'react';
 import {useWindowDimensions} from 'react-native';
 import adaptiveHeight from './adaptiveHeight';
@@ -11,14 +13,14 @@ export function validateMenu(title: string, items: readonly GlassMenuElement[]) 
   validateMenuItems(items);
 }
 
-export default function GlassMenuButton({ref, title, items, onAction, onOpen, onClose, systemImage, disabled = false,
+export default function GlassMenuButton({ref, title, items, onAction, onOpen, onClose, systemImage, symbol, image, contentTransition, pressEffect, badge, badgeColor, badgeTextColor, badgeAccessibilityLabel, controlSize, disabled = false,
   tintColor, forceFallback = false, androidMenuStyle, accessibilityLabel, accessibilityHint,
   accessibilityState: _state, testID, style, ...props}: GlassMenuButtonProps) {
   const {fontScale} = useWindowDimensions();
   const host = useMenuHandle(ref);
   validateMenu(title, items);
-  return <NativeMenu {...props} ref={host} accessible={false} style={[{height: adaptiveHeight(64, 20, fontScale), minWidth: 120}, style]}
-    title={title} systemImage={systemImage} itemsJSON={JSON.stringify(items)} menuStyleJSON={menuStyleJSON(androidMenuStyle)}
+  return <NativeMenu {...props} ref={host} accessible={false} style={[{height: adaptiveHeight(controlSize ? GlassMetrics.control[controlSize] : 64, 20, fontScale), minWidth: 120}, style]}
+    iconOptionsJSON={JSON.stringify(nativeIcon({symbol, systemImage, image, contentTransition, pressEffect, badge, badgeColor, badgeTextColor, badgeAccessibilityLabel}))} title={title} systemImage={systemImage} itemsJSON={JSON.stringify(nativeMenuItems(items))} menuStyleJSON={menuStyleJSON(androidMenuStyle)}
     disabled={disabled || items.length === 0} glassTint={tintColor} forceFallback={forceFallback}
     controlLabel={accessibilityLabel ?? title} controlHint={accessibilityHint} controlTestID={testID}
     onMenuAction={event => {

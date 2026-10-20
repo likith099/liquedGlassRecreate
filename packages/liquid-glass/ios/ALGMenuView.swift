@@ -1,6 +1,9 @@
 import UIKit
 
 private struct MenuItem: Decodable, Equatable {
+  let subtitle: String?
+  let keepsMenuPresented: Bool?
+  let singleSelection: Bool?
   let id: String
   let title: String
   let kind: String?
@@ -10,11 +13,17 @@ private struct MenuItem: Decodable, Equatable {
   let checked: Bool?
   let items: [MenuItem]?
   let placement: String?
+  let symbol: ALGSymbol?
+  let imageSource: ALGImageSource?
+  let badge: String?
+  let badgeColor: Double?
+  let badgeTextColor: Double?
+  let badgeAccessibility: String?
   var isGroup: Bool { kind == "section" || kind == "submenu" }
 }
 
 /// Reports UIKit's own menu presentation and dismissal for the button's menu.
-private final class MenuButton: UIButton {
+private final class MenuButton: ALGDecoratedButton {
   var onMenuDisplay: (() -> Void)?
   var onMenuEnd: (() -> Void)?
   override func contextMenuInteraction(_ interaction: UIContextMenuInteraction,
@@ -44,6 +53,17 @@ public final class ALGMenuView: UIView, UIContextMenuInteractionDelegate {
   private var previewChanged = false
   private let button = MenuButton(type: .system)
   private let bar = UIToolbar()
+  private var glassMaterial = "regular"
+  @objc public func setGlassMaterial(_ material: String) { iconChanged = iconChanged || glassMaterial != material; glassMaterial = material }
+  private var iconOptions = ALGIcon()
+  private let iconLoader = ALGIconLoader()
+  private var badgeView: ALGBadgeLabel { button.badgeLabel }
+  @objc public func setIconOptions(_ json: String) {
+    let next = ALGIcon.decode(json)
+    iconChanged = iconChanged || next != iconOptions
+    iconOptions = next
+    iconLoader.load(next.imageSource) { [weak self] in self?.updateAppearance() }
+  }
   // iOS 26 glass controls. Kept out of the UIToolbar, which restyles hosted
   // glass buttons; see glassViews(_:).
   private let glassRow = UIStackView()
@@ -102,6 +122,7 @@ public final class ALGMenuView: UIView, UIContextMenuInteractionDelegate {
     button.titleLabel?.adjustsFontForContentSizeCategory = true
     button.addAction(UIAction { [weak self] _ in
       guard let self, self.isPlainButton, !self.disabled, self.window != nil else { return }
+      self.iconOptions.pressed(self.button)
       self.onPress?()
     }, for: .primaryActionTriggered)
     button.onMenuDisplay = { [weak self] in self?.onMenuOpen?() }
@@ -332,11 +353,10 @@ public final class ALGMenuView: UIView, UIContextMenuInteractionDelegate {
     return nil
   }
   private func action(_ item: MenuItem, revision: Int) -> UIAction {
-    var attributes: UIMenuElement.Attributes = []
-    if item.disabled == true || item.isGroup { attributes.insert(.disabled) }
-    if item.destructive == true { attributes.insert(.destructive) }
-    return UIAction(title: item.title, image: item.systemImage.flatMap { UIImage(systemName: $0) },
-      identifier: UIAction.Identifier(item.id), attributes: attributes, state: item.checked == true ? .on : .off) { [weak self] _ in
+    return ALGNativeMenu.action(id: item.id, title: item.title, subtitle: item.subtitle,
+      image: item.symbol?.image() ?? item.systemImage.flatMap { UIImage(systemName: $0) },
+      disabled: item.disabled == true || item.isGroup, destructive: item.destructive == true,
+      checked: item.checked == true, keepsPresented: item.keepsMenuPresented == true) { [weak self] in
       guard let self, self.window != nil, !self.disabled, self.revision == revision,
         self.enabledAction(item.id, in: self.items) != nil else { return }
       self.onAction?(item.id)
@@ -345,8 +365,8 @@ public final class ALGMenuView: UIView, UIContextMenuInteractionDelegate {
   private func elements(_ nodes: [MenuItem], revision: Int) -> [UIMenuElement] {
     nodes.map { item in
       if item.isGroup && item.disabled != true {
-        return UIMenu(title: item.title, image: item.systemImage.flatMap { UIImage(systemName: $0) },
-          identifier: UIMenu.Identifier(item.id), options: item.kind == "section" ? [.displayInline] : [],
+        return UIMenu(title: item.title, image: item.symbol?.image() ?? item.systemImage.flatMap { UIImage(systemName: $0) },
+          identifier: UIMenu.Identifier(item.id), options: ALGNativeMenu.options(inline: item.kind == "section", singleSelection: item.singleSelection == true),
           children: elements(item.items ?? [], revision: revision))
       }
       return action(item, revision: revision)
@@ -378,12 +398,18 @@ public final class ALGMenuView: UIView, UIContextMenuInteractionDelegate {
       bar.isTranslucent = false
     }
     configuration.title = title
-    configuration.image = symbol.isEmpty ? nil : UIImage(systemName: symbol)
+    configuration.image = iconLoader.fitted(24) ?? iconOptions.symbol?.image(tint: tint ?? .label) ?? (symbol.isEmpty ? nil : UIImage(systemName: symbol))
+    iconOptions.applyTransition(to: &configuration)
     configuration.imagePadding = 8
     configuration.cornerStyle = .capsule
     configuration.buttonSize = .large
     configuration.baseForegroundColor = tint
+    button.attachBadgeGeometry(to: &configuration, enabled: iconOptions.badge != nil)
     button.configuration = configuration
+    iconOptions.transitionImage(on: button, image: configuration.image)
+    badgeView.configure(iconOptions.badge, color: iconOptions.badgeColor.map(ALGIcon.color),
+      textColor: iconOptions.badgeTextColor.map(ALGIcon.color))
+    button.accessibilityValue = iconOptions.badge == nil ? nil : iconOptions.badgeAccessibility ?? iconOptions.badge
     bar.tintColor = tint
     bar.standardAppearance = appearance
     bar.scrollEdgeAppearance = appearance
@@ -396,12 +422,13 @@ public final class ALGMenuView: UIView, UIContextMenuInteractionDelegate {
   private func applyIconAppearance() {
     var configuration: UIButton.Configuration
     if #available(iOS 26.0, *), !forceFallback, !UIAccessibility.isReduceTransparencyEnabled {
-      configuration = iconProminent ? .prominentGlass() : .glass()
+      configuration = glassMaterial == "clear" ? (iconProminent ? .prominentClearGlass() : .clearGlass()) : (iconProminent ? .prominentGlass() : .glass())
     } else {
       configuration = iconProminent ? .filled() : .gray()
     }
-    configuration.image = UIImage(systemName: symbol,
+    configuration.image = iconLoader.fitted(symbolPointSize) ?? iconOptions.symbol?.image(defaultSize: symbolPointSize, tint: tint ?? .label) ?? UIImage(systemName: symbol,
       withConfiguration: UIImage.SymbolConfiguration(pointSize: symbolPointSize, weight: .medium))
+    iconOptions.applyTransition(to: &configuration)
     configuration.title = nil
     configuration.cornerStyle = .capsule
     configuration.contentInsets = .zero
@@ -414,7 +441,12 @@ public final class ALGMenuView: UIView, UIContextMenuInteractionDelegate {
       configuration.baseForegroundColor = tint ?? .label
       button.tintColor = nil
     }
+    button.attachBadgeGeometry(to: &configuration, enabled: iconOptions.badge != nil)
     button.configuration = configuration
+    iconOptions.transitionImage(on: button, image: configuration.image)
+    badgeView.configure(iconOptions.badge, color: iconOptions.badgeColor.map(ALGIcon.color),
+      textColor: iconOptions.badgeTextColor.map(ALGIcon.color))
+    button.accessibilityValue = iconOptions.badge == nil ? nil : iconOptions.badgeAccessibility ?? iconOptions.badge
     switch colorScheme {
     case "light": button.overrideUserInterfaceStyle = .light
     case "dark": button.overrideUserInterfaceStyle = .dark
@@ -429,7 +461,7 @@ public final class ALGMenuView: UIView, UIContextMenuInteractionDelegate {
     needsBarUpdate = false; lastWidth = bounds.width
     let font = UIFont.preferredFont(forTextStyle: .body)
     func width(_ item: MenuItem) -> CGFloat {
-      let hasSymbol = item.systemImage.flatMap { UIImage(systemName: $0) } != nil
+      let hasSymbol = (item.symbol?.image() ?? item.systemImage.flatMap { UIImage(systemName: $0) }) != nil
       return hasSymbol ? 52 : max(52, ceil((item.title as NSString).size(withAttributes: [.font: font]).width) + 40)
     }
     // Reserve overflow space whenever there are hidden items. On narrow layouts,
@@ -448,18 +480,20 @@ public final class ALGMenuView: UIView, UIContextMenuInteractionDelegate {
     let overflow = items.filter { !visibleIDs.contains($0.id) }
     var controls = visible.map { item in
       BarControl(label: item.title, id: identifier.isEmpty ? item.id : "\(identifier)-\(item.id)",
-        image: item.systemImage.flatMap { UIImage(systemName: $0) }, title: item.title,
+        image: item.symbol?.image() ?? item.systemImage.flatMap { UIImage(systemName: $0) }, title: item.title,
         menu: item.isGroup ? UIMenu(children: elements(item.items ?? [], revision: revision)) : nil,
         action: item.isGroup ? nil : action(item, revision: revision),
         enabled: !disabled && item.disabled != true, selected: !item.isGroup && item.checked == true,
-        destructive: item.destructive == true, width: width(item))
+        destructive: item.destructive == true, width: width(item), badge: item.badge, badgeColor: item.badgeColor,
+        badgeTextColor: item.badgeTextColor, badgeAccessibility: item.badgeAccessibility)
     }
     if !overflow.isEmpty {
       controls.append(BarControl(label: "More actions",
         id: identifier.isEmpty ? "toolbar-overflow" : "\(identifier)-overflow",
         image: UIImage(systemName: "ellipsis"), title: nil,
         menu: UIMenu(children: elements(overflow, revision: revision)), action: nil,
-        enabled: !disabled, selected: false, destructive: false, width: 52))
+        enabled: !disabled, selected: false, destructive: false, width: 52, badge: nil, badgeColor: nil,
+        badgeTextColor: nil, badgeAccessibility: nil))
     }
     glassRow.arrangedSubviews.forEach { $0.removeFromSuperview() }
     if #available(iOS 26.0, *), !forceFallback, !UIAccessibility.isReduceTransparencyEnabled {
@@ -493,6 +527,11 @@ public final class ALGMenuView: UIView, UIContextMenuInteractionDelegate {
     let selected: Bool
     let destructive: Bool
     let width: CGFloat
+    let badge: String?
+    let badgeColor: Double?
+    let badgeTextColor: Double?
+    let badgeAccessibility: String?
+    var spokenBadge: String? { badge == nil ? nil : badgeAccessibility ?? badge }
   }
 
   private func standardBarItem(_ control: BarControl) -> UIBarButtonItem {
@@ -508,10 +547,17 @@ public final class ALGMenuView: UIView, UIContextMenuInteractionDelegate {
     item.width = control.width
     item.isEnabled = control.enabled
     item.accessibilityLabel = control.label
+    item.accessibilityValue = control.spokenBadge
     item.accessibilityIdentifier = control.id
     if control.destructive { item.tintColor = .systemRed }
     if #available(iOS 16.0, *) { item.preferredMenuElementOrder = .fixed }
     if #available(iOS 26.0, *) {
+      if let text = control.badge {
+        var badge: UIBarButtonItem.Badge = text.isEmpty ? .indicator() : .string(text)
+        badge.backgroundColor = control.badgeColor.map(ALGIcon.color)
+        badge.foregroundColor = control.badgeTextColor.map(ALGIcon.color)
+        item.badge = badge
+      }
       item.sharesBackground = mergingEnabled
       item.hidesSharedBackground = forceFallback || UIAccessibility.isReduceTransparencyEnabled
     }
@@ -552,7 +598,10 @@ public final class ALGMenuView: UIView, UIContextMenuInteractionDelegate {
     configuration.title = control.image == nil ? control.title : nil
     configuration.cornerStyle = .capsule
     configuration.baseForegroundColor = control.destructive ? .systemRed : (tint ?? .label)
-    let button = UIButton(configuration: configuration)
+    let button = ALGDecoratedButton(configuration: configuration)
+    button.badgeLabel.configure(control.badge, color: control.badgeColor.map(ALGIcon.color),
+      textColor: control.badgeTextColor.map(ALGIcon.color))
+    button.accessibilityValue = control.spokenBadge
     if let menu = control.menu {
       button.menu = menu
       button.showsMenuAsPrimaryAction = true
@@ -587,6 +636,8 @@ public final class ALGMenuView: UIView, UIContextMenuInteractionDelegate {
     // Icon mode fills its square host so capsule corners form a circle.
     // Icon mode and anchors fill their host; the menu attaches to an anchor's exact frame.
     button.frame = iconMode || menuAnchor ? bounds : bounds.insetBy(dx: 4, dy: min(8, bounds.height / 4))
+    // ALGDecoratedButton owns badge layout and preserves its live press pose.
+    button.setNeedsLayout(); button.layoutIfNeeded()
     bar.frame = bounds
     reactContentView.frame = bounds
     updateBar()

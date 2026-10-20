@@ -23,18 +23,28 @@ private struct TabItem: Decodable {
   let selectedTint: Double?
   let inactiveTint: Double?
   let badge: Badge?
+  /// ARGB badge fill and count/text colour; nil keeps UIKit's red and white.
+  let badgeColor: Double?
+  let badgeTextColor: Double?
   let disabled: Bool?
   let accessibilityLabel: String?
   enum Badge: Decodable {
-    case number(Int), dot
+    case number(Int), dot, text(String)
+    private struct Text: Decodable { let text: String }
     init(from decoder: Decoder) throws {
       let value = try decoder.singleValueContainer()
       if let number = try? value.decode(Int.self) { self = .number(number) }
-      else if try value.decode(String.self) == "dot" { self = .dot }
+      else if let string = try? value.decode(String.self), string == "dot" { self = .dot }
+      else if let text = try? value.decode(Text.self) { self = .text(text.text) }
       else { throw DecodingError.dataCorruptedError(in: value, debugDescription: "Invalid badge") }
     }
+    /// The same "99+" cap as every other glass badge.
     var text: String {
-      switch self { case .dot: return ""; case .number(let number): return number > 999 ? "999+" : String(number) }
+      switch self {
+      case .dot: return ""
+      case .number(let number): return number > 99 ? "99+" : String(number)
+      case .text(let text): return text
+      }
     }
   }
 }
@@ -95,6 +105,27 @@ private enum TabImageLoader {
 @objc(ALGTabsView)
 public final class ALGTabsView: UIView, UITabBarControllerDelegate {
   private let controller = UITabBarController()
+  @objc public let accessoryContent = UIView()
+  private var hasAccessory = false
+  @objc public func setBehavior(_ behavior: String, accessory: Bool) {
+    if #available(iOS 26.0, *) {
+      switch behavior {
+      case "onScrollDown": controller.tabBarMinimizeBehavior = .onScrollDown
+      case "onScrollUp": controller.tabBarMinimizeBehavior = .onScrollUp
+      case "automatic": controller.tabBarMinimizeBehavior = .automatic
+      default: controller.tabBarMinimizeBehavior = .never
+      }
+      if hasAccessory != accessory {
+        hasAccessory = accessory
+        controller.bottomAccessory = accessory ? UITabAccessory(contentView: accessoryContent) : nil
+      }
+    }
+  }
+  @objc public func setScrollView(_ scroll: UIScrollView?, identifier: String) {
+    if #available(iOS 26.0, *), let destination = destinations[identifier] {
+      destination.setContentScrollView(scroll, for: .bottom)
+    }
+  }
   private var destinations: [String: TabDestination] = [:]
   private var items: [TabItem] = []
   private var lastJSON = ""
@@ -246,7 +277,8 @@ public final class ALGTabsView: UIView, UITabBarControllerDelegate {
           badgeOffset = normal.badgeOffset
           bakedStyle = traitCollection.userInterfaceStyle
         }
-        applyItemAppearance(destination.tabBarItem, selected: selectedTint, inactive: inactiveTint, badgeOffset: badgeOffset)
+        applyItemAppearance(destination.tabBarItem, selected: selectedTint, inactive: inactiveTint, badgeOffset: badgeOffset,
+          badgeColor: item.badgeColor.map(Self.color), badgeTextColor: item.badgeTextColor.map(Self.color))
         destination.tabBarItem.title = destination.displayTitle
         destination.tabBarItem.image = destination.image
         destination.tabBarItem.selectedImage = destination.selectedImage
@@ -328,11 +360,17 @@ public final class ALGTabsView: UIView, UITabBarControllerDelegate {
   }
   /// Per-item label and icon colours. The bar's own appearance is copied so the item keeps the
   /// bar's background and glass configuration; only this item's colours change.
-  private func applyItemAppearance(_ item: UITabBarItem, selected: UIColor?, inactive: UIColor?, badgeOffset: UIOffset) {
+  private func applyItemAppearance(_ item: UITabBarItem, selected: UIColor?, inactive: UIColor?, badgeOffset: UIOffset,
+    badgeColor: UIColor? = nil, badgeTextColor: UIColor? = nil) {
     // Title attributes on the item itself, alongside the per-item appearance below.
     item.setTitleTextAttributes(inactive.map { [.foregroundColor: $0] }, for: .normal)
     item.setTitleTextAttributes(selected.map { [.foregroundColor: $0] }, for: .selected)
-    guard selected != nil || inactive != nil else {
+    // Badge colours on the item, and below on its appearance, which takes precedence when present.
+    item.badgeColor = badgeColor
+    for state in [UIControl.State.normal, .selected] {
+      item.setBadgeTextAttributes(badgeTextColor.map { [.foregroundColor: $0] }, for: state)
+    }
+    guard selected != nil || inactive != nil || badgeColor != nil || badgeTextColor != nil else {
       item.standardAppearance = nil
       item.scrollEdgeAppearance = nil
       return
@@ -349,6 +387,10 @@ public final class ALGTabsView: UIView, UITabBarControllerDelegate {
       }
       layout.normal.badgePositionAdjustment = badgeOffset
       layout.selected.badgePositionAdjustment = badgeOffset
+      for state in [layout.normal, layout.selected] {
+        if let badgeColor { state.badgeBackgroundColor = badgeColor }
+        if let badgeTextColor { state.badgeTextAttributes[.foregroundColor] = badgeTextColor }
+      }
     }
     item.standardAppearance = appearance
     item.scrollEdgeAppearance = appearance

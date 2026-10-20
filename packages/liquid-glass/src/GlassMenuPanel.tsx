@@ -1,3 +1,4 @@
+import {nativeMenuItems} from './iconOptions';
 import React, {useImperativeHandle, useRef} from 'react';
 import {Platform, View} from 'react-native';
 import NativeMenu, {Commands} from './specs/ALGMenuNativeComponent';
@@ -47,7 +48,7 @@ function GlassMenuPanel({ref, items, onAction, onOpen, onClose, disabled = false
       style={anchorStyle} pointerEvents="none" accessible={false}><View /></FallbackContextMenu>;
   }
   return <NativeMenu {...props} ref={host as never} menuAnchor pointerEvents="none" accessible={false}
-    style={anchorStyle} title="" itemsJSON={JSON.stringify(items)} menuStyleJSON={menuStyleJSON(androidMenuStyle)}
+    style={anchorStyle} title="" itemsJSON={JSON.stringify(nativeMenuItems(items))} menuStyleJSON={menuStyleJSON(androidMenuStyle)}
     disabled={disabled || items.length === 0} controlTestID={testID}
     onMenuAction={event => choose(event.nativeEvent.id)}
     onMenuOpen={onOpen && (() => onOpen())} onMenuClose={onClose && (() => onClose())} />;

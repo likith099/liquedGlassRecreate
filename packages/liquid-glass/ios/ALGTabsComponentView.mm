@@ -3,10 +3,12 @@
 #import <react/renderer/components/AdaptiveLiquidGlassSpec/Props.h>
 #import <react/renderer/components/AdaptiveLiquidGlassSpec/EventEmitters.h>
 #import <React/RCTConversions.h>
+#import <React/RCTScrollViewComponentView.h>
 #import "AdaptiveLiquidGlass-Swift.h"
 using namespace facebook::react;
 @implementation ALGTabsComponentView {
   ALGTabsView *_tabs;
+  NSDictionary *_scrollTags;
 }
 + (ComponentDescriptorProvider)componentDescriptorProvider { return concreteComponentDescriptorProvider<ALGTabsComponentDescriptor>(); }
 - (instancetype)initWithFrame:(CGRect)frame {
@@ -24,10 +26,25 @@ using namespace facebook::react;
 }
 - (void)updateProps:(Props::Shared const &)props oldProps:(Props::Shared const &)oldProps {
   const auto &p = *std::static_pointer_cast<const ALGTabsProps>(props);
+  NSString *tags = @(p.scrollViewTagsJSON.c_str());
+  _scrollTags = [NSJSONSerialization JSONObjectWithData:[tags dataUsingEncoding:NSUTF8StringEncoding] options:0 error:nil];
+  [_tabs setBehavior:@(toString(p.minimizeBehavior).c_str()) accessory:p.hasAccessory];
   // selectionRevision forces this transaction when React rejects a native tap.
   [_tabs configure:@(p.itemsJSON.c_str()) selectedValue:@(p.selectedValue.c_str()) disabled:p.disabled
     tint:RCTUIColorFromSharedColor(p.glassTint) identifier:@(p.controlTestID.c_str())];
   [super updateProps:props oldProps:oldProps];
+  [self attachScrollViews];
 }
+- (void)attachScrollViews {
+  for (NSString *identifier in _scrollTags) {
+    UIView *view = [self.window viewWithTag:[_scrollTags[identifier] integerValue]];
+    UIScrollView *scroll = [view isKindOfClass:RCTScrollViewComponentView.class] ? ((RCTScrollViewComponentView *)view).scrollView : ([view isKindOfClass:UIScrollView.class] ? (UIScrollView *)view : nil);
+    [_tabs setScrollView:scroll identifier:identifier];
+  }
+}
+- (void)layoutSubviews { [super layoutSubviews]; [self attachScrollViews]; }
+- (void)didMoveToWindow { [super didMoveToWindow]; [self attachScrollViews]; }
+- (void)mountChildComponentView:(UIView<RCTComponentViewProtocol> *)child index:(NSInteger)index { [_tabs.accessoryContent insertSubview:child atIndex:index]; }
+- (void)unmountChildComponentView:(UIView<RCTComponentViewProtocol> *)child index:(NSInteger)index { [child removeFromSuperview]; }
 + (BOOL)shouldBeRecycled { return NO; }
 @end

@@ -1,5 +1,5 @@
 import React from 'react';
-import {View, useColorScheme} from 'react-native';
+import {StyleSheet, View, useColorScheme, type ColorValue} from 'react-native';
 import type {BottomTabBarProps} from '@react-navigation/bottom-tabs';
 import {GlassTabBar, type GlassTabIcon, type GlassTabItem} from '@likith99/react-native-adaptive-liquid-glass';
 
@@ -20,13 +20,18 @@ export default function NativeNavigationTabBar({state, descriptors, navigation, 
   const items: GlassTabItem[] = routes.map(route => {
     const options = descriptors[route.key].options;
     const badge = options.tabBarBadge;
+    const badgeStyle = StyleSheet.flatten(options.tabBarBadgeStyle);
     return {id: route.key, title: typeof options.tabBarLabel === 'string' ? options.tabBarLabel : options.title ?? route.name,
       accessibilityLabel: options.tabBarAccessibilityLabel ?? `${route.name} tab`, icon: icons[route.name], selectedSystemImage: selectedSymbols[route.name],
       ...(brandColors ? {selectedTintColor: brand[route.name],
         ...(route.name === 'Settings' ? {image: 'BrandSpark'} : {}),
         ...(route.name === 'Library' ? {image: require('../assets/tab-diamond.png'),
           selectedImage: require('../assets/tab-diamond-filled.png')} : {})} : {}),
-      disabled: disabledRoutes.includes(route.name), badge: typeof badge === 'number' ? badge : badge ? 'dot' : undefined};
+      disabled: disabledRoutes.includes(route.name),
+      // React Navigation: a number is a count and a string is text; this demo also uses 'dot'.
+      badge: typeof badge === 'number' ? badge : badge === 'dot' ? 'dot' : badge ? {text: String(badge)} : undefined,
+      // tabBarBadgeStyle's backgroundColor and color become the native badge colours.
+      badgeColor: badgeStyle?.backgroundColor as ColorValue | undefined, badgeTextColor: badgeStyle?.color as ColorValue | undefined};
   });
   const press = (id: string) => {
     const route = state.routes.find(candidate => candidate.key === id);

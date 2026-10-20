@@ -54,6 +54,7 @@ class ALGLongPressView(private val reactContext: ThemedReactContext) : ReactView
   private fun remember(event: MotionEvent) { last?.recycle(); last = MotionEvent.obtain(event) }
 
   private fun began() {
+    if (!pending || disabled || !isAttachedToWindow) return
     val event = last ?: return
     pending = false
     recognized = true
@@ -93,7 +94,10 @@ class ALGLongPressView(private val reactContext: ThemedReactContext) : ReactView
       }
       MotionEvent.ACTION_POINTER_DOWN, MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> reset()
     }
-    return super.dispatchTouchEvent(event)
+    val handled = super.dispatchTouchEvent(event)
+    // Keep receiving UP/CANCEL even when no native child claims DOWN. Otherwise a short tap
+    // leaves the delayed recognizer armed and fires after the finger has already lifted.
+    return handled || pending
   }
 
   private fun finish(event: MotionEvent) {

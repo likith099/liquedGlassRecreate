@@ -1,5 +1,7 @@
 import {codegenNativeComponent, type ViewProps, type ColorValue, type CodegenTypes, type HostComponent} from 'react-native';
 export interface NativeProps extends ViewProps {
+  backgroundExtension?: CodegenTypes.WithDefault<boolean, false>;
+  transition?: CodegenTypes.WithDefault<'none' | 'materialize', 'none'>;
   material?: CodegenTypes.WithDefault<'regular' | 'clear' | 'none', 'regular'>;
   interactive?: CodegenTypes.WithDefault<boolean, false>;
   glassTint?: ColorValue;

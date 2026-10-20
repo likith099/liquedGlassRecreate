@@ -129,3 +129,7 @@ Every component is controlled: pass the current value and update it in the callb
 ## License
 
 MIT
+
+## 0.2.0 development
+
+The unpublished [0.2.0 API, Apple research and acceptance gaps](docs/upgrade-0.2.0.md) cover symbols, badges, grouped controls, pills, morphs, presence, persistent headers and tab accessories. Native rebuild required.

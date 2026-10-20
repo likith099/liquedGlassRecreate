@@ -39,6 +39,8 @@ using namespace facebook::react;
 }
 - (void)updateProps:(Props::Shared const &)props oldProps:(Props::Shared const &)oldProps {
   const auto &p = *std::static_pointer_cast<const ALGMenuProps>(props);
+  [_menu setGlassMaterial:@(toString(p.glassMaterial).c_str())];
+  [_menu setIconOptions:@(p.iconOptionsJSON.c_str())];
   [_menu setMenuAnchor:p.menuAnchor];
   [_menu setIcon:p.iconMode pointSize:p.symbolPointSize colorScheme:@(toString(p.colorScheme).c_str())
     prominent:p.iconVariant == ALGMenuIconVariant::Prominent];

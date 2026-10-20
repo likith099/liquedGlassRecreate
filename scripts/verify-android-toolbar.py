@@ -15,6 +15,10 @@ if not replacement_only and not toolbar_only: helpers['verify']()
 adb('shell', 'am', 'start', '-S', '-n', 'com.liquidglasslab/.MainActivity')
 time.sleep(3)
 
+# Badged bar actions announce their badge after the title, as Material's navigation badges do.
+# Overflow popup rows carry no badge, so they keep the plain title.
+SAVE, ARCHIVE = 'Save, 4 new', 'Archive, 4 new'
+
 def exists(root, value):
     try: find(root, value); return True
     except AssertionError: return False
@@ -28,7 +32,7 @@ def press(value):
     reveal(value); tap(value)
 
 if not replacement_only:
-    press('Save'); status('save')
+    press(SAVE); status('save')
     print('Toolbar direct action passed.', flush=True)
     press('Sort'); tap('Most recent'); status('recent')
     assert text('toolbar-selection') == 'Order: recent'
@@ -46,24 +50,24 @@ if not replacement_only:
     assert menu_row(tree(), 'Locked group').get('enabled') == 'false'
     tap('Order options'); tap('By name'); status('name')
     press('toolbar-disabled-toggle')
-    assert reveal('Save').get('enabled') == 'false'
+    assert reveal(SAVE).get('enabled') == 'false'
     assert reveal('hierarchy-menu').get('enabled') == 'false'
     press('toolbar-disabled-toggle')
     press('toolbar-narrow-toggle')
     reveal('More options')
-    assert not exists(tree(), 'Save'), 'Narrow toolbar must move actions into overflow'
+    assert not exists(tree(), SAVE), 'Narrow toolbar must move actions into overflow'
     tap('More options'); tap('Save')
     status('save')
     (ROOT/'artifacts/b1-android-narrow.png').write_bytes(adb('exec-out','screencap','-p'))
     press('toolbar-narrow-toggle')
     press('toolbar-replace-toggle')
-    press('Archive'); status('archive')
+    press(ARCHIVE); status('archive')
     reveal('More options')
-    assert not exists(tree(), 'Save')
+    assert not exists(tree(), SAVE)
     print('Hierarchy, disablement, narrow layout and replacement passed.', flush=True)
 else:
     press('toolbar-replace-toggle')
-    press('Archive'); status('archive')
+    press(ARCHIVE); status('archive')
 press('toolbar-timed-replace')
 press('Sort')
 assert exists(tree(), 'Most recent'), 'Open menu before the scheduled replacement'
@@ -73,7 +77,7 @@ while time.monotonic() < deadline:
 else: raise AssertionError('Replacing toolbar items did not dismiss the submenu')
 status('archive')
 reveal('Sort')
-assert exists(tree(), 'Save')
+assert exists(tree(), SAVE)
 result = {'openMenuReplacement': 'passed'} if replacement_only else {name: 'passed' for name in ['flatMenuRegression','toolbarAction','overflow','hierarchy','checked','disabled','dismissal','narrowLayout','replacement','openMenuReplacement']}
 record_name = 'b1-android-replacement.json' if replacement_only else 'b1-android-verification.json'
 if toolbar_only and not replacement_only: result['flatMenuRegression'] = 'not rerun: toolbar placement-only follow-up; preceding flat regression passed'

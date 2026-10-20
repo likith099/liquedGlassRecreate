@@ -25,11 +25,14 @@ export {default as GlassIconButton} from './GlassIconButton';
 export {default as GlassBadge} from './GlassBadge';
 export {GlassToastProvider, useGlassToast} from './GlassToast';
 export {default as GlassScrollEdge} from './GlassScrollEdge';
+export {default as GlassProgressiveBlur} from './GlassProgressiveBlur';
+export {default as GlassNavigationView} from './GlassNavigationView';
+export type {GlassProgressiveBlurProps, GlassNavigationViewProps, GlassNavigationAction, GlassNavigationSearch, GlassNavigationHandle, GlassNavigationSpacer, GlassEdgeEffect} from './types';
 export {default as GlassSearchField} from './GlassSearchField';
 export {default as GlassExpandingTabs} from './GlassExpandingTabs';
 export type {GlassExpandingTab, GlassExpandingTabsProps} from './types';
 export type {GlassSearchFieldHandle, GlassSearchFieldProps} from './types';
-export type {GlassScrollEdgeProps} from './types';
+export type {GlassScrollEdgeProps, GlassScrollHeaderProps} from './types';
 export type {GlassToastController, GlassToastOptions, GlassToastProviderProps} from './GlassToast';
 export type {GlassBadgeProps} from './types';
 export type {GlassIconButtonProps} from './types';
@@ -37,3 +40,19 @@ export {default as GlassToolbar} from './GlassToolbar';
 export type {GlassMenuElement, GlassMenuSubmenu, GlassMenuSection, GlassToolbarItem, GlassToolbarProps} from './types';
 export {default as GlassTabBar} from './GlassTabBar';
 export type {GlassTabBarProps, GlassTabItem, GlassTabIcon} from './types';
+
+export {GlassMetrics} from './GlassMetrics';
+export type {GlassControlSize} from './GlassMetrics';
+export type {GlassSymbol, GlassIconOptions, GlassControlBadge} from './types';
+
+export {default as GlassIconGroup} from './GlassIconGroup';
+export {default as GlassPillBar} from './GlassPillBar';
+export {default as GlassMorphButton} from './GlassMorphButton';
+export type {GlassControlItem, GlassIconGroupProps, GlassPillItem, GlassPillBarProps, GlassMorphContent, GlassMorphButtonProps} from './types';
+export {default as GlassPresence} from './GlassPresence';
+export type {GlassPresenceProps} from './GlassPresence';
+export {GlassHeaderHost, useGlassHeader} from './GlassHeaderHost';
+export type {GlassHeaderOptions, GlassHeaderItem, GlassHeaderHostProps} from './GlassHeaderHost';
+export {default as GlassBackgroundExtension} from './GlassBackgroundExtension';
+
+export {default as GlassScrollHeader} from './GlassScrollHeader';

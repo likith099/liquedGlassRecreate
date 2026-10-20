@@ -2,6 +2,8 @@ import type * as React from 'react';
 import {codegenNativeCommands, codegenNativeComponent, type ViewProps, type ColorValue, type CodegenTypes,
   type HostComponent} from 'react-native';
 export interface NativeProps extends ViewProps {
+  glassMaterial?: CodegenTypes.WithDefault<'regular' | 'clear', 'regular'>;
+  iconOptionsJSON?: string;
   title: string;
   itemsJSON: string;
   contextMenu?: CodegenTypes.WithDefault<boolean, false>;

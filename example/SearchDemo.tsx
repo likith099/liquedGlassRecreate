@@ -1,3 +1,4 @@
+import ScrollHeaderDemo from './ScrollHeaderDemo';
 import React, {useRef, useState} from 'react';
 import {Pressable, ScrollView, StyleSheet, Text, View, useColorScheme} from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
@@ -8,7 +9,7 @@ import {GlassIconButton, GlassScrollEdge, GlassSearchField, GlassToastProvider, 
 const items = ['Alpha', 'Bravo', 'Charlie', 'Delta', 'Echo', 'Foxtrot', 'Golf', 'Hotel', 'India', 'Juliett',
   'Kilo', 'Lima', 'Mike', 'November', 'Oscar', 'Papa', 'Quebec', 'Romeo', 'Sierra', 'Tango'];
 
-function Content({onClose}: {onClose: () => void}) {
+function Content({onClose, onOpenHeader}: {onClose: () => void; onOpenHeader: () => void}) {
   const dark = useColorScheme() === 'dark';
   const color = dark ? '#F5F5F9' : '#222737';
   const [query, setQuery] = useState('');
@@ -21,6 +22,7 @@ function Content({onClose}: {onClose: () => void}) {
     <Pressable testID="close-search-demo" accessibilityRole="button" onPress={onClose} style={styles.close}>
       <Text style={{color}}>‹ Back to component lab</Text>
     </Pressable>
+    <Pressable testID="open-scroll-header" accessibilityRole="button" onPress={onOpenHeader} style={styles.close}><Text style={{color}}>Open progressive header blur →</Text></Pressable>
     <View style={{paddingHorizontal: 16, gap: 8}}>
       <GlassSearchField ref={search} testID="item-search" accessibilityLabel="Search items" value={query}
         onChangeText={setQuery} onSubmitEditing={text => setSubmitted(`Submitted: ${text}`)} placeholder="Search items" />
@@ -44,7 +46,9 @@ function Content({onClose}: {onClose: () => void}) {
 }
 
 export default function SearchDemo({onClose}: {onClose: () => void}) {
-  return <GlassToastProvider bottomOffset={120}><Content onClose={onClose} /></GlassToastProvider>;
+  const [header, setHeader] = useState(false);
+  if (header) return <ScrollHeaderDemo onClose={() => setHeader(false)} />;
+  return <GlassToastProvider bottomOffset={120}><Content onClose={onClose} onOpenHeader={() => setHeader(true)} /></GlassToastProvider>;
 }
 
 const styles = StyleSheet.create({

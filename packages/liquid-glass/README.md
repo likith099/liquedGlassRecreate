@@ -92,7 +92,8 @@ Every component is controlled: pass the current value and update it in the callb
 | Component | What it is | Docs |
 | --- | --- | --- |
 | `GlassView`, `GlassContainer`, `GlassPressable` | Glass surfaces for your own content; opt-in merging; pressable cards | [Surfaces](https://github.com/likith099/liquedGlassRecreate/blob/v0.1.7/docs/surfaces.md) |
-| `GlassBadge`, `GlassToastProvider`, `GlassScrollEdge` | Labels over imagery, confirmation toasts, content fading under floating bars | [Surfaces](https://github.com/likith099/liquedGlassRecreate/blob/v0.1.7/docs/surfaces.md) |
+| `GlassNavigationView`, `GlassProgressiveBlur` | Native collapsing iOS navigation header, actions/search, and independent progressive blur | [Navigation](https://github.com/likith099/liquedGlassRecreate/blob/main/docs/navigation.md) |
+| `GlassBadge`, `GlassToastProvider`, `GlassScrollEdge`, `GlassScrollHeader` | Labels over imagery, confirmation toasts, content fading under floating bars | [Surfaces](https://github.com/likith099/liquedGlassRecreate/blob/v0.1.7/docs/surfaces.md) |
 | `GlassButton`, `GlassSegmentedControl`, `GlassSlider` | Native button, segmented control (with counts) and slider | [Controls](https://github.com/likith099/liquedGlassRecreate/blob/v0.1.7/docs/controls.md) |
 | `GlassSearchField`, `GlassExpandingTabs` | Search field; pill tabs where the selected pill shows its label | [Controls](https://github.com/likith099/liquedGlassRecreate/blob/v0.1.7/docs/controls.md) |
 | `GlassMenuButton`, `GlassIconButton`, `GlassContextMenu`, `GlassMenuPanel`, `GlassLongPress` | Menu buttons, round icon buttons and floating action buttons, long-press content previews and Apple's menu from a positioned anchor | [Menus](https://github.com/likith099/liquedGlassRecreate/blob/v0.1.7/docs/menus.md) |
@@ -125,3 +126,7 @@ exercises every component, and the UI tests that run in CI on iOS and Android. S
 ## License
 
 MIT
+
+## 0.2.0 development
+
+Unpublished additions: GlassIconGroup, GlassPillBar, GlassMorphButton, GlassPresence, GlassHeaderHost/useGlassHeader, GlassMetrics and GlassBackgroundExtension. Read the [development API and limitations](https://github.com/likith099/liquedGlassRecreate/blob/main/docs/upgrade-0.2.0.md) before adoption. Native rebuild required; navigation morph fidelity is experimental.

@@ -1,6 +1,6 @@
 # Glass surfaces
 
-`GlassView`, `GlassContainer`, `GlassPressable`, `GlassBadge`, `GlassToastProvider` and `GlassScrollEdge` put React content on a native material. The material depends on the platform tier: glass on iOS 26, system blur on iOS 15–25, and an opaque surface on Android, under Reduce Transparency, and with `forceFallback`. `useGlassTier()` reports the tier, and it follows Reduce Transparency as it changes.
+`GlassView`, `GlassContainer`, `GlassPressable`, `GlassBadge`, `GlassToastProvider` and `GlassScrollEdge` put React content on a native material. The material depends on the platform tier: glass on iOS 26, system blur on iOS 15–25, and an opaque surface on Android (except opt-in scroll-header blur on API 31+), under Reduce Transparency, and with `forceFallback`. `useGlassTier()` reports the tier, and it follows Reduce Transparency as it changes.
 
 | Tier | iOS 26 | iOS 15–25 | Android, Reduce Transparency, `forceFallback` |
 | --- | --- | --- | --- |
@@ -74,8 +74,8 @@ const list = useRef<ScrollView>(null);
 
 A container for a bar floating over a scroll view's edge, so content fades under the bar instead of
 colliding with it. iOS 26 applies UIKit's scroll-edge effect to the referenced scroll view
-(`effectStyle`: `automatic`, `soft` or `hard`). Older iOS and Android draw a gradient scrim from
-`fallbackColor` to clear under the container.
+(`effectStyle`: `automatic`, `soft` or `hard`). Older iOS and Android default to a gradient scrim from
+`fallbackColor` to clear under the container. `effectStyle="progressive"` defines a full header region for the native iOS 26 soft edge; `fallbackMode` selects gradient, blur or solid on Android. See `GlassScrollHeader` below.
 
 ## Theming the opaque tier
 
@@ -90,3 +90,33 @@ The provider sets the surface and text colours for opaque surfaces, fallback but
 ## Guidance
 
 Keep glass for controls and small labels over content. Large glass panes behind forms or long text reduce legibility, so keep sheets, modals and form panels opaque. Do not animate the opacity of a glass surface or any of its ancestors: a visual effect view does not render while an ancestor's alpha is below 1. Animate position or scale instead, as `GlassToastProvider` does.
+
+## GlassScrollHeader
+
+For native collapsing titles, bar actions, and integrated search, use [GlassNavigationView](navigation.md). For the effect alone with either edge and no prescribed layout, use [GlassProgressiveBlur](navigation.md#independent-progressive-blur).
+
+A pinned header using UIKit’s **native soft scroll-edge effect on iOS 26+**, the system treatment for content passing beneath floating controls. UIKit owns the progressive blur, contrast and scroll response; the header's text/buttons stay sharp. There is no overlaid uniform blur or custom gradient in this path.
+
+React Native text is not a native UILabel. The Fabric host supplies an invisible native image element spanning the header bounds so `UIScrollEdgeElementContainerInteraction` recognizes the full header region. This follows Apple’s public native-element contract without private APIs or a reference-library dependency. Header layout, typography and large-title collapse remain the app’s responsibility; this component provides the scrolling backdrop treatment.
+
+```tsx
+const list = useRef<FlatList<Contact>>(null);
+return <View style={{flex: 1}}>
+  <FlatList ref={list} data={contacts} renderItem={renderContact}
+    contentContainerStyle={{paddingTop: 100}} />
+  <GlassScrollHeader scrollViewRef={list} fallback="blur" fallbackColor="#12141A"
+    style={{position: 'absolute', top: 0, left: 0, right: 0, height: 100, padding: 20}}>
+    <Text style={{color: 'white', fontSize: 28}}>Contacts</Text>
+  </GlassScrollHeader>
+</View>;
+```
+
+- Put the header **beside and above** its `ScrollView`/`FlatList`, overlapping the same viewport. Reserve its initial height with content padding; include your safe-area inset in the header height/padding when it extends under the status bar. Keep the linked ref stable, and leave the header background transparent on iOS 26 so it does not cover the system effect.
+- `fallback="solid"` (default) gives Android and iOS below 26 an opaque fill. `fallback="blur"` gives older iOS a uniform system material and Android 12/API 31+ a uniform 20 dp blur of the linked scrolling content, with a light tint from `fallbackColor`. Android uses public `RenderNode`/`RenderEffect` APIs; it does not blur the header's children or require a blur library. Android below API 31, software rendering, or a missing source uses the solid fill.
+- `fallbackColor` defaults to a light/dark system-like background. It controls fallback rendering; UIKit owns the iOS 26 edge’s blur strength, extent and contrast. There is no independent progressive-radius or brightness knob.
+- Reduce Transparency uses an opaque fill on iOS. Unsupported platforms use a solid fallback. Android capture is for ordinary React Native scrolling views; separate video/`SurfaceView` content is not supported.
+- The underlying `GlassScrollEdge` also accepts `fallbackMode="gradient" | "blur" | "solid"`. Its existing defaults (`edge="bottom"`, `effectStyle="automatic"`, gradient fallback) remain unchanged. For the same native full-region edge at the bottom, use `edge="bottom" effectStyle="progressive"`. The existing `soft`/`hard`/`automatic` options retain UIKit scroll-edge ownership on iOS 26+.
+
+Demo: **Open search, toasts and scroll edge → Open progressive header blur**. Includes scrolling, header actions, Android fallback switching and remounting.
+
+References: [Apple scroll-edge containers](https://developer.apple.com/documentation/uikit/uiscrolledgeelementcontainerinteraction), [Apple soft/hard edge styles](https://developer.apple.com/documentation/swiftui/scrolledgeeffectstyle), [React Native integration reference](https://github.com/bluesky-social/expo-scroll-edge-effect/blob/main/ios/ExpoScrollEdgeEffectView.swift), [Android RenderEffect](https://developer.android.com/reference/android/graphics/RenderEffect).

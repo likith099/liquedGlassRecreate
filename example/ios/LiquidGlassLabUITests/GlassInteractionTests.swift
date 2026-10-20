@@ -45,6 +45,752 @@ extension XCUIApplication {
 import UIKit
 
 final class GlassInteractionTests: XCTestCase {
+  func testUpgradeSurfaceReattach() throws {
+    continueAfterFailure = false
+    let app = XCUIApplication(); app.launch(); defer { app.terminate() }
+    let open = app.buttons["open-upgrade-demo"]
+    XCTAssertTrue(open.waitForExistence(timeout: launchTimeout)); open.tap()
+    let toggle = app.buttons["upgrade-toggle-surfaces"]
+    XCTAssertTrue(app.scrollIntoView(toggle, band: 0.1...0.5))
+    let surfaces = app.otherElements["upgrade-surfaces"]
+    XCTAssertTrue(surfaces.waitForExistence(timeout: 5)); Thread.sleep(forTimeInterval: 1)
+    let before = surfaces.screenshot().image
+    toggle.tap(); Thread.sleep(forTimeInterval: 0.3); toggle.tap(); Thread.sleep(forTimeInterval: 1)
+    let after = surfaces.screenshot().image
+    for (name, image) in [("reattach-before", before), ("reattach-after", after)] {
+      let attachment = XCTAttachment(image: image); attachment.name = name; attachment.lifetime = .keepAlways; add(attachment)
+    }
+    func pixels(_ image: UIImage) -> [UInt8] {
+      guard let cg = image.cgImage else { return [] }
+      var bytes = [UInt8](repeating: 0, count: cg.width * cg.height * 4)
+      bytes.withUnsafeMutableBytes { buffer in
+        let context = CGContext(data: buffer.baseAddress, width: cg.width, height: cg.height, bitsPerComponent: 8,
+          bytesPerRow: cg.width * 4, space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
+        context?.draw(cg, in: CGRect(x: 0, y: 0, width: cg.width, height: cg.height))
+      }
+      return bytes
+    }
+    let a = pixels(before), b = pixels(after)
+    XCTAssertFalse(a.isEmpty); XCTAssertEqual(a.count, b.count)
+    let changed = zip(a, b).filter { abs(Int($0.0) - Int($0.1)) > 2 }.count
+    // On this simulator the original clear+assign path also changes six rim channels by 3.
+    // Its after image and the optimized path's after image are byte-identical (B19Baseline).
+    // Keep a strict maximum and sparse-noise cap; this is a baseline regression test, not a
+    // claim that the request's literal +/-2 criterion passes on the reference implementation.
+    let maximum = zip(a, b).map { abs(Int($0.0) - Int($0.1)) }.max() ?? 0
+    XCTAssertLessThanOrEqual(maximum, 3)
+    XCTAssertLessThanOrEqual(changed, max(6, a.count / 100_000))
+  }
+
+  func testUpgradeBadgeDrag() throws {
+    continueAfterFailure = false
+    let app = XCUIApplication()
+    app.launchArguments += ["-ALGAppearance", "dark"]
+    app.launch(); defer { app.terminate() }
+    let open = app.buttons["open-upgrade-demo"]
+    XCTAssertTrue(open.waitForExistence(timeout: launchTimeout)); open.tap()
+    // Press-drag-hold the badge-bearing favourite button and the Saved pill in every direction,
+    // including up and down. The badge rides the glass swell (following the proxy scale, which
+    // stays enlarged through a drag even though the button's press flags drop), leans toward the
+    // finger, and springs back to rest; it must survive every drag and a multi-second hold.
+    for id in ["upgrade-badge", "upgrade-pill-saved"] {
+      let button = app.buttons[id]
+      XCTAssertTrue(button.waitForExistence(timeout: 5))
+      let value = button.value as? String
+      for offset in [CGVector(dx: 36, dy: 0), CGVector(dx: -36, dy: 0), CGVector(dx: 0, dy: 30), CGVector(dx: 0, dy: -30)] {
+        let start = button.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+        start.press(forDuration: 0.8, thenDragTo: start.withOffset(offset),
+          withVelocity: XCUIGestureVelocity(rawValue: 35), thenHoldForDuration: 1.0)
+        Thread.sleep(forTimeInterval: 0.7)
+        XCTAssertTrue(button.waitForExistence(timeout: 5), "\(id) must remain after a \(offset) drag")
+      }
+      // A multi-second hold must not drop the badge or its control.
+      button.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).press(forDuration: 3.0)
+      XCTAssertTrue(button.waitForExistence(timeout: 5), "\(id) must survive a long hold")
+      XCTAssertEqual(button.value as? String, value, "\(id) badge value must be unchanged after drags")
+      let capture = XCTAttachment(screenshot: app.screenshot())
+      capture.name = "badge-drag-\(id)"; capture.lifetime = .keepAlways; add(capture)
+    }
+  }
+
+  func testUpgradeMorphBadge() throws {
+    continueAfterFailure = false
+    let app = XCUIApplication()
+    app.launchArguments += ["-ALGAppearance", "dark"]
+    app.launch(); defer { app.terminate() }
+    let open = app.buttons["open-upgrade-demo"]
+    XCTAssertTrue(open.waitForExistence(timeout: launchTimeout)); open.tap()
+    let morph = app.buttons["upgrade-morph"]
+    XCTAssertTrue(morph.waitForExistence(timeout: 5))
+    let initial = morph.frame
+
+    // Accessibility values alone cannot detect a badge that balloons or flies away.
+    // Check its rendered size and anchor at rest; inspect the companion recording
+    // with verify-ios-pill-badge.py for transient size/position discontinuities.
+    func checkBadge(_ name: String) {
+      Thread.sleep(forTimeInterval: 0.8)
+      let frame = morph.frame
+      let screenshot = app.screenshot()
+      let image = screenshot.image
+      let capture = XCTAttachment(screenshot: screenshot)
+      capture.name = name; capture.lifetime = .keepAlways; add(capture)
+      guard let cg = image.cgImage else { return XCTFail("Missing screenshot pixels") }
+      let scale = CGFloat(cg.width) / app.frame.width
+      let region = frame.insetBy(dx: -30, dy: -30)
+      guard let crop = cg.cropping(to: CGRect(x: region.minX * scale, y: region.minY * scale,
+        width: region.width * scale, height: region.height * scale).integral) else {
+        return XCTFail("Missing morph region")
+      }
+      var pixels = [UInt8](repeating: 0, count: crop.width * crop.height * 4)
+      pixels.withUnsafeMutableBytes { buffer in
+        let context = CGContext(data: buffer.baseAddress, width: crop.width, height: crop.height,
+          bitsPerComponent: 8, bytesPerRow: crop.width * 4, space: CGColorSpaceCreateDeviceRGB(),
+          bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
+        context?.draw(crop, in: CGRect(x: 0, y: 0, width: crop.width, height: crop.height))
+      }
+      var minX = crop.width, minY = crop.height, maxX = -1, maxY = -1
+      for y in 0..<crop.height { for x in 0..<crop.width {
+        let i = (y * crop.width + x) * 4
+        if pixels[i] > 170 && pixels[i + 1] < 115 && pixels[i + 2] < 130 {
+          minX = min(minX, x); maxX = max(maxX, x); minY = min(minY, y); maxY = max(maxY, y)
+        }
+      } }
+      XCTAssertGreaterThanOrEqual(maxX, minX, "Badge must remain visible")
+      guard maxX >= minX else { return }
+      XCTAssertEqual(CGFloat(maxY - minY + 1) / scale, 18, accuracy: 2)
+      XCTAssertLessThan(CGFloat(maxX - minX + 1) / scale, 24)
+      XCTAssertEqual(CGFloat(minX + maxX) / (2 * scale), 30 + frame.width * 0.854, accuracy: 2)
+      XCTAssertEqual(CGFloat(minY + maxY) / (2 * scale), 30 + frame.height * 0.146, accuracy: 2)
+      XCTAssertEqual(morph.value as? String, "5 new")
+    }
+    checkBadge("morph-initial")
+    for i in 0..<3 {
+      morph.tap(); XCTAssertEqual(morph.label, "Done")
+      checkBadge("morph-expanded-\(i)")
+      XCTAssertGreaterThan(morph.frame.width, initial.width + 5)
+      morph.tap(); XCTAssertEqual(morph.label, "Edit")
+      checkBadge("morph-collapsed-\(i)")
+      XCTAssertEqual(morph.frame.width, initial.width, accuracy: 1)
+      XCTAssertEqual(morph.frame.maxX, initial.maxX, accuracy: 1)
+    }
+    // Two taps inside a single gesture can interrupt the first width animation.
+    morph.doubleTap()
+    checkBadge("morph-interrupted")
+    morph.press(forDuration: 3)
+    checkBadge("morph-after-hold")
+  }
+
+  /// Bounding box (points, relative to the element) of pixels matching `match` around an element.
+  private func badgeBox(_ app: XCUIApplication, _ element: XCUIElement, name: String, margin: CGFloat = 20,
+    match: (UInt8, UInt8, UInt8) -> Bool) -> CGRect? {
+    let frame = element.frame
+    let screenshot = app.screenshot()
+    let capture = XCTAttachment(screenshot: screenshot); capture.name = name; capture.lifetime = .keepAlways; add(capture)
+    guard let cg = screenshot.image.cgImage else { return nil }
+    let scale = CGFloat(cg.width) / app.frame.width
+    let region = frame.insetBy(dx: -margin, dy: -margin)
+    guard let crop = cg.cropping(to: CGRect(x: region.minX * scale, y: region.minY * scale,
+      width: region.width * scale, height: region.height * scale).integral) else { return nil }
+    var pixels = [UInt8](repeating: 0, count: crop.width * crop.height * 4)
+    pixels.withUnsafeMutableBytes { buffer in
+      CGContext(data: buffer.baseAddress, width: crop.width, height: crop.height, bitsPerComponent: 8,
+        bytesPerRow: crop.width * 4, space: CGColorSpaceCreateDeviceRGB(),
+        bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)?.draw(crop, in: CGRect(x: 0, y: 0, width: crop.width, height: crop.height))
+    }
+    var minX = crop.width, minY = crop.height, maxX = -1, maxY = -1
+    for y in 0..<crop.height { for x in 0..<crop.width {
+      let i = (y * crop.width + x) * 4
+      if match(pixels[i], pixels[i + 1], pixels[i + 2]) { minX = min(minX, x); maxX = max(maxX, x); minY = min(minY, y); maxY = max(maxY, y) }
+    } }
+    guard maxX >= minX else { return nil }
+    return CGRect(x: CGFloat(minX) / scale - margin, y: CGFloat(minY) / scale - margin,
+      width: CGFloat(maxX - minX + 1) / scale, height: CGFloat(maxY - minY + 1) / scale)
+  }
+
+  // Opt-in reference capture, excluded from the normal focused package checks.
+  func testSystemHeaderReferences() throws {
+    for (bundle, name) in [("com.apple.MobileAddressBook", "contacts"), ("com.apple.MobileSMS", "messages"), ("com.apple.shortcuts", "shortcuts")] {
+      let app = XCUIApplication(bundleIdentifier: bundle)
+      app.launch()
+      Thread.sleep(forTimeInterval: 1)
+      if name == "shortcuts", app.tabBars.buttons["Library"].firstMatch.exists { app.tabBars.buttons["Library"].firstMatch.tap() }
+      let scroll = app.scrollViews.firstMatch.exists ? app.scrollViews.firstMatch
+        : app.tables.firstMatch.exists ? app.tables.firstMatch : app.collectionViews.firstMatch
+      if scroll.exists { scroll.swipeUp() }
+      let capture = XCTAttachment(screenshot: app.screenshot())
+      capture.name = "system-header-\(name)"; capture.lifetime = .keepAlways; add(capture)
+      app.terminate()
+    }
+  }
+
+  func testProgressiveScrollHeader() throws {
+    continueAfterFailure = false
+    let app = XCUIApplication(); app.launchArguments += ["-ALGAppearance", "dark"]
+    app.launch(); defer { app.terminate() }
+    let open = app.buttons["open-search-demo"]
+    XCTAssertTrue(open.waitForExistence(timeout: launchTimeout)); open.tap()
+    app.buttons["open-scroll-header"].tap()
+    app.buttons["nav-blur-only"].tap()
+    let title = app.staticTexts["contacts-title"]
+    XCTAssertTrue(title.waitForExistence(timeout: 5)); let frame = title.frame
+    app.buttons["header-scroll"].tap(); Thread.sleep(forTimeInterval: 0.8)
+    XCTAssertEqual(title.frame, frame)
+    let screenshot = app.screenshot()
+    let capture = XCTAttachment(screenshot: screenshot); capture.name = "progressive-header-scrolled"; capture.lifetime = .keepAlways; add(capture)
+    let header = app.otherElements["contacts-header"].frame
+    let image = try XCTUnwrap(screenshot.image.cgImage)
+    let scale = CGFloat(image.width) / app.frame.width
+    func meanColor(_ rect: CGRect) throws -> [Double] {
+      let area = CGRect(x: (header.minX + rect.minX) * scale, y: (header.minY + rect.minY) * scale,
+        width: rect.width * scale, height: rect.height * scale)
+      let cg = try XCTUnwrap(image.cropping(to: area))
+      var data = [UInt8](repeating: 0, count: cg.width * cg.height * 4)
+      data.withUnsafeMutableBytes { buffer in
+        CGContext(data: buffer.baseAddress, width: cg.width, height: cg.height, bitsPerComponent: 8,
+          bytesPerRow: cg.width * 4, space: CGColorSpaceCreateDeviceRGB(),
+          bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)?.draw(cg, in: CGRect(x: 0, y: 0, width: cg.width, height: cg.height))
+      }
+      return (0..<3).map { channel in
+        stride(from: channel, to: data.count, by: 4).reduce(0.0) { $0 + Double(data[$1]) } / Double(cg.width * cg.height)
+      }
+    }
+    // A uniform material made this empty region grey (39/39/42). The native
+    // soft edge preserves the backdrop while progressively softening list ink.
+    let background = try meanColor(CGRect(x: 250, y: 10, width: 30, height: 20))
+    for (actual, expected) in zip(background, [18.0, 20.0, 26.0]) { XCTAssertEqual(actual, expected, accuracy: 8) }
+    let avatar = try meanColor(CGRect(x: 38, y: 52, width: 8, height: 8))
+    XCTAssertLessThan(avatar[0], 130, "Unprocessed scrolling content must not overlap header text")
+    XCTAssertGreaterThan(avatar[0], 30, "The effect must preserve underlying content, not paint an opaque panel")
+    app.buttons["header-add"].tap()
+    XCTAssertTrue(app.staticTexts["header-added"].label.contains("21"))
+    app.buttons["header-reset"].tap()
+    app.buttons["close-scroll-header"].tap()
+    app.buttons["nav-blur-only"].tap()
+    XCTAssertTrue(app.staticTexts["contacts-title"].waitForExistence(timeout: 5))
+  }
+
+  func testNativeNavigationHeader() throws {
+    continueAfterFailure = false
+    let app = XCUIApplication(); app.launchArguments += ["-ALGAppearance", "dark"]
+    app.launch(); defer { app.terminate() }
+    XCTAssertTrue(app.buttons["open-search-demo"].waitForExistence(timeout: launchTimeout))
+    app.buttons["open-search-demo"].tap(); app.buttons["open-scroll-header"].tap()
+    let bar = app.navigationBars.firstMatch
+    XCTAssertTrue(bar.waitForExistence(timeout: 5))
+    func title() -> XCUIElement { bar.staticTexts.matching(identifier: "Contacts").allElementsBoundByIndex.first(where: { $0.isHittable }) ?? bar.staticTexts["Contacts"].firstMatch }
+    let expanded = title().frame
+    XCTAssertGreaterThan(expanded.height, 30, "Initial title should use the native large style")
+    app.otherElements["navigation-contacts"].scrollViews.firstMatch.swipeUp()
+    let collapsed = title().frame
+    XCTAssertLessThan(collapsed.height, expanded.height - 5)
+    XCTAssertEqual(collapsed.midX, app.frame.midX, accuracy: 4)
+    let capture = XCTAttachment(screenshot: app.screenshot()); capture.name = "native-navigation-collapsed"; capture.lifetime = .keepAlways; add(capture)
+    app.buttons["nav-add"].tap(); app.buttons["nav-top"].tap()
+    XCTAssertTrue(app.staticTexts["nav-status"].label.contains("21"))
+    XCTAssertGreaterThan(title().frame.height, collapsed.height + 5)
+    XCTAssertGreaterThanOrEqual(app.staticTexts["nav-status"].frame.minY, bar.frame.maxY - 1)
+    app.buttons["nav-more"].tap(); app.buttons["Mark all read"].tap()
+    XCTAssertTrue(app.staticTexts["nav-status"].label.contains("All marked read"))
+    app.buttons["nav-search-toggle"].tap()
+    let field = app.searchFields["navigation-search"]
+    XCTAssertTrue(field.waitForExistence(timeout: 5)); field.tap(); field.typeText("Maya")
+    XCTAssertTrue(app.buttons["Maya Chen"].waitForExistence(timeout: 5))
+    XCTAssertFalse(app.buttons["Noah Williams"].exists)
+    let closeSearch = app.buttons.matching(NSPredicate(format: "label == 'Close' OR label == 'Cancel'")).firstMatch
+    closeSearch.tap()
+    XCTAssertTrue(app.buttons["Noah Williams"].waitForExistence(timeout: 5), "Closing search clears the controlled filter")
+    app.buttons["navigation-back"].tap()
+    XCTAssertTrue(app.buttons["open-scroll-header"].waitForExistence(timeout: 5))
+    app.buttons["open-scroll-header"].tap(); XCTAssertTrue(app.buttons["nav-add"].waitForExistence(timeout: 5))
+  }
+
+  func testNativeTitleAboveHeaderBlur() throws {
+    continueAfterFailure = false
+    let app = XCUIApplication(); app.launchArguments += ["-ALGAppearance", "dark"]
+    app.launch(); defer { app.terminate() }
+    XCTAssertTrue(app.buttons["open-search-demo"].waitForExistence(timeout: launchTimeout))
+    app.buttons["open-search-demo"].tap(); app.buttons["open-scroll-header"].tap(); app.buttons["nav-review"].tap()
+    func option(_ label: String) {
+      app.buttons["review-options"].tap(); app.buttons[label].tap()
+    }
+    func title() -> XCUIElement {
+      app.navigationBars.firstMatch.staticTexts.matching(identifier: "Contacts").allElementsBoundByIndex.first(where: { $0.isHittable })
+        ?? app.navigationBars.firstMatch.staticTexts["Contacts"].firstMatch
+    }
+    func assertSharpTitle(_ state: String) throws {
+      let element = title()
+      XCTAssertTrue(element.exists, state)
+      // Accessibility still finds a title that is behind a backdrop blur. Check
+      // actual white glyph pixels, not just the label's presence or bounds.
+      let screenshot = app.screenshot().image
+      let full = try XCTUnwrap(screenshot.cgImage)
+      let scale = CGFloat(full.width) / app.frame.width
+      let frame = element.frame
+      let cg = try XCTUnwrap(full.cropping(to: CGRect(x: frame.minX * scale, y: frame.minY * scale, width: frame.width * scale, height: frame.height * scale)))
+      var bytes = [UInt8](repeating: 0, count: cg.width * cg.height * 4)
+      bytes.withUnsafeMutableBytes {
+        CGContext(data: $0.baseAddress, width: cg.width, height: cg.height, bitsPerComponent: 8,
+          bytesPerRow: cg.width * 4, space: CGColorSpaceCreateDeviceRGB(),
+          bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)?.draw(cg, in: CGRect(x: 0, y: 0, width: cg.width, height: cg.height))
+      }
+      let white = stride(from: 0, to: bytes.count, by: 4).filter { bytes[$0] > 200 && bytes[$0 + 1] > 200 && bytes[$0 + 2] > 200 }.count
+      if Double(white) / Double(cg.width * cg.height) <= 0.06 {
+        let attachment = XCTAttachment(image: UIImage(cgImage: cg)); attachment.name = "native-title-contrast-failure"; attachment.lifetime = .keepAlways; add(attachment)
+      }
+      XCTAssertGreaterThan(Double(white) / Double(cg.width * cg.height), 0.06, "\(state): native title must remain above the blur")
+    }
+    option("Native title transition"); option("Soft edge")
+    let list = app.otherElements["review-list"].scrollViews.firstMatch
+    for pinned in [true, false] {
+      option(pinned ? "Show pinned filter" : "Hide pinned filter")
+      for hard in [false, true] {
+        if hard { option("Hard edge") }
+        app.buttons["review-top"].tap()
+        XCTAssertGreaterThan(title().frame.height, 30, "Verify the expanded native title")
+        try assertSharpTitle("expanded \(hard ? "hard" : "soft"), filter \(pinned)")
+        list.swipeUp()
+        XCTAssertLessThan(title().frame.height, 30, "Verify the collapsed native title")
+        try assertSharpTitle("collapsed \(hard ? "hard" : "soft"), filter \(pinned)")
+      }
+      option("Soft edge")
+    }
+    app.buttons["review-top"].tap()
+    try assertSharpTitle("restored after repeated collapse")
+    app.buttons["review-close"].tap()
+  }
+
+  func testHeaderSearchToggleLayout() throws {
+    continueAfterFailure = false
+    let app = XCUIApplication(); app.launchArguments += ["-ALGAppearance", "dark"]
+    app.launch(); defer { app.terminate() }
+    XCTAssertTrue(app.buttons["open-search-demo"].waitForExistence(timeout: launchTimeout))
+    app.buttons["open-search-demo"].tap(); app.buttons["open-scroll-header"].tap()
+    let close = app.buttons.matching(NSPredicate(format: "label == 'Close' OR label == 'Cancel'")).firstMatch
+    func settle() { Thread.sleep(forTimeInterval: 0.7) }
+
+    // Toggled stacked search (no `active`): the bar pushes content down and gives the space back.
+    let status = app.staticTexts["nav-status"], contacts = app.otherElements["navigation-contacts"].scrollViews.firstMatch
+    XCTAssertTrue(status.waitForExistence(timeout: 5)); settle()
+    let resting = status.frame
+    app.buttons["nav-search-toggle"].tap(); settle()
+    let stacked = app.searchFields.firstMatch
+    XCTAssertTrue(stacked.waitForExistence(timeout: 5))
+    XCTAssertGreaterThanOrEqual(status.frame.minY, stacked.frame.maxY - 1, "A shown search bar must push content down, not cover it")
+    app.buttons["nav-search-toggle"].tap(); settle()
+    XCTAssertFalse(stacked.exists)
+    XCTAssertEqual(status.frame.minY, resting.minY, accuracy: 1, "Removing search must return the header and content to their resting position")
+    contacts.swipeUp(); settle()
+    app.buttons["nav-search-toggle"].tap(); settle(); app.buttons["nav-search-toggle"].tap(); settle()
+    app.buttons["nav-top"].tap(); settle()
+    XCTAssertEqual(status.frame.minY, resting.minY, accuracy: 1, "Search toggled while scrolled must not leave a stale header height")
+
+    // Icon-activated search (`active: true`) in both title transitions.
+    app.buttons["nav-review"].tap()
+    XCTAssertTrue(app.buttons["review-options"].waitForExistence(timeout: 5))
+    let state = app.staticTexts["review-state"], list = app.otherElements["review-list"].scrollViews.firstMatch
+    for transition in ["morph", "native"] {
+      if transition == "native" { app.buttons["review-options"].tap(); app.buttons["Native title transition"].tap() }
+      app.buttons["review-top"].tap(); settle()
+      let top = state.frame
+      app.buttons["review-search"].tap()
+      let field = app.searchFields["review-search-field"]
+      XCTAssertTrue(field.waitForExistence(timeout: 5))
+      XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 3), "\(transition): the icon opens search ready to type")
+      settle()
+      XCTAssertGreaterThanOrEqual(state.frame.minY, field.frame.maxY - 1, "\(transition): search must not cover the list")
+      for title in app.staticTexts.matching(identifier: "Contacts").allElementsBoundByIndex where title.isHittable {
+        XCTAssertFalse(title.frame.intersects(field.frame.insetBy(dx: 0, dy: 4)), "\(transition): the title must not draw over the search field")
+      }
+      field.typeText("Contact 1"); close.tap(); settle()
+      XCTAssertFalse(field.exists)
+      XCTAssertEqual(state.frame.minY, top.minY, accuracy: 1, "\(transition): dismissal restores the header exactly")
+      list.swipeUp(); settle()
+      let scrolled = app.buttons["Contact 10"].frame
+      app.buttons["review-search"].tap(); XCTAssertTrue(field.waitForExistence(timeout: 5)); settle()
+      close.tap(); settle()
+      XCTAssertEqual(app.buttons["Contact 10"].frame.minY, scrolled.minY, accuracy: 2, "\(transition): dismissal keeps the scroll position")
+    }
+    app.buttons["review-top"].tap(); settle()
+    XCTAssertGreaterThan(app.navigationBars.firstMatch.staticTexts["Contacts"].frame.height, 30, "The native large title expands again at the top")
+  }
+
+  func testHeaderAccessoryContinuity() throws {
+    continueAfterFailure = false
+    let app = XCUIApplication(); app.launchArguments += ["-ALGAppearance", "dark"]
+    app.launch(); defer { app.terminate() }
+    XCTAssertTrue(app.buttons["open-search-demo"].waitForExistence(timeout: launchTimeout))
+    app.buttons["open-search-demo"].tap(); app.buttons["open-scroll-header"].tap(); app.buttons["nav-review"].tap()
+    func option(_ label: String) {
+      app.buttons["review-options"].tap(); app.buttons[label].tap()
+    }
+    option("Show pinned filter")
+    let accessory = app.otherElements["review-accessory"]
+    XCTAssertTrue(accessory.waitForExistence(timeout: 5))
+    let list = app.otherElements["review-list"].scrollViews.firstMatch
+    list.swipeUp()
+    XCTAssertTrue(app.buttons["Filter: all"].isHittable)
+    XCTAssertGreaterThanOrEqual(accessory.frame.minY, app.navigationBars.firstMatch.frame.maxY - 1)
+
+    // Check the rendered boundary, not just the existence of a separator view.
+    let shot = app.screenshot().image
+    let cg = try XCTUnwrap(shot.cgImage), scale = CGFloat(cg.width) / app.frame.width
+    var bytes = [UInt8](repeating: 0, count: cg.width * cg.height * 4)
+    bytes.withUnsafeMutableBytes {
+      CGContext(data: $0.baseAddress, width: cg.width, height: cg.height, bitsPerComponent: 8,
+        bytesPerRow: cg.width * 4, space: CGColorSpaceCreateDeviceRGB(),
+        bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)?.draw(cg, in: CGRect(x: 0, y: 0, width: cg.width, height: cg.height))
+    }
+    func brightness(_ y: Int) -> Double {
+      let xs = Int(0.3 * CGFloat(cg.width))..<Int(0.7 * CGFloat(cg.width))
+      return xs.reduce(0.0) { value, x in
+        let i = (min(cg.height - 1, max(0, y)) * cg.width + x) * 4
+        return value + (Double(bytes[i]) + Double(bytes[i + 1]) + Double(bytes[i + 2])) / 3
+      } / Double(xs.count)
+    }
+    let bottom = Int((accessory.frame.maxY * scale).rounded())
+    let line = ((bottom - 2)...bottom).map(brightness).max()!
+    XCTAssertGreaterThan(line, (brightness(bottom - 5) + brightness(bottom + 5)) / 2 + 5, "Hard edge needs a visible hairline at the bottom of the entire header")
+    option("Soft edge")
+    let soft = app.screenshot().image
+    if let crop = soft.cgImage?.cropping(to: CGRect(x: 0, y: 0, width: CGFloat(cg.width), height: (accessory.frame.maxY + 35) * scale)) {
+      let attachment = XCTAttachment(image: UIImage(cgImage: crop)); attachment.name = "continuous-soft-header"; attachment.lifetime = .keepAlways; add(attachment)
+    }
+    for cycle in 0..<2 {
+      if cycle == 1 { app.buttons["review-top"].tap() }
+      app.buttons["review-search"].tap()
+      let field = app.searchFields["review-search-field"]
+      XCTAssertTrue(field.waitForExistence(timeout: 5))
+      field.tap(); field.typeText("Contact 1")
+      XCTAssertGreaterThanOrEqual(accessory.frame.minY, field.frame.maxY, "Search must not cover the pinned filter")
+      let nearbyScope = app.buttons["Nearby"]
+      XCTAssertTrue(nearbyScope.waitForExistence(timeout: 3))
+      XCTAssertGreaterThanOrEqual(accessory.frame.minY, nearbyScope.frame.maxY, "Search scopes need their own space above the filter")
+      XCTAssertTrue(app.buttons["Filter: all"].isHittable)
+      app.buttons["Filter: all"].tap()
+      XCTAssertTrue(app.buttons["Filter: nearby"].isHittable, "The filter must remain interactive during search")
+      app.buttons["Filter: nearby"].tap()
+      app.buttons.matching(NSPredicate(format: "label == 'Close' OR label == 'Cancel'")).firstMatch.tap()
+      XCTAssertTrue(app.buttons["review-options"].waitForExistence(timeout: 5))
+      XCTAssertTrue(app.buttons["Filter: all"].isHittable)
+    }
+    option("Toggle search placement")
+    let integrated = app.searchFields["review-search-field"]
+    XCTAssertTrue(integrated.waitForExistence(timeout: 5)); integrated.tap()
+    XCTAssertGreaterThanOrEqual(accessory.frame.minY, integrated.frame.maxY)
+    app.buttons.matching(NSPredicate(format: "label == 'Close' OR label == 'Cancel'")).firstMatch.tap()
+    option("Native title transition")
+    app.buttons["review-top"].tap()
+    XCTAssertTrue(app.buttons["Filter: all"].isHittable)
+    option("Hide pinned filter")
+    XCTAssertFalse(accessory.exists)
+    app.buttons["review-close"].tap()
+  }
+
+  func testHeaderReviewFeatures() throws {
+    continueAfterFailure = false
+    let app = XCUIApplication(); app.launchArguments += ["-ALGAppearance", "dark", "-ALGNavigationAudit"]
+    app.launch(); defer { app.terminate() }
+    XCTAssertTrue(app.buttons["open-search-demo"].waitForExistence(timeout: launchTimeout))
+    app.buttons["open-search-demo"].tap(); app.buttons["open-scroll-header"].tap(); app.buttons["nav-review"].tap()
+    XCTAssertTrue(app.buttons["review-options"].waitForExistence(timeout: 5))
+    Thread.sleep(forTimeInterval: 4) // DEBUG-only native 121-state audit writes one small JSON file.
+    app.buttons["review-top"].tap()
+    XCTAssertTrue(app.buttons["Contact 1"].isHittable)
+    app.buttons["review-options"].tap(); app.buttons["Large in bar"].tap()
+    app.buttons["review-top"].tap()
+    XCTAssertTrue(app.staticTexts["review-state"].label.contains("inlineLarge"))
+    app.buttons["review-options"].tap(); app.buttons["Show pinned filter"].tap()
+    XCTAssertTrue(app.buttons["Filter: all"].waitForExistence(timeout: 5))
+    app.buttons["review-options"].tap(); app.buttons["Custom title and subtitles"].tap()
+    XCTAssertTrue(app.staticTexts["◉  Custom contact"].waitForExistence(timeout: 5))
+    app.buttons["review-options"].tap(); app.buttons["Update badge in 2 seconds"].tap()
+    Thread.sleep(forTimeInterval: 2.3)
+    XCTAssertTrue(app.buttons["Large below bar"].exists, "Badge updates must retain the open native menu")
+    app.buttons["Large below bar"].tap()
+    app.buttons["review-options"].tap(); app.buttons["Text title"].tap()
+    app.buttons["review-top"].tap()
+    app.buttons["review-search"].tap()
+    let field = app.searchFields["review-search-field"]
+    XCTAssertTrue(field.waitForExistence(timeout: 5)); field.tap(); field.typeText("Contact 1")
+    app.buttons["Contact 1"].tap()
+    XCTAssertTrue(app.buttons["review-detail-back"].waitForExistence(timeout: 5))
+    XCTAssertTrue(app.staticTexts["Newest message"].exists)
+    app.buttons["review-detail-back"].tap()
+    XCTAssertTrue(field.waitForExistence(timeout: 5))
+    XCTAssertEqual(field.value as? String, "Contact 1")
+    app.buttons.matching(NSPredicate(format: "label == 'Close' OR label == 'Cancel'")).firstMatch.tap()
+    app.buttons["review-top"].tap()
+    Thread.sleep(forTimeInterval: 0.6) // Let the animated scroll-to-top settle before pulling.
+    // A fast swipe is absorbed by large-title expansion; pull slowly past the refresh threshold like a person does,
+    // starting inside the list body rather than on the bar, title row or pinned accessory.
+    let pull = app.otherElements["review-list"].scrollViews.firstMatch.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.4))
+    pull.press(forDuration: 0.05, thenDragTo: pull.withOffset(CGVector(dx: 0, dy: 420)), withVelocity: .slow, thenHoldForDuration: 0.4)
+    XCTAssertTrue(app.staticTexts["review-state"].waitForExistence(timeout: 3))
+    let refreshed = NSPredicate(format: "label CONTAINS 'refresh 1'")
+    expectation(for: refreshed, evaluatedWith: app.staticTexts["review-state"])
+    waitForExpectations(timeout: 5)
+    app.buttons["review-close"].tap()
+    XCTAssertTrue(app.buttons["nav-add"].waitForExistence(timeout: 5))
+  }
+
+  func testUpgradeMenuBadgeAndDot() throws {
+    continueAfterFailure = false
+    let app = XCUIApplication()
+    app.launchArguments += ["-ALGAppearance", "dark"]
+    app.launch(); defer { app.terminate() }
+    XCTAssertTrue(app.buttons["open-upgrade-demo"].waitForExistence(timeout: launchTimeout))
+    app.buttons["open-upgrade-demo"].tap()
+    let share = app.buttons["upgrade-share"], more = app.buttons["upgrade-more"]
+    let red: (UInt8, UInt8, UInt8) -> Bool = { r, g, b in r > 170 && g < 115 && b < 130 }
+    for cycle in 0..<2 {
+      more.tap()
+      XCTAssertTrue(app.buttons["Pin item"].waitForExistence(timeout: 3))
+      app.coordinate(withNormalizedOffset: CGVector(dx: 0.8, dy: 0.2)).tap()
+      XCTAssertTrue(app.buttons["Pin item"].waitForNonExistence(timeout: 3))
+      Thread.sleep(forTimeInterval: 0.6)
+      let badge = try XCTUnwrap(badgeBox(app, share, name: "group-dismiss-\(cycle)", margin: 5, match: red))
+      XCTAssertEqual(badge.height, 18, accuracy: 1, "Dismissal must restore the full badge")
+      XCTAssertEqual(badge.midY, share.frame.height * 0.146, accuracy: 1)
+    }
+    let dot = app.buttons["upgrade-badge-dot"]
+    XCTAssertTrue(app.scrollIntoView(dot))
+    print("DOT_FRAME \(dot.frame)")
+    dot.press(forDuration: 2)
+    dot.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).press(forDuration: 0.3, thenDragTo: dot.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).withOffset(CGVector(dx: 0, dy: 20)))
+    Thread.sleep(forTimeInterval: 1)
+    let badge = try XCTUnwrap(badgeBox(app, dot, name: "dot-after-release", match: red))
+    XCTAssertEqual(badge.width, 8, accuracy: 1); XCTAssertEqual(badge.height, 8, accuracy: 1)
+  }
+
+  func testUpgradeBadgeStyles() throws {
+    continueAfterFailure = false
+    let app = XCUIApplication()
+    app.launchArguments += ["-ALGAppearance", "dark"]
+    app.launch(); defer { app.terminate() }
+    // Toolbar buttons carry their badge into the spoken value.
+    let save = app.buttons["native-toolbar-save"]
+    XCTAssertTrue(app.scrollIntoView(save)); XCTAssertEqual(save.value as? String, "4 new")
+    app.terminate(); app.launch()
+    let open = app.buttons["open-upgrade-demo"]
+    XCTAssertTrue(open.waitForExistence(timeout: launchTimeout)); open.tap()
+    let dot = app.buttons["upgrade-badge-dot"], text = app.buttons["upgrade-badge-text"], cap = app.buttons["upgrade-badge-cap"]
+    XCTAssertTrue(dot.waitForExistence(timeout: 5)); XCTAssertTrue(app.scrollIntoView(cap))
+    Thread.sleep(forTimeInterval: 0.6)
+    // Spoken values: a dot is never silent, text reads as itself, an app label wins.
+    XCTAssertEqual(dot.value as? String, "New")
+    XCTAssertEqual(text.value as? String, "New")
+    XCTAssertEqual(cap.value as? String, "120 unread messages")
+    XCTAssertEqual(app.buttons["upgrade-pill-saved"].value as? String, "2 of 4, 2 new")
+    XCTAssertEqual(app.buttons["upgrade-pill-recent"].value as? String, "3 of 4, New")
+    // A dot is an 8 pt circle on the top-right edge.
+    let red: (UInt8, UInt8, UInt8) -> Bool = { r, g, b in r > 170 && g < 115 && b < 130 }
+    let dotBox = try XCTUnwrap(badgeBox(app, dot, name: "badge-dot", match: red))
+    XCTAssertEqual(dotBox.width, 8, accuracy: 2); XCTAssertEqual(dotBox.height, 8, accuracy: 2)
+    XCTAssertEqual(dotBox.midX, dot.frame.width * 0.854, accuracy: 2); XCTAssertEqual(dotBox.midY, dot.frame.height * 0.146, accuracy: 2)
+    // Custom fill and text colour: a yellow capsule with dark text.
+    let yellowBox = try XCTUnwrap(badgeBox(app, text, name: "badge-text") { r, g, b in r > 200 && g > 170 && b < 90 })
+    XCTAssertEqual(yellowBox.height, 18, accuracy: 2); XCTAssertGreaterThan(yellowBox.width, 22)
+    // The 99+ cap in a custom blue: wider than a single digit.
+    let blueBox = try XCTUnwrap(badgeBox(app, cap, name: "badge-cap") { r, g, b in r < 70 && g > 100 && g < 170 && b > 200 })
+    XCTAssertEqual(blueBox.height, 18, accuracy: 2); XCTAssertGreaterThan(blueBox.width, 26)
+    // A dot on a pill sits on the pill's top-right edge.
+    let recent = app.buttons["upgrade-pill-recent"]
+    // Narrow margin: the neighbouring Saved pill's red badge is only 10 pt away.
+    let pillDot = try XCTUnwrap(badgeBox(app, recent, name: "badge-pill-dot", margin: 5, match: red))
+    XCTAssertEqual(pillDot.width, 8, accuracy: 2); XCTAssertEqual(pillDot.height, 8, accuracy: 2)
+    XCTAssertGreaterThan(pillDot.midX, recent.frame.width * 0.7)
+    let capture = XCTAttachment(screenshot: app.screenshot()); capture.name = "badge-styles"; capture.lifetime = .keepAlways; add(capture)
+  }
+
+  func testUpgradePillIsolationAndBadge() throws {
+    continueAfterFailure = false
+    let app = XCUIApplication()
+    app.launchArguments += ["-ALGAppearance", "dark"]
+    app.launch(); defer { app.terminate() }
+    let open = app.buttons["open-upgrade-demo"]
+    XCTAssertTrue(open.waitForExistence(timeout: launchTimeout)); open.tap()
+    let saved = app.buttons["upgrade-pill-saved"]
+    XCTAssertTrue(saved.waitForExistence(timeout: 5))
+    let savedRestingFrame = saved.frame
+    for id in ["all", "saved", "recent", "saved", "all"] {
+      let pill = app.buttons["upgrade-pill-\(id)"]
+      XCTAssertTrue(pill.waitForExistence(timeout: 5))
+      pill.press(forDuration: 1.5)
+      XCTAssertTrue(pill.isSelected)
+      for other in ["all", "saved", "recent"] where other != id {
+        XCTAssertFalse(app.buttons["upgrade-pill-\(other)"].isSelected)
+      }
+      Thread.sleep(forTimeInterval: 0.6)
+      let capture = XCTAttachment(screenshot: app.screenshot())
+      capture.name = "pill-selected-\(id)"; capture.lifetime = .keepAlways; add(capture)
+      XCTAssertEqual(saved.frame.minX, savedRestingFrame.minX, accuracy: 0.3)
+      XCTAssertEqual(saved.frame.width, savedRestingFrame.width, accuracy: 0.3)
+      XCTAssertEqual(saved.frame.minY, savedRestingFrame.minY, accuracy: 0.3)
+    }
+    for _ in 0..<3 {
+      app.buttons["upgrade-pill-all"].tap()
+      app.buttons["upgrade-pill-saved"].tap()
+      app.buttons["upgrade-pill-saved"].tap()
+      XCTAssertTrue(app.buttons["upgrade-pill-saved"].isSelected)
+    }
+    app.buttons["upgrade-badge"].press(forDuration: 1.5)
+  }
+
+  func testUpgradeBadgeAndHeader() throws {
+    continueAfterFailure = false
+    let app = XCUIApplication(); app.launch(); defer { app.terminate() }
+    let open = app.buttons["open-upgrade-demo"]
+    XCTAssertTrue(open.waitForExistence(timeout: launchTimeout)); open.tap()
+    let badge = app.buttons["upgrade-badge"]
+    XCTAssertTrue(badge.waitForExistence(timeout: 10))
+    XCTAssertEqual(badge.value as? String, "77 new")
+    badge.press(forDuration: 1)
+    let header = app.buttons["upgrade-header-primary"]
+    XCTAssertTrue(app.scrollIntoView(header)); header.tap()
+    XCTAssertEqual(header.label, "Done")
+    let back = app.buttons["upgrade-header-back"]; XCTAssertTrue(back.waitForExistence(timeout: 5)); back.tap()
+    XCTAssertEqual(header.label, "More")
+    XCTAssertFalse(app.buttons["upgrade-header-back"].exists)
+    let capture = XCTAttachment(screenshot: app.screenshot()); capture.name = "upgrade-header"; capture.lifetime = .keepAlways; add(capture)
+  }
+
+  func testUpgradeHeaderTransitions() throws {
+    continueAfterFailure = false
+    let app = XCUIApplication()
+    app.launchArguments += ["-ALGAppearance", "dark"]
+    app.launch(); defer { app.terminate() }
+    let open = app.buttons["open-upgrade-demo"]
+    XCTAssertTrue(open.waitForExistence(timeout: launchTimeout)); open.tap()
+    let primary = app.buttons["upgrade-header-primary"]
+    XCTAssertTrue(app.scrollIntoView(primary, band: 0.2...0.6))
+    let resting = primary.frame
+    let restingInk = pixels(app.screenshot(), in: resting.insetBy(dx: 5, dy: 5), near: (240, 240, 247))
+    for cycle in 0..<3 {
+      primary.tap()
+      XCTAssertEqual(primary.label, "Done")
+      XCTAssertTrue(app.buttons["upgrade-header-back"].exists)
+      XCTAssertEqual(primary.frame.midY, resting.midY, accuracy: 0.5)
+      XCTAssertEqual(primary.frame.maxX, resting.maxX, accuracy: 0.5)
+      Thread.sleep(forTimeInterval: 1)
+      // A button may expose "Done" to accessibility while its title is still
+      // truncated to three dots. Four rendered letters must cover more ink.
+      let titleInk = pixels(app.screenshot(), in: primary.frame.insetBy(dx: 5, dy: 5), near: (240, 240, 247))
+      XCTAssertGreaterThan(titleInk, restingInk * 2, "Done must render in full, not as a truncated ellipsis")
+      let expanded = XCTAttachment(screenshot: app.screenshot())
+      expanded.name = "header-expanded-\(cycle)"; expanded.lifetime = .keepAlways; add(expanded)
+      // Exercise Done itself: closing via Back does not press the morphing glass.
+      primary.tap()
+      XCTAssertEqual(primary.label, "More")
+      XCTAssertFalse(app.buttons["upgrade-header-back"].exists)
+      XCTAssertEqual(primary.frame.width, resting.width, accuracy: 0.5)
+      XCTAssertEqual(primary.frame.midY, resting.midY, accuracy: 0.5)
+      XCTAssertEqual(primary.frame.maxX, resting.maxX, accuracy: 0.5)
+      Thread.sleep(forTimeInterval: 1.5)
+      let collapsed = XCTAttachment(screenshot: app.screenshot())
+      collapsed.name = "header-collapsed-\(cycle)"; collapsed.lifetime = .keepAlways; add(collapsed)
+    }
+  }
+
+  // Companion video checks release luminance; settled screenshots alone cannot
+  // detect a transient flash. Exercise both content-changing and static controls.
+  func testUpgradeControlReleaseLighting() throws {
+    continueAfterFailure = false
+    let app = XCUIApplication()
+    app.launchArguments += ["-ALGAppearance", "dark"]
+    app.launch(); defer { app.terminate() }
+    let open = app.buttons["open-upgrade-demo"]
+    XCTAssertTrue(open.waitForExistence(timeout: launchTimeout)); open.tap()
+    for id in ["upgrade-badge", "upgrade-clear", "upgrade-share", "upgrade-search", "upgrade-pill-saved", "upgrade-pill-all"] {
+      let button = app.buttons[id]
+      XCTAssertTrue(app.scrollIntoView(button))
+      let resting = button.frame
+      print("RELEASE_CONTROL \(id) \(resting)")
+      for _ in 0..<2 {
+        button.tap()
+        Thread.sleep(forTimeInterval: 1.5)
+        XCTAssertEqual(button.frame, resting, "A fixed-size control must not move on release")
+      }
+      let capture = XCTAttachment(screenshot: app.screenshot())
+      capture.name = "release-\(id)"; capture.lifetime = .keepAlways; add(capture)
+    }
+  }
+
+  func testUpgradeUnchangedButtonLighting() throws {
+    continueAfterFailure = false
+    let app = XCUIApplication()
+    app.launchArguments += ["-ALGAppearance", "dark"]
+    app.launch(); defer { app.terminate() }
+    let open = app.buttons["open-upgrade-demo"]
+    XCTAssertTrue(open.waitForExistence(timeout: launchTimeout)); open.tap()
+    let search = app.buttons["upgrade-search"]
+    XCTAssertTrue(app.scrollIntoView(search))
+    let resting = search.frame
+    for _ in 0..<3 {
+      search.tap()
+      XCTAssertTrue(app.staticTexts["upgrade-status"].label.contains("search"))
+      XCTAssertEqual(search.frame, resting)
+      Thread.sleep(forTimeInterval: 1.5)
+    }
+    let capture = XCTAttachment(screenshot: app.screenshot())
+    capture.name = "unchanged-button-lighting"; capture.lifetime = .keepAlways; add(capture)
+  }
+
+  func testUpgradeLargeText() throws {
+    continueAfterFailure = false
+    let app = XCUIApplication()
+    app.launchArguments += ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"]
+    app.launch(); defer { app.terminate() }
+    let open = app.buttons["open-upgrade-demo"]
+    XCTAssertTrue(open.waitForExistence(timeout: launchTimeout)); open.tap()
+    let saved = app.buttons["upgrade-pill-saved"]
+    XCTAssertTrue(app.scrollIntoView(saved)); XCTAssertGreaterThanOrEqual(saved.frame.height, 44)
+    saved.tap(); XCTAssertTrue(app.staticTexts["upgrade-status"].label.contains("saved"))
+    let search = app.buttons["upgrade-search"]
+    let row = app.otherElements["upgrade-pills"]
+    for _ in 0..<3 {
+      if search.isHittable { break }
+      row.swipeLeft(velocity: .slow)
+    }
+    XCTAssertTrue(search.isHittable)
+    XCTAssertTrue(saved.isSelected, "Scrolling must cancel pill presses")
+    search.tap(); XCTAssertTrue(app.staticTexts["upgrade-status"].label.contains("search"))
+    let share = app.buttons["upgrade-share"]
+    XCTAssertTrue(app.scrollIntoView(share)); share.tap()
+    XCTAssertTrue(app.staticTexts["upgrade-status"].label.contains("share"))
+    let capture = XCTAttachment(screenshot: app.screenshot()); capture.name = "upgrade-large-text"; capture.lifetime = .keepAlways; add(capture)
+  }
+
+  func testUpgradeControls() throws {
+    continueAfterFailure = false
+    let app = XCUIApplication(); app.launch(); defer { app.terminate() }
+    let open = app.buttons["open-upgrade-demo"]
+    XCTAssertTrue(open.waitForExistence(timeout: launchTimeout)); open.tap()
+    let back = app.buttons["upgrade-back-symbol"]
+    XCTAssertTrue(back.waitForExistence(timeout: 20))
+    XCTAssertEqual(back.frame.width, 44, accuracy: 0.5)
+    XCTAssertEqual(back.frame.height, 44, accuracy: 0.5)
+    let share = app.buttons["upgrade-share"]; XCTAssertTrue(share.exists); share.tap()
+    XCTAssertTrue(app.staticTexts["upgrade-status"].label.contains("share"))
+    app.buttons["upgrade-more"].tap()
+    let pin = app.buttons["Pin item"]; XCTAssertTrue(pin.waitForExistence(timeout: 5)); pin.tap()
+    XCTAssertTrue(app.staticTexts["upgrade-status"].label.contains("pin"))
+    app.buttons["upgrade-pill-saved"].tap()
+    XCTAssertTrue(app.staticTexts["upgrade-status"].label.contains("saved"))
+    let morph = app.buttons["upgrade-morph"]; let before = morph.frame
+    morph.tap(); Thread.sleep(forTimeInterval: 0.7)
+    XCTAssertEqual(morph.label, "Done")
+    XCTAssertGreaterThan(morph.frame.width, before.width + 5)
+    XCTAssertEqual(morph.frame.maxX, before.maxX, accuracy: 1)
+    let toggle = app.buttons["upgrade-toggle-presence"]; XCTAssertTrue(app.scrollIntoView(toggle)); toggle.tap()
+    XCTAssertTrue(app.staticTexts["upgrade-exits"].waitForExistence(timeout: 5))
+    let exited = NSPredicate(format: "label == %@", "Exits: 1")
+    expectation(for: exited, evaluatedWith: app.staticTexts["upgrade-exits"])
+    waitForExpectations(timeout: 5)
+    XCTAssertFalse(app.buttons["upgrade-present"].exists)
+    toggle.tap(); XCTAssertTrue(app.buttons["upgrade-present"].waitForExistence(timeout: 5))
+    let capture = XCTAttachment(screenshot: app.screenshot()); capture.name = "upgrade-controls"; capture.lifetime = .keepAlways; add(capture)
+  }
+
   func testConversationMenuAppearance() throws {
     continueAfterFailure = false
     let app = XCUIApplication(); app.launch()

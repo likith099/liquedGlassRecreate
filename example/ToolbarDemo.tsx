@@ -26,7 +26,8 @@ export default function ToolbarDemo({foreground, secondary}: {foreground: string
     ]},
   ];
   const items: readonly GlassToolbarItem[] = [
-    {id: replaced ? 'archive' : 'save', title: replaced ? 'Archive' : 'Save', systemImage: replaced ? 'archivebox' : 'square.and.arrow.down'},
+    {id: replaced ? 'archive' : 'save', title: replaced ? 'Archive' : 'Save', systemImage: replaced ? 'archivebox' : 'square.and.arrow.down',
+      badge: {count: 4}},
     {kind: 'submenu', id: 'sort', title: 'Sort', systemImage: 'arrow.up.arrow.down', items: groups},
     {id: 'export', title: 'Export entire collection', placement: 'overflow'},
     {id: 'blocked', title: 'Unavailable toolbar action', disabled: true, placement: 'overflow'},

@@ -12,6 +12,9 @@ class ALGTabsManager : SimpleViewManager<ALGTabsView>(), ALGTabsManagerInterface
   override fun getDelegate() = delegate
   override fun getName() = "ALGTabs"
   override fun createViewInstance(context: ThemedReactContext) = ALGTabsView(context)
+  override fun setMinimizeBehavior(view: ALGTabsView, value: String?) { /* iOS-only; Android keeps its stable bar. */ }
+  override fun setScrollViewTagsJSON(view: ALGTabsView, value: String?) { /* iOS-only association. */ }
+  override fun setHasAccessory(view: ALGTabsView, value: Boolean) { /* React renders the Android accessory above this bar. */ }
   override fun setItemsJSON(view: ALGTabsView, value: String?) { view.itemsJSON = value ?: "[]" }
   override fun setSelectedValue(view: ALGTabsView, value: String?) { view.selectedValue = value ?: "" }
   override fun setSelectionRevision(view: ALGTabsView, value: Int) { /* Reconcile in the transaction, including rejected taps. */ }

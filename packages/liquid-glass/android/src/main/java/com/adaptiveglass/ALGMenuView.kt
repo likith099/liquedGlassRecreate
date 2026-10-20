@@ -28,11 +28,18 @@ import com.facebook.react.uimanager.UIManagerHelper
 import com.facebook.react.uimanager.events.Event
 import com.facebook.react.uimanager.events.NativeGestureUtil
 import com.facebook.react.views.view.ReactViewGroup
+import com.google.android.material.badge.BadgeDrawable
+import com.google.android.material.badge.BadgeUtils
+import com.google.android.material.badge.ExperimentalBadgeUtils
 import org.json.JSONArray
 
 internal data class MenuEntry(val id: String, val title: String, val kind: String,
   val disabled: Boolean, val destructive: Boolean, val checked: Boolean?,
-  val items: List<MenuEntry>, val placement: String, val androidIcon: String = "") {
+  val items: List<MenuEntry>, val placement: String, val androidIcon: String = "",
+  /** Toolbar buttons only: a capped count or text, '' for a dot, null for none. */
+  val badge: String? = null, val badgeColor: Int? = null, val badgeTextColor: Int? = null,
+  val badgeAccessibility: String = "") {
+  val spokenBadge get() = badge?.let { badgeAccessibility.ifEmpty { it.ifEmpty { "New" } } }
   val isGroup get() = kind == "section" || kind == "submenu"
 }
 private class MenuActionEvent(surfaceId: Int, tag: Int, private val itemId: String) : Event<MenuActionEvent>(surfaceId, tag) {
@@ -56,6 +63,45 @@ class ALGMenuView(private val reactContext: ThemedReactContext) : FrameLayout(re
   private val icon = ImageView(reactContext)
   private val defaultTextColors = button.textColors
   private val defaultBackground = button.background
+  var iconOptionsJSON = "{}"
+  private var iconOptions = org.json.JSONObject()
+  private val badge = android.widget.TextView(reactContext)
+  private var iconUri: String? = null
+  private fun applyIconOptions() {
+    iconOptions = try { org.json.JSONObject(iconOptionsJSON) } catch (_: Exception) { org.json.JSONObject() }
+    val text = if (iconOptions.has("badge") && !iconOptions.isNull("badge")) iconOptions.optString("badge") else null
+    badge.visibility = if (text == null) View.GONE else View.VISIBLE
+    badge.text = text
+    // A dot is an 8 dp circle; a count or text is an 18 dp capsule.
+    val dot = text?.isEmpty() == true
+    val badgeHeight = ((if (dot) 8 else 18) * resources.displayMetrics.density).toInt()
+    badge.minimumWidth = badgeHeight
+    val badgePadding = if (dot) 0 else (4 * resources.displayMetrics.density).toInt()
+    badge.setPadding(badgePadding, 0, badgePadding, 0)
+    (badge.layoutParams as? LayoutParams)?.let { if (it.height != badgeHeight) { it.height = badgeHeight; badge.layoutParams = it } }
+    badge.background = GradientDrawable().apply { cornerRadius = badgeHeight / 2f
+      setColor(if (iconOptions.has("badgeColor")) iconOptions.getDouble("badgeColor").toLong().toInt() else Color.RED) }
+    badge.setTextColor(if (iconOptions.has("badgeTextColor")) iconOptions.getDouble("badgeTextColor").toLong().toInt() else Color.WHITE)
+    if (text != null) {
+      val spoken = iconOptions.optString("badgeAccessibility").ifEmpty { if (dot) "New" else text }
+      button.contentDescription = "${button.contentDescription}, $spoken"
+    }
+    val uri = iconOptions.optJSONObject("imageSource")?.optString("uri")?.takeIf { it.isNotEmpty() }
+    iconUri = uri
+    if (uri == null && !iconMode) button.setCompoundDrawables(null, null, null, null)
+    if (uri != null) {
+      val bitmap = TabImageLoader.cached(uri)
+      if (bitmap != null) {
+        if (iconMode) { icon.setImageBitmap(bitmap); icon.imageTintList = null }
+        else {
+          val drawable = android.graphics.drawable.BitmapDrawable(resources, bitmap)
+          val side = (24 * resources.displayMetrics.density).toInt(); drawable.setBounds(0, 0, side, side)
+          button.setCompoundDrawables(drawable, null, null, null)
+        }
+      }
+      else if (!TabImageLoader.hasFailed(uri)) TabImageLoader.load(context, uri) { if (iconUri == uri) applyConfiguration() }
+    }
+  }
   var title = ""
   var itemsJSON = "[]"
   var disabled = false
@@ -112,6 +158,9 @@ class ALGMenuView(private val reactContext: ThemedReactContext) : FrameLayout(re
     icon.importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
     icon.visibility = View.GONE
     addView(icon, LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT, Gravity.CENTER))
+    badge.gravity = Gravity.CENTER; badge.textSize = 11f; badge.setTextColor(Color.WHITE)
+    badge.isClickable = false; badge.importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+    addView(badge, LayoutParams(LayoutParams.WRAP_CONTENT, (18 * resources.displayMetrics.density).toInt(), Gravity.TOP or Gravity.END))
     addView(bar, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
     addView(reactContent, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
     reactContent.visibility = View.GONE
@@ -121,6 +170,11 @@ class ALGMenuView(private val reactContext: ThemedReactContext) : FrameLayout(re
     }
     bar.visibility = View.GONE
     button.setOnClickListener {
+      if (iconOptions.optString("pressEffect") == "bounce" && (android.os.Build.VERSION.SDK_INT < 26 || android.animation.ValueAnimator.areAnimatorsEnabled())) {
+        icon.animate().scaleX(1.15f).scaleY(1.15f).setDuration(75).withEndAction {
+          icon.animate().scaleX(1f).scaleY(1f).setDuration(150).start()
+        }.start()
+      }
       if (isPlainButton) { if (!disabled && isAttachedToWindow) dispatchLifecycle("topButtonPress") } else showMenu()
     }
   }
@@ -130,11 +184,15 @@ class ALGMenuView(private val reactContext: ThemedReactContext) : FrameLayout(re
       item.optBoolean("disabled"), item.optBoolean("destructive"),
       if (item.has("checked")) item.getBoolean("checked") else null,
       item.optJSONArray("items")?.let { decode(it) } ?: emptyList(), item.optString("placement", "automatic"),
-      item.optString("androidIcon"))
+      item.optString("androidIcon"),
+      if (item.has("badge") && !item.isNull("badge")) item.optString("badge") else null,
+      if (item.has("badgeColor")) item.getDouble("badgeColor").toLong().toInt() else null,
+      if (item.has("badgeTextColor")) item.getDouble("badgeTextColor").toLong().toInt() else null,
+      item.optString("badgeAccessibility"))
   }
   fun applyConfiguration() {
     val configuration = listOf(itemsJSON, disabled, toolbar, maxVisibleItems, glassTint, controlTestID, contextMenu,
-      iconMode, colorScheme, androidIcon, iconProminent, menuStyleJSON, menuAnchor)
+      iconMode, colorScheme, androidIcon, iconProminent, menuStyleJSON, menuAnchor, iconOptionsJSON)
     val changed = configuration != appliedConfiguration
     if (appliedJSON != itemsJSON) {
       appliedJSON = itemsJSON
@@ -156,6 +214,7 @@ class ALGMenuView(private val reactContext: ThemedReactContext) : FrameLayout(re
     button.isEnabled = !disabled && (isPlainButton || entries.isNotEmpty())
     applyIconAppearance()
     button.contentDescription = controlLabel?.takeIf { it.isNotEmpty() } ?: title
+    applyIconOptions()
     if (android.os.Build.VERSION.SDK_INT >= 26) button.tooltipText = controlHint
     button.setTag(com.facebook.react.R.id.react_test_id, controlTestID)
     ReactAccessibilityDelegate.setDelegate(button, button.isFocusable, button.importantForAccessibility)
@@ -203,14 +262,54 @@ class ALGMenuView(private val reactContext: ThemedReactContext) : FrameLayout(re
   }
   private fun updateToolbar() {
     bar.dismissPopupMenus()
+    detachToolbarBadges()
     bar.menu.clear()
+    toolbarShown.clear()
     fill(bar.menu, entries, revision, toolbarRoot = true)
     // Fabric owns this host's frame, so explicitly remeasure the native children.
     requestLayout()
     // A request made inside onLayout can be cleared as that layout finishes.
     // Force the posted measurement so newly added native actions receive bounds.
     post { if (isAttachedToWindow) { forceLayout(); bar.forceLayout(); measure(MeasureSpec.makeMeasureSpec(width, MeasureSpec.EXACTLY),
-      MeasureSpec.makeMeasureSpec(height, MeasureSpec.EXACTLY)); layout(left, top, right, bottom) } }
+      MeasureSpec.makeMeasureSpec(height, MeasureSpec.EXACTLY)); layout(left, top, right, bottom); attachToolbarBadges() } }
+  }
+  private val toolbarShown = mutableListOf<MenuEntry>()
+  private val toolbarBadges = mutableListOf<Pair<BadgeDrawable, View>>()
+  /** Material's badge needs a Material theme; wrap the app's context when it is not one. */
+  private fun materialContext(): android.content.Context {
+    val flag = android.util.TypedValue()
+    return if (context.theme.resolveAttribute(com.google.android.material.R.attr.isMaterialTheme, flag, true) && flag.data != 0) context
+      else android.view.ContextThemeWrapper(context, com.google.android.material.R.style.Theme_Material3_DayNight_NoActionBar)
+  }
+  @androidx.annotation.OptIn(markerClass = [ExperimentalBadgeUtils::class])
+  private fun detachToolbarBadges() {
+    toolbarBadges.forEach { (badge, anchor) -> BadgeUtils.detachBadgeDrawable(badge, anchor) }
+    toolbarBadges.clear()
+  }
+  /**
+   * The platform toolbar has no badge of its own, so each visible toolbar button with a badge gets
+   * Material's standard badge. Overflowed buttons say the badge in their spoken label instead.
+   */
+  @androidx.annotation.OptIn(markerClass = [ExperimentalBadgeUtils::class])
+  private fun attachToolbarBadges() {
+    detachToolbarBadges()
+    if (!toolbar || toolbarShown.none { it.badge != null }) return
+    val actions = (0 until bar.childCount).map { bar.getChildAt(it) }.firstOrNull { it is android.widget.ActionMenuView } as? android.widget.ActionMenuView ?: return
+    // Shown actions are the menu view's leading children, in menu order; anything else (an
+    // overflow button) follows them. Never guess when the counts disagree.
+    if (actions.childCount < toolbarShown.size) return
+    toolbarShown.forEachIndexed { index, entry ->
+      val text = entry.badge ?: return@forEachIndexed
+      val anchor = actions.getChildAt(index) ?: return@forEachIndexed
+      val badge = BadgeDrawable.create(materialContext()).apply {
+        isVisible = true
+        backgroundColor = entry.badgeColor ?: Color.RED
+        badgeTextColor = entry.badgeTextColor ?: Color.WHITE
+        if (text.isEmpty()) { clearNumber(); clearText() } else { maxCharacterCount = text.length + 1; this.text = text }
+      }
+      BadgeUtils.attachBadgeDrawable(badge, anchor)
+      toolbarBadges += badge to anchor
+    }
   }
   override fun onLayout(changed: Boolean, left: Int, top: Int, right: Int, bottom: Int) {
     super.onLayout(changed, left, top, right, bottom)
@@ -260,14 +359,15 @@ class ALGMenuView(private val reactContext: ThemedReactContext) : FrameLayout(re
       item.isEnabled = !disabled && !entry.disabled
       item.isCheckable = !entry.isGroup && entry.checked != null
       item.isChecked = entry.checked == true
-      if (android.os.Build.VERSION.SDK_INT >= 26) item.contentDescription = entry.title
+      if (android.os.Build.VERSION.SDK_INT >= 26) item.contentDescription =
+        entry.title + (if (toolbarRoot) entry.spokenBadge?.let { ", $it" } ?: "" else "")
       if (toolbarRoot) {
         val required = maxOf(56 * density, button.paint.measureText(entry.title.uppercase()) + 32 * density)
         val canShow = entry.placement != "overflow" && visibleCount < maxVisibleItems && required <= available
         // This host has already reserved space for overflow. IF_ROOM can use a
         // stale presenter budget while Fabric lays out an embedded toolbar.
         item.setShowAsAction(if (canShow) MenuItem.SHOW_AS_ACTION_ALWAYS or MenuItem.SHOW_AS_ACTION_WITH_TEXT else MenuItem.SHOW_AS_ACTION_NEVER)
-        if (canShow) { visibleCount += 1; available -= required }
+        if (canShow) { visibleCount += 1; available -= required; toolbarShown += entry }
       }
       if (!entry.isGroup) item.setOnMenuItemClickListener {
         if (!disabled && version == revision && isAttachedToWindow && enabledAction(entry.id, entries) != null) {
@@ -339,5 +439,5 @@ class ALGMenuView(private val reactContext: ThemedReactContext) : FrameLayout(re
     return super.dispatchTouchEvent(event)
   }
   private fun dismissMenus() { popup?.dismiss(); bar.dismissPopupMenus() }
-  override fun onDetachedFromWindow() { dismissMenus(); super.onDetachedFromWindow() }
+  override fun onDetachedFromWindow() { dismissMenus(); detachToolbarBadges(); super.onDetachedFromWindow() }
 }

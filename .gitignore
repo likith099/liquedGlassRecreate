@@ -16,3 +16,4 @@ example/ios/.xcode.env.local
 
 # Compiled package output (react-native-builder-bob), built on pack/publish.
 packages/liquid-glass/lib/
+__pycache__/

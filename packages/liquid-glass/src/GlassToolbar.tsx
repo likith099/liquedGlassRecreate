@@ -1,3 +1,4 @@
+import {nativeMenuItems} from './iconOptions';
 import React from 'react';
 import {useWindowDimensions} from 'react-native';
 import adaptiveHeight from './adaptiveHeight';
@@ -13,7 +14,7 @@ export default function GlassToolbar({items, onAction, disabled = false, maxVisi
   if (!Number.isInteger(maxVisibleItems) || maxVisibleItems < 0 || maxVisibleItems > 256) {
     throw new Error('GlassToolbar maxVisibleItems must be an integer from 0 to 256.');
   }
-  return <NativeMenu {...props} accessible={false} toolbar title="" itemsJSON={JSON.stringify(items)}
+  return <NativeMenu {...props} accessible={false} toolbar title="" itemsJSON={JSON.stringify(nativeMenuItems(items, false))}
     style={[{height: adaptiveHeight(64, 20, fontScale), minWidth: 64}, style]} disabled={disabled || items.length === 0}
     maxVisibleItems={maxVisibleItems} mergingEnabled={mergingEnabled}
     glassTint={tintColor} forceFallback={forceFallback} controlLabel={accessibilityLabel}

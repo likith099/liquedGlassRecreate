@@ -1,3 +1,4 @@
+import {nativeMenuItems} from './iconOptions';
 import React, {useEffect, useRef} from 'react';
 import NativeMenu from './specs/ALGMenuNativeComponent';
 import {enabledMenuAction, menuStyleJSON, validateMenuItems} from './menuTree';
@@ -44,7 +45,7 @@ export default function GlassContextMenu({children, items, onAction, disabled = 
   if (forceFallback) return <FallbackContextMenu {...props} items={items} onAction={choose} onOpen={opened} onClose={closed}
     disabled={disabled} colorScheme={colorScheme} accessibilityLabel={accessibilityLabel} accessibilityHint={accessibilityHint}
     testID={testID}>{children}</FallbackContextMenu>;
-  return <NativeMenu {...props} title="" contextMenu itemsJSON={JSON.stringify(items)} menuStyleJSON={menuStyleJSON(androidMenuStyle)}
+  return <NativeMenu {...props} title="" contextMenu itemsJSON={JSON.stringify(nativeMenuItems(items))} menuStyleJSON={menuStyleJSON(androidMenuStyle)}
     disabled={disabled || items.length === 0} colorScheme={colorScheme} previewCornerRadius={previewCornerRadius} menuPlacement={menuPlacement}
     previewCornerTopLeft={previewCornerRadii?.topLeft ?? -1} previewCornerTopRight={previewCornerRadii?.topRight ?? -1}
     previewCornerBottomLeft={previewCornerRadii?.bottomLeft ?? -1} previewCornerBottomRight={previewCornerRadii?.bottomRight ?? -1}

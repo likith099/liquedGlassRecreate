@@ -47,10 +47,19 @@ export function validateTabs(items: readonly GlassTabItem[], value: string | nul
     if (item.imageRenderingMode !== undefined && item.imageRenderingMode !== 'template' && item.imageRenderingMode !== 'original') {
       throw new Error('Tab imageRenderingMode must be template or original.');
     }
-    if (item.badge !== undefined && item.badge !== 'dot' &&
-      (!Number.isInteger(item.badge) || item.badge < 0 || item.badge > 2147483647)) {
-      throw new Error('Tab badge must be dot or a nonnegative 32-bit integer.');
+    const badge = item.badge;
+    if (typeof badge === 'number' || (badge && typeof badge === 'object' && 'count' in badge)) {
+      const count = typeof badge === 'number' ? badge : badge.count;
+      if (!Number.isInteger(count) || count < 0 || count > 2147483647) {
+        throw new Error('Tab badge count must be a nonnegative 32-bit integer.');
+      }
+    } else if (badge && typeof badge === 'object' && 'text' in badge) {
+      if (typeof badge.text !== 'string' || !badge.text.trim()) throw new Error('Tab badge text must be nonempty; use dot for a dot.');
+    } else if (badge !== undefined && badge !== 'dot' && !(badge && typeof badge === 'object' && 'indicator' in badge)) {
+      throw new Error('Tab badge must be a count, dot, or {count} / {text} / {indicator: true}.');
     }
+    staticColor(item.badgeColor, 'badgeColor');
+    staticColor(item.badgeTextColor, 'badgeTextColor');
   }
   if (items.length === 0 ? value !== null : value === null || !ids.has(value)) {
     throw new Error('Tab value must identify an existing tab, or be null for empty items.');

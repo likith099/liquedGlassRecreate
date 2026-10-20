@@ -31,7 +31,7 @@ const tarball = path.join(artifacts, `consumer-${sha256}.tgz`);
 cpSync(archive, tarball);
 const pkg = JSON.parse(readFileSync(path.join(root, 'example/package.json'), 'utf8'));
 pkg.dependencies['@likith99/react-native-adaptive-liquid-glass'] = `file:${tarball}`;
-for (const dependency of ['@react-navigation/native', '@react-navigation/bottom-tabs', 'react-native-screens']) delete pkg.dependencies[dependency];
+for (const dependency of ['@react-navigation/native', '@react-navigation/bottom-tabs', '@react-navigation/native-stack', 'react-native-screens']) delete pkg.dependencies[dependency];
 pkg.scripts = {};
 writeFileSync(path.join(consumer, 'package.json'), JSON.stringify(pkg, null, 2));
 for (const name of ['ios', 'android', 'index.js', 'app.json', 'babel.config.js']) {
@@ -50,8 +50,8 @@ for (const [file, from, to] of [
 writeFileSync(path.join(consumer, 'metro.config.js'), "const {getDefaultConfig} = require('@react-native/metro-config'); module.exports = getDefaultConfig(__dirname);\n");
 writeFileSync(path.join(consumer, 'tsconfig.json'), JSON.stringify({extends: '@react-native/typescript-config', include: ['App.tsx']}));
 writeFileSync(path.join(consumer, 'App.tsx'), `import React, {useState} from 'react';
-import {Text, View} from 'react-native';
-import {GlassView, GlassContainer, GlassButton, GlassPressable, GlassSegmentedControl, GlassSlider, GlassActionCluster, GlassMenuButton, GlassContextMenu, GlassToolbar, GlassTabBar, GlassIconButton, GlassFallbackThemeProvider, useGlassTier, type GlassMenuHandle} from '@likith99/react-native-adaptive-liquid-glass';
+import {Text, View, ScrollView} from 'react-native';
+import {GlassNavigationView, GlassProgressiveBlur, GlassView, GlassContainer, GlassButton, GlassPressable, GlassSegmentedControl, GlassSlider, GlassActionCluster, GlassMenuButton, GlassContextMenu, GlassToolbar, GlassTabBar, GlassIconButton, GlassFallbackThemeProvider, useGlassTier, type GlassMenuHandle} from '@likith99/react-native-adaptive-liquid-glass';
 export default function App() {
   const [value, setValue] = useState(0.4);
   const [selected, setSelected] = useState<string | null>('a');
@@ -59,7 +59,10 @@ export default function App() {
   const [tab, setTab] = useState('home');
   const tier = useGlassTier();
   const menu = React.useRef<GlassMenuHandle>(null);
+  const scroll = React.useRef<React.ElementRef<typeof ScrollView>>(null);
   return <View style={{flex: 1, padding: 30, paddingTop: 100}}>
+    <GlassNavigationView title="Packed navigation" scrollViewRef={scroll} style={{height: 200, flex: 0}} trailingItems={[{id: 'add', symbol: 'plus', accessibilityLabel: 'Add'}]}><ScrollView ref={scroll} contentInsetAdjustmentBehavior="automatic"><Text>Native content</Text></ScrollView></GlassNavigationView>
+    <GlassProgressiveBlur scrollViewRef={scroll} edge="bottom" style={{height: 40}} />
     <GlassContainer><GlassView style={{padding: 16}}><Text>Installed from tarball</Text></GlassView></GlassContainer>
     <GlassButton title="Native button" onPress={() => setValue(0.5)} />
     <GlassPressable onPress={() => setValue(0.2)}><Text>React children</Text></GlassPressable>

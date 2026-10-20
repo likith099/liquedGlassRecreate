@@ -3,6 +3,22 @@ import UIKit
 /// Material rendering lives entirely in UIKit. Fabric only supplies props and children.
 @objc(ALGSurfaceView)
 public final class ALGSurfaceView: UIView {
+  private var extensionContent = UIView()
+  private var extensionView: UIView?
+  @objc public var backgroundExtension = false {
+    didSet {
+      if #available(iOS 26.0, *), backgroundExtension, extensionView == nil {
+        let view = UIBackgroundExtensionView()
+        view.automaticallyPlacesContentView = false
+        view.contentView = extensionContent
+        extensionView = view; addSubview(view)
+      }
+      effectView.isHidden = backgroundExtension
+      if backgroundExtension, extensionView == nil { addSubview(extensionContent) }
+      extensionView?.isHidden = !backgroundExtension
+    }
+  }
+  @objc public var materialize = false
   private let effectView = UIVisualEffectView()
   private var material = "regular"
   private var interactive = false
@@ -14,9 +30,13 @@ public final class ALGSurfaceView: UIView {
   private var duration: Double = 0.35
   private var dirty = true
   private var mounted = false
+  private var appliedCorner: CGFloat?
+  private var appliedContainer: Bool?
+  private var scheme = "system"
+  private weak var lastWindow: UIWindow?
   private var resetInteraction = false
 
-  @objc public var reactContentView: UIView { effectView.contentView }
+  @objc public var reactContentView: UIView { backgroundExtension ? extensionContent : effectView.contentView }
 
   public override init(frame: CGRect) {
     super.init(frame: frame)
@@ -30,8 +50,9 @@ public final class ALGSurfaceView: UIView {
   @objc public func configure(_ material: String, interactive: Bool, tint: UIColor?,
     radius: CGFloat, container: Bool, mergingEnabled: Bool, spacing: CGFloat, duration: Double, scheme: String) {
     resetInteraction = resetInteraction || self.interactive != interactive || self.isContainer != container || self.mergingEnabled != mergingEnabled
-    dirty = dirty || self.material != material || self.interactive != interactive ||
+    dirty = dirty || self.scheme != scheme || self.material != material || self.interactive != interactive ||
       self.glassTint != tint || self.isContainer != container || self.spacing != spacing || self.mergingEnabled != mergingEnabled
+    self.scheme = scheme
     self.material = material
     self.interactive = interactive
     self.glassTint = tint
@@ -48,6 +69,11 @@ public final class ALGSurfaceView: UIView {
 
   public override func didMoveToWindow() {
     super.didMoveToWindow()
+    // A fresh effect on reattachment restores UIKit's compositing state. Keeping the old
+    // effect is known to darken it. Do not clear it first: that doubles setEffect work.
+    guard let window else { mounted = false; return }
+    if lastWindow !== window { resetInteraction = false }
+    lastWindow = window
     mounted = false
     dirty = true
     setNeedsLayout()
@@ -55,17 +81,24 @@ public final class ALGSurfaceView: UIView {
 
   public override func layoutSubviews() {
     super.layoutSubviews()
+    if backgroundExtension {
+      extensionView?.frame = bounds; extensionContent.frame = bounds
+      return
+    }
     effectView.frame = bounds
+    if appliedCorner != radius || appliedContainer != isContainer {
+      appliedCorner = radius; appliedContainer = isContainer
     if #available(iOS 26.0, *) {
       effectView.cornerConfiguration = .uniformCorners(radius: .fixed(isContainer ? 0 : radius))
     } else {
       effectView.layer.cornerRadius = isContainer ? 0 : radius
       effectView.clipsToBounds = !isContainer
     }
+    }
     guard window != nil, bounds.width > 0, bounds.height > 0, dirty else { return }
     dirty = false
-    let animate = mounted && !resetInteraction && !UIAccessibility.isReduceMotionEnabled && duration > 0
-    if !mounted || resetInteraction { effectView.effect = UIVisualEffect() }
+    let animate = (mounted || materialize) && !resetInteraction && !UIAccessibility.isReduceMotionEnabled && duration > 0
+    if mounted && resetInteraction { effectView.effect = UIVisualEffect() }
     resetInteraction = false
     mounted = true
     let effect: UIVisualEffect

@@ -40,14 +40,16 @@ private data class TabEntry(val id: String, val title: String, val icon: String,
   val androidIcon: String, val badge: String?, val disabled: Boolean, val label: String,
   /** Resolved image source URIs: a Metro URL in development, a drawable name in release, or any URI. */
   val imageUri: String?, val selectedImageUri: String?, val original: Boolean,
-  val selectedTint: Int?, val inactiveTint: Int?) {
+  val selectedTint: Int?, val inactiveTint: Int?,
+  /** A text badge ("New") rather than a count or dot; colours are ARGB, null for the theme's. */
+  val badgeIsText: Boolean = false, val badgeColor: Int? = null, val badgeTextColor: Int? = null) {
   val tinted get() = selectedTint != null || inactiveTint != null
 }
 private fun JSONObject.color(key: String): Int? = if (has(key)) getDouble(key).toLong().toInt() else null
 private fun JSONObject.sourceUri(key: String): String? = optJSONObject(key)?.optString("uri")?.takeIf { it.isNotEmpty() }
 
 /** Artwork from image sources, decoded once per URI and held in memory only. Callbacks run on the main thread. */
-private object TabImageLoader {
+internal object TabImageLoader {
   private val cache = object : LruCache<String, Bitmap>(8 * 1024 * 1024) {
     override fun sizeOf(key: String, value: Bitmap) = value.byteCount
   }
@@ -100,7 +102,9 @@ class ALGTabsView(private val reactContext: ThemedReactContext) : FrameLayout(re
   private var defaultIconTint = bar.itemIconTintList
   private var defaultTextTint = bar.itemTextColor
   private var defaultBackground = bar.background
+  private var defaultBackgroundTint = bar.backgroundTintList
   private var defaultIndicatorColor = bar.itemActiveIndicatorColor
+  private val badgeColors = mutableMapOf<String, Pair<Int?, Int?>>()
 
   init { addView(bar, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT)) }
   private fun makeBar(): BottomNavigationView {
@@ -139,11 +143,13 @@ class ALGTabsView(private val reactContext: ThemedReactContext) : FrameLayout(re
           require(array.length() <= 5)
           (0 until array.length()).map { index ->
             val item = array.getJSONObject(index)
+            val rawBadge = if (item.has("badge") && !item.isNull("badge")) item.get("badge") else null
             TabEntry(item.getString("id"), item.getString("title"), item.optString("icon"), item.optString("androidIcon"),
-              if (item.has("badge")) item.get("badge").toString() else null,
+              when (rawBadge) { null -> null; is JSONObject -> rawBadge.optString("text"); else -> rawBadge.toString() },
               item.optBoolean("disabled"), item.optString("accessibilityLabel", item.getString("title")),
               item.sourceUri("imageSource"), item.sourceUri("selectedImageSource"),
-              item.optString("imageRenderingMode") == "original", item.color("selectedTint"), item.color("inactiveTint"))
+              item.optString("imageRenderingMode") == "original", item.color("selectedTint"), item.color("inactiveTint"),
+              rawBadge is JSONObject, item.color("badgeColor"), item.color("badgeTextColor"))
           }
         } catch (_: Exception) { emptyList() }
         val retained = entries.associate { it.id to (nativeIds[it.id] ?: View.generateViewId()) }.toMutableMap()
@@ -159,11 +165,22 @@ class ALGTabsView(private val reactContext: ThemedReactContext) : FrameLayout(re
             setIcon(iconFor(entry))
             if (android.os.Build.VERSION.SDK_INT >= 26) contentDescription = entry.label
           }
-          if (entry.badge == null) bar.removeBadge(nativeId)
-          else bar.getOrCreateBadge(nativeId).apply {
-            isVisible = true
-            maxCharacterCount = 4
-            if (entry.badge == "dot") clearNumber() else number = entry.badge.toIntOrNull() ?: 0
+          if (entry.badge == null) { bar.removeBadge(nativeId); badgeColors.remove(entry.id) }
+          else {
+            // A badge keeps a custom colour; recreate it to return to the theme's colours.
+            val colors = entry.badgeColor to entry.badgeTextColor
+            if (badgeColors[entry.id] != colors) { bar.removeBadge(nativeId); badgeColors[entry.id] = colors }
+            bar.getOrCreateBadge(nativeId).apply {
+              isVisible = true
+              when {
+                entry.badgeIsText -> { clearNumber(); maxCharacterCount = entry.badge.length + 1; text = entry.badge }
+                entry.badge == "dot" -> { clearNumber(); clearText() }
+                // The same "99+" cap as every other glass badge.
+                else -> { clearText(); maxCharacterCount = 3; number = entry.badge.toIntOrNull() ?: 0 }
+              }
+              entry.badgeColor?.let { backgroundColor = it }
+              entry.badgeTextColor?.let { badgeTextColor = it }
+            }
           }
         }
       }
@@ -185,6 +202,7 @@ class ALGTabsView(private val reactContext: ThemedReactContext) : FrameLayout(re
       bar.itemTextColor = tint(defaultTextTint)
       applyItemColors()
       bar.background = barBackgroundColor?.let(::ColorDrawable) ?: defaultBackground
+      bar.backgroundTintList = if (barBackgroundColor == null) defaultBackgroundTint else null
       bar.itemActiveIndicatorColor = barIndicatorColor?.let(ColorStateList::valueOf) ?: defaultIndicatorColor
       requestLayout()
       post {
@@ -275,6 +293,7 @@ class ALGTabsView(private val reactContext: ThemedReactContext) : FrameLayout(re
     removeView(bar); bar = makeBar()
     defaultIconTint = bar.itemIconTintList; defaultTextTint = bar.itemTextColor
     defaultBackground = bar.background; defaultIndicatorColor = bar.itemActiveIndicatorColor
+    defaultBackgroundTint = bar.backgroundTintList
     addView(bar, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
     appliedJSON = null; applyConfiguration()
   }

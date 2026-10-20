@@ -1,4 +1,5 @@
 import type React from 'react';
+import type {GlassControlSize} from './GlassMetrics';
 import type {ColorValue, ImageSourcePropType, PressableProps, StyleProp, TextStyle, View, ViewProps, ViewStyle} from 'react-native';
 /** The native host view a component ref resolves to (measure, focus, layout). */
 export type GlassHostRef = React.ComponentRef<typeof View>;
@@ -7,8 +8,21 @@ export interface GlassRefProp {
   ref?: React.Ref<GlassHostRef>;
 }
 export interface GlassViewProps extends ViewProps, GlassRefProp {
+  glassID?: string;
+  transition?: 'none' | 'materialize';
   material?: 'regular' | 'clear' | 'none';
   interactive?: boolean;
+  /**
+   * A count/text/dot badge pinned to the top-right corner. A plain surface has no press to ride,
+   * so it is static here (the glass button family animates it). Give a badged surface an explicit
+   * size via `style`.
+   */
+  badge?: GlassControlBadge | null;
+  badgeColor?: ColorValue;
+  /** Badge count/text colour. Defaults to white. A static colour. */
+  badgeTextColor?: ColorValue;
+  /** Spoken badge, e.g. "3 unread". Defaults to "<count> new", the text, or "New" for a dot (English); pass a localized string. */
+  badgeAccessibilityLabel?: string;
   tintColor?: ColorValue;
   /** Uniform native shape radius. Use this instead of style.borderRadius. */
   cornerRadius?: number;
@@ -53,6 +67,17 @@ export interface GlassPressableProps extends Omit<PressableProps, 'style' | 'chi
 }
 /** SwiftUI owns the title/icon button on iOS 26+. */
 export interface NativeGlassButtonProps extends Omit<ViewProps, 'children'>, GlassRefProp {
+  symbol?: GlassSymbol;
+  contentTransition?: GlassIconOptions['contentTransition'];
+  pressEffect?: GlassIconOptions['pressEffect'];
+  image?: ImageSourcePropType;
+  controlSize?: GlassControlSize;
+  badge?: GlassControlBadge | null;
+  badgeColor?: ColorValue;
+  /** Badge count/text colour. Defaults to white. A static colour. */
+  badgeTextColor?: ColorValue;
+  /** Spoken badge, e.g. "3 unread". Defaults to "<count> new", the text, or "New" for a dot (English); pass a localized string. */
+  badgeAccessibilityLabel?: string;
   children?: never;
   title: string;
   systemImage?: string;
@@ -133,6 +158,20 @@ export interface GlassActionClusterProps extends Omit<ViewProps, 'children'>, Gl
 }
 
 export interface GlassMenuItem {
+  subtitle?: string;
+  /** iOS 16+: selecting this action keeps its menu open. */
+  keepsMenuPresented?: boolean;
+  symbol?: GlassSymbol;
+  contentTransition?: GlassIconOptions['contentTransition'];
+  pressEffect?: GlassIconOptions['pressEffect'];
+  image?: ImageSourcePropType;
+  controlSize?: GlassControlSize;
+  badge?: GlassControlBadge | null;
+  badgeColor?: ColorValue;
+  /** Badge count/text colour. Defaults to white. A static colour. */
+  badgeTextColor?: ColorValue;
+  /** Spoken badge, e.g. "3 unread". Defaults to "<count> new", the text, or "New" for a dot (English); pass a localized string. */
+  badgeAccessibilityLabel?: string;
   kind?: 'action';
   id: string;
   title: string;
@@ -146,6 +185,18 @@ export interface GlassMenuItem {
   checked?: boolean;
 }
 export interface GlassMenuSubmenu {
+  singleSelection?: boolean;
+  symbol?: GlassSymbol;
+  contentTransition?: GlassIconOptions['contentTransition'];
+  pressEffect?: GlassIconOptions['pressEffect'];
+  image?: ImageSourcePropType;
+  controlSize?: GlassControlSize;
+  badge?: GlassControlBadge | null;
+  badgeColor?: ColorValue;
+  /** Badge count/text colour. Defaults to white. A static colour. */
+  badgeTextColor?: ColorValue;
+  /** Spoken badge, e.g. "3 unread". Defaults to "<count> new", the text, or "New" for a dot (English); pass a localized string. */
+  badgeAccessibilityLabel?: string;
   kind: 'submenu';
   id: string;
   title: string;
@@ -156,6 +207,7 @@ export interface GlassMenuSubmenu {
   items: readonly GlassMenuElement[];
 }
 export interface GlassMenuSection {
+  singleSelection?: boolean;
   kind: 'section';
   id: string;
   /** Empty title creates an untitled group. */
@@ -243,6 +295,17 @@ export interface GlassMenuHandle extends Pick<GlassHostRef, 'measure' | 'measure
   open(): void;
 }
 export interface GlassMenuButtonProps extends Omit<ViewProps, 'children'> {
+  symbol?: GlassSymbol;
+  contentTransition?: GlassIconOptions['contentTransition'];
+  pressEffect?: GlassIconOptions['pressEffect'];
+  image?: ImageSourcePropType;
+  controlSize?: GlassControlSize;
+  badge?: GlassControlBadge | null;
+  badgeColor?: ColorValue;
+  /** Badge count/text colour. Defaults to white. A static colour. */
+  badgeTextColor?: ColorValue;
+  /** Spoken badge, e.g. "3 unread". Defaults to "<count> new", the text, or "New" for a dot (English); pass a localized string. */
+  badgeAccessibilityLabel?: string;
   ref?: React.Ref<GlassMenuHandle>;
   title: string;
   items: readonly GlassMenuElement[];
@@ -263,6 +326,8 @@ export interface GlassMenuButtonProps extends Omit<ViewProps, 'children'> {
 
 export type GlassTabIcon = 'home' | 'search' | 'library' | 'favorites' | 'inbox' | 'settings';
 export interface GlassTabItem {
+  /** Primary React Native scroll view for iOS 26 tab minimization. */
+  scrollViewRef?: React.RefObject<unknown>;
   id: string;
   title: string;
   /** Built-in platform icon preset; defaults to a circle when absent. */
@@ -291,12 +356,23 @@ export interface GlassTabItem {
   inactiveTintColor?: ColorValue;
   /** Drawable resource name in the consuming Android application, tried before `image`. */
   androidIcon?: string;
-  badge?: number | 'dot';
+  /**
+   * A count, 'dot', or a count / text / dot badge. Counts above 99 show "99+". The platform tab bar
+   * announces the badge itself.
+   */
+  badge?: number | 'dot' | GlassControlBadge;
+  /** Badge fill. Defaults to the platform's (system red on iOS, the Material error colour on Android). A static colour. */
+  badgeColor?: ColorValue;
+  /** Badge count/text colour. A static colour. */
+  badgeTextColor?: ColorValue;
   disabled?: boolean;
   accessibilityLabel?: string;
 }
 export interface GlassTabBarProps extends Omit<ViewProps, 'children'>, GlassRefProp {
   items: readonly GlassTabItem[];
+  minimizeBehavior?: 'never' | 'onScrollDown' | 'onScrollUp' | 'automatic';
+  bottomAccessory?: React.ReactNode;
+  bottomAccessoryHeight?: number;
   /** Required for nonempty items. Set null only when items are empty. */
   value: string | null;
   onValueChange: (id: string) => void;
@@ -470,10 +546,103 @@ export interface GlassScrollEdgeProps extends ViewProps, GlassRefProp {
   scrollViewRef: React.RefObject<unknown>;
   /** Which edge of the scroll view the container sits on. Defaults to bottom. */
   edge?: 'top' | 'bottom';
-  /** iOS 26 edge-effect style. `soft` fades, `hard` adds a dividing edge; `automatic` lets UIKit choose. */
-  effectStyle?: 'automatic' | 'soft' | 'hard';
-  /** Below iOS 26 and on Android: a gradient scrim from this colour to clear, under the container. */
+  /** `progressive` defines a full header region for UIKit’s soft scroll edge on iOS 26+. */
+  effectStyle?: 'automatic' | 'soft' | 'hard' | 'progressive' | 'progressiveHard';
+  /** Android and pre-iOS 26: gradient (legacy default), blur, or solid. */
+  fallbackMode?: 'gradient' | 'blur' | 'solid';
+  /** Fallback fill; blur uses this as a light tint. Native iOS 26 soft-edge shading is system-owned. */
   fallbackColor?: ColorValue;
+}
+/** @deprecated Use GlassProgressiveBlur with edge="top"; this compatible alias remains supported. */
+export interface GlassScrollHeaderProps extends Omit<GlassScrollEdgeProps, 'edge' | 'effectStyle' | 'fallbackMode'> {
+  /** Uniform material blur or opaque fill on Android and iOS below 26. Default: solid. */
+  fallback?: 'blur' | 'solid';
+}
+/** Independent native scroll-edge treatment; no title, controls, or fixed height. */
+export interface GlassProgressiveBlurProps extends Omit<GlassScrollHeaderProps, 'children'> {
+  effect?: 'soft' | 'hard';
+  edge?: 'top' | 'bottom';
+  children?: React.ReactNode;
+}
+export interface GlassNavigationAction extends Omit<GlassControlItem, 'pressEffect' | 'contentTransition'> {
+  /** A text button when no symbol/image is supplied. */
+  title?: string;
+  prominent?: boolean;
+  selected?: boolean;
+  /** iOS 26: omit this item's glass backing. */
+  hidesSharedBackground?: boolean;
+  systemItem?: 'close' | 'done' | 'cancel' | 'edit' | 'add' | 'save' | 'search';
+  imageRendering?: 'template' | 'original';
+  imageShape?: 'none' | 'circle';
+}
+export interface GlassNavigationSpacer {id: string; spacer: 'fixed' | 'flexible'; width?: number}
+export type GlassEdgeEffect = 'soft' | 'hard' | 'hidden';
+export interface GlassNavigationSearch {
+  placement?: 'stacked' | 'integrated' | 'integratedButton' | 'integratedCentered';
+  allowsToolbarIntegration?: boolean;
+  active?: boolean;
+  onActiveChange?: (active: boolean) => void;
+  scopes?: {items: readonly {id: string; title: string}[]; value: string; onChange: (id: string) => void};
+  autoCapitalize?: 'none' | 'sentences' | 'words' | 'characters';
+  returnKeyType?: 'search' | 'done' | 'go';
+  cancelLabel?: string;
+  testID?: string;
+  value: string;
+  onChangeText: (text: string) => void;
+  placeholder?: string;
+  /** iOS: reveal the search field by pulling down. Default true. */
+  hidesWhenScrolling?: boolean;
+  onSubmit?: (text: string) => void;
+  onCancel?: () => void;
+  onFocusChange?: (focused: boolean) => void;
+}
+export interface GlassNavigationHandle {
+  scrollToTop: (animated?: boolean) => void;
+  focusSearch: () => void;
+  dismissSearch: () => void;
+}
+/** A single screen owning its native iOS navigation controller, not a router/navigation stack. */
+export interface GlassNavigationViewProps extends ViewProps {
+  ref?: React.Ref<GlassNavigationHandle>;
+  title: string;
+  /** Optional alternate expanded title. iOS 26+. */
+  largeTitle?: string;
+  titleDisplayMode?: 'large' | 'inlineLarge' | 'inline';
+  titlePosition?: 'automatic' | 'leading';
+  titleFont?: {compactSize?: number; largeSize?: number; weight?: 'regular' | 'medium' | 'semibold' | 'bold'};
+  /** Opt-in native single-label scale. Custom titleView takes precedence. */
+  titleTransition?: 'native' | 'morph';
+  titleWeight?: 'bold' | 'semibold';
+  titleView?: React.ReactNode;
+  subtitleView?: React.ReactNode;
+  largeSubtitleView?: React.ReactNode;
+  accessory?: React.ReactNode;
+  onBarInsetsChange?: (insets: {top: number; bottom: number}) => void;
+  titleTestID?: string;
+  backTestID?: string;
+  handlesSystemBack?: boolean;
+  /** Android keeps a fixed Material toolbar by default. Enable with nestedScrollEnabled on the list. */
+  androidCollapsing?: boolean;
+  /** Native subtitles on iOS 26+, text beneath the Android title. */
+  subtitle?: string;
+  largeSubtitle?: string;
+  scrollViewRef: React.RefObject<unknown>;
+  leadingItems?: readonly GlassNavigationAction[];
+  trailingItems?: readonly GlassNavigationAction[];
+  toolbarItems?: readonly (GlassNavigationAction | GlassNavigationSpacer)[];
+  onAction?: (id: string) => void;
+  onBack?: () => void;
+  backAccessibilityLabel?: string;
+  search?: GlassNavigationSearch;
+  /** Adjacent native bar buttons share glass only when explicitly enabled. Default false. */
+  mergingEnabled?: boolean;
+  tintColor?: GlassSchemeColor;
+  contentBackgroundColor?: GlassSchemeColor;
+  colorScheme?: 'system' | 'light' | 'dark';
+  edgeEffect?: GlassEdgeEffect | {top?: GlassEdgeEffect; bottom?: GlassEdgeEffect};
+  /** Android/unsupported platforms: space above the standard toolbar. iOS owns safe areas. */
+  topInset?: number | 'auto';
+  bottomInset?: number | 'auto';
 }
 /** A small label on material that reads the same over bright and dark imagery. */
 export interface GlassBadgeProps extends Omit<ViewProps, 'children'>, GlassRefProp {
@@ -494,18 +663,31 @@ export interface GlassBadgeProps extends Omit<ViewProps, 'children'>, GlassRefPr
 }
 /** A round, icon-only control: a native glass button, or a menu button when `menu` is set. */
 export interface GlassIconButtonProps extends Omit<ViewProps, 'children'> {
+  glassID?: string;
   ref?: React.Ref<GlassMenuHandle>;
   /** iOS SF Symbol name. */
-  systemImage: string;
+  systemImage?: string;
   /** Spoken name; required because the control has no visible text. */
   accessibilityLabel: string;
   /** Android drawable resource name for the glyph. */
-  androidIcon?: string;
+  androidIcon?: React.ReactNode | string;
   /** Diameter in points. Defaults to 44, the minimum recommended touch target. */
   size?: number;
+  controlSize?: GlassControlSize;
+  symbol?: GlassSymbol;
+  contentTransition?: GlassIconOptions['contentTransition'];
+  pressEffect?: GlassIconOptions['pressEffect'];
+  image?: ImageSourcePropType;
+  badge?: GlassControlBadge | null;
+  badgeColor?: ColorValue;
+  /** Badge count/text colour. Defaults to white. A static colour. */
+  badgeTextColor?: ColorValue;
+  /** Spoken badge, e.g. "3 unread". Defaults to "<count> new", the text, or "New" for a dot (English); pass a localized string. */
+  badgeAccessibilityLabel?: string;
   /** Glyph size in points. Defaults to 40% of `size`. */
   symbolPointSize?: number;
   /** Pins the material, for example dark glass over a photo in both themes. */
+  material?: 'regular' | 'clear';
   colorScheme?: 'system' | 'light' | 'dark';
   /** Glyph colour; for `prominent`, the fill colour (the glyph is white). */
   tintColor?: ColorValue;
@@ -525,4 +707,102 @@ export interface GlassIconButtonProps extends Omit<ViewProps, 'children'> {
   onClose?: () => void;
   /** Android: corner radius and colours of the menu popup. */
   androidMenuStyle?: GlassMenuStyle;
+}
+
+/** SF Symbols configuration. Unsupported symbol names leave the system image empty. */
+export type GlassSymbol = string | {
+  name: string;
+  pointSize?: number;
+  weight?: 'ultraLight' | 'thin' | 'light' | 'regular' | 'medium' | 'semibold' | 'bold' | 'heavy' | 'black';
+  scale?: 'small' | 'medium' | 'large';
+  rendering?: 'monochrome' | 'hierarchical' | 'palette' | 'multicolor';
+  paletteColors?: ColorValue[];
+  variableValue?: number;
+};
+export interface GlassIconOptions {
+  symbol?: GlassSymbol;
+  contentTransition?: 'none' | 'replace' | 'replaceDownUp' | 'replaceUpUp' | 'automatic';
+  pressEffect?: 'none' | 'bounce';
+  image?: ImageSourcePropType;
+  androidIcon?: React.ReactNode | string;
+}
+/**
+ * A badge on a glass control: a count (capped at "99+"), short text such as "New", or a dot that only
+ * signals that something is waiting. Pair with `badgeColor`, `badgeTextColor` and
+ * `badgeAccessibilityLabel`.
+ */
+export type GlassControlBadge = {count: number} | {text: string} | {indicator: true};
+
+export interface GlassControlItem extends GlassIconOptions {
+  id: string;
+  accessibilityLabel: string;
+  testID?: string;
+  tintColor?: ColorValue;
+  disabled?: boolean;
+  badge?: GlassControlBadge | null;
+  badgeColor?: ColorValue;
+  /** Badge count/text colour. Defaults to white. A static colour. */
+  badgeTextColor?: ColorValue;
+  /** Spoken badge, e.g. "3 unread". Defaults to "<count> new", the text, or "New" for a dot (English); pass a localized string. */
+  badgeAccessibilityLabel?: string;
+  menu?: {items: readonly GlassMenuElement[]; onAction: (id: string) => void};
+}
+export interface GlassIconGroupProps extends Omit<ViewProps, 'children'>, GlassRefProp {
+  items: readonly GlassControlItem[];
+  onPress?: (id: string) => void;
+  symbol?: Omit<Exclude<GlassSymbol, string>, 'name'>;
+  controlSize?: GlassControlSize;
+  colorScheme?: GlassViewProps['colorScheme'];
+  disabled?: boolean;
+  forceFallback?: boolean;
+}
+export interface GlassPillItem extends GlassIconOptions {
+  id: string;
+  label: string;
+  accessibilityLabel?: string;
+  testID?: string;
+  disabled?: boolean;
+  /** A number (a count), or a count / text / dot badge. */
+  badge?: number | GlassControlBadge;
+  badgeColor?: ColorValue;
+  /** Badge count/text colour. Defaults to white. A static colour. */
+  badgeTextColor?: ColorValue;
+  /** Spoken badge, e.g. "3 unread". Defaults to "<count> new", the text, or "New" for a dot (English); pass a localized string. */
+  badgeAccessibilityLabel?: string;
+}
+export interface GlassPillBarProps extends Omit<ViewProps, 'children'>, GlassRefProp {
+  items: readonly GlassPillItem[];
+  value: string;
+  onValueChange: (id: string) => void;
+  actions?: readonly GlassControlItem[];
+  onAction?: (id: string) => void;
+  selectedStyle?: 'prominent' | 'tinted';
+  tintColor?: ColorValue;
+  contentInset?: number;
+  scrollSelectedIntoView?: boolean;
+  metrics?: {height?: number; horizontalPadding?: number; gap?: number; labelSize?: number; iconCapsuleWidth?: number};
+  colorScheme?: GlassViewProps['colorScheme'];
+  disabled?: boolean;
+  forceFallback?: boolean;
+}
+export type GlassMorphContent = ({kind: 'symbol'} & GlassIconOptions | {kind: 'title'; title: string} | {kind: 'back'}) & {
+  accessibilityLabel: string;
+  menu?: GlassControlItem['menu'];
+  /** A count/text/dot badge that rides the glass press, like every other glass button. */
+  badge?: GlassControlBadge | null;
+  badgeColor?: ColorValue;
+  /** Badge count/text colour. Defaults to white. A static colour. */
+  badgeTextColor?: ColorValue;
+  /** Spoken badge, e.g. "3 unread". Defaults to "<count> new", the text, or "New" for a dot (English); pass a localized string. */
+  badgeAccessibilityLabel?: string;
+};
+export interface GlassMorphButtonProps extends Omit<ViewProps, 'children'>, GlassRefProp {
+  content: GlassMorphContent;
+  anchor?: 'leading' | 'center' | 'trailing';
+  onPress?: () => void;
+  disabled?: boolean;
+  controlSize?: GlassControlSize;
+  colorScheme?: GlassViewProps['colorScheme'];
+  tintColor?: ColorValue;
+  forceFallback?: boolean;
 }

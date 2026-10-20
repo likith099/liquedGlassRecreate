@@ -4,6 +4,7 @@ import Renderer, {act} from 'react-test-renderer';
 import {GlassToastProvider, useGlassToast, type GlassToastController} from '../../packages/liquid-glass/src/GlassToast';
 import GlassBadge from '../../packages/liquid-glass/src/GlassBadge';
 import GlassScrollEdge from '../../packages/liquid-glass/src/GlassScrollEdge.ios';
+import GlassScrollHeader from '../../packages/liquid-glass/src/GlassScrollHeader';
 import GlassScrollEdgeGeneric from '../../packages/liquid-glass/src/GlassScrollEdge.tsx';
 import GlassSearchField from '../../packages/liquid-glass/src/GlassSearchField.ios';
 import NativeScrollEdge from '../../packages/liquid-glass/src/specs/ALGScrollEdgeNativeComponent';
@@ -83,5 +84,28 @@ test('the search field reports text with its event count and ignores edits while
   act(() => host().props.onSearchChange({nativeEvent: {text: 'plu', eventCount: 3}}));
   expect(onChangeText).toHaveBeenCalledTimes(1);
   expect(host().props.mostRecentEventCount).toBe(3);
+  act(() => tree.unmount());
+});
+
+
+test('header uses a top progressive edge and keeps Android fallback selection explicit', () => {
+  let tree!: Renderer.ReactTestRenderer;
+  act(() => {tree = Renderer.create(<GlassScrollHeader scrollViewRef={{current: null}} fallback="blur"><Text>Contacts</Text></GlassScrollHeader>);});
+  const edge = tree.root.findByType(GlassScrollEdge as never);
+  expect(edge.props.edge).toBe('top'); expect(edge.props.effectStyle).toBe('progressive');
+  expect(edge.props.fallbackMode).toBe('blur'); expect(edge.props.pointerEvents).toBe('box-none');
+  act(() => tree.update(<GlassScrollHeader scrollViewRef={{current: null}} fallback="solid" fallbackColor="#123456" />));
+  expect(tree.root.findByType(GlassScrollEdge as never).props.fallbackMode).toBe('solid');
+  expect(tree.root.findByType(NativeScrollEdge as never).props.fallbackColor).toBe('#123456');
+  act(() => tree.unmount());
+});
+
+test('scroll edge resolves a FlatList native scroll ref and forwards the fallback mode', () => {
+  const getNativeScrollRef = jest.fn(() => null);
+  let tree!: Renderer.ReactTestRenderer;
+  act(() => {tree = Renderer.create(<GlassScrollEdge scrollViewRef={{current: {getNativeScrollRef}}} fallbackMode="blur" />);});
+  expect(getNativeScrollRef).toHaveBeenCalled();
+  expect(tree.root.findByType(NativeScrollEdge as never).props.scrollViewTag).toBe(-1);
+  expect(tree.root.findByType(NativeScrollEdge as never).props.fallbackMode).toBe('blur');
   act(() => tree.unmount());
 });

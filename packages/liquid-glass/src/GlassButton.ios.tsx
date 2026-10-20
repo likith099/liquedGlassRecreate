@@ -1,3 +1,4 @@
+import ConfiguredGlassButton from './ConfiguredGlassButton';
 import React from 'react';
 import {useWindowDimensions} from 'react-native';
 import adaptiveHeight from './adaptiveHeight';
@@ -8,6 +9,7 @@ import {isLiquidGlassSupported} from './support';
 import type {GlassButtonProps} from './types';
 export default function GlassButton(props: GlassButtonProps) {
   const {fontScale} = useWindowDimensions();
+  if (props.title !== undefined && (props.symbol || props.image || props.controlSize || props.badge || props.contentTransition || props.pressEffect)) return <ConfiguredGlassButton {...props} />;
   if (props.title === undefined) return <GlassPressable {...props} />;
   if (props.forceFallback || !isLiquidGlassSupported()) return <Fallback {...props} />;
   const {onPress, tintColor, forceFallback: _fallback, accessibilityLabel, accessibilityHint,

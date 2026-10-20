@@ -87,7 +87,8 @@ export default function TabNavigationDemo({onClose}: {onClose: () => void}) {
               disabledRoutes={inboxDisabled ? ['Inbox'] : []} reversed={reversed} brandColors={brandColors} toBottomEdge={toBottomEdge} />}>
             {(['Home', replaced ? 'Search' : 'Library', 'Inbox', 'Settings'] as const).map(name =>
               <Tab.Screen key={name} name={name} component={DemoScreen}
-                options={{tabBarBadge: badges ? (name === 'Inbox' ? 3 : name === 'Settings' ? 'dot' : undefined) : undefined}}
+                options={{tabBarBadge: badges ? (name === 'Inbox' ? 3 : name === 'Settings' ? 'dot' : undefined) : undefined,
+                  tabBarBadgeStyle: brandColors ? {backgroundColor: '#FF3B30', color: '#FFFFFF'} : undefined}}
                 listeners={{tabPress: e => {
                   setEvents(value => value + 1);
                   if (reject && name === 'Inbox') {e.preventDefault(); setEvent('Prevented: Inbox');}
