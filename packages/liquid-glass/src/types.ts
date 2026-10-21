@@ -577,6 +577,23 @@ export interface GlassNavigationAction extends Omit<GlassControlItem, 'pressEffe
 }
 export interface GlassNavigationSpacer {id: string; spacer: 'fixed' | 'flexible'; width?: number}
 export type GlassEdgeEffect = 'soft' | 'hard' | 'hidden';
+/**
+ * Appearance of a hard top edge: the band behind the header that content scrolls beneath, ending
+ * at a defined line. Every field is optional; the defaults resemble system list headers such as
+ * Phone's Calls (content dimmed and blurred, strongest at the top, a hairline at the bottom).
+ */
+export interface GlassHeaderBand {
+  /** Band colour. Default: the system's secondary background (a step lighter than the screen). */
+  color?: GlassSchemeColor;
+  /** 0–1: how strongly the colour covers the content beneath. Lower is lighter and more see-through. Default 0.45. */
+  opacity?: number;
+  /** iOS: 0 turns the blur off. With `progressive: false` it picks the system material: thin (< ⅓), regular (< ⅔) or thick. Default 0.6. */
+  blur?: number;
+  /** iOS 26: UIKit's own progressive blur (its soft scroll edge) beneath the band, strongest at the top. false: a uniform system material. Default true. */
+  progressive?: boolean;
+  /** Hairline at the band's bottom: a colour, or false for none. Default: the system separator. */
+  separator?: GlassSchemeColor | false;
+}
 export interface GlassNavigationSearch {
   placement?: 'stacked' | 'integrated' | 'integratedButton' | 'integratedCentered';
   allowsToolbarIntegration?: boolean;
@@ -639,7 +656,13 @@ export interface GlassNavigationViewProps extends ViewProps {
   tintColor?: GlassSchemeColor;
   contentBackgroundColor?: GlassSchemeColor;
   colorScheme?: 'system' | 'light' | 'dark';
-  edgeEffect?: GlassEdgeEffect | {top?: GlassEdgeEffect; bottom?: GlassEdgeEffect};
+  /**
+   * `band` styles a hard top edge (`'system'` keeps UIKit's own, nearly opaque hard edge on iOS 26).
+   * iOS 26 draws the band behind the bar while content is scrolled beneath the header; older iOS
+   * applies it to the bar's standard appearance; Android applies the colour when the list is
+   * scrolled (Material lift on scroll) with a divider.
+   */
+  edgeEffect?: GlassEdgeEffect | {top?: GlassEdgeEffect; bottom?: GlassEdgeEffect; band?: GlassHeaderBand | 'system'};
   /** Android/unsupported platforms: space above the standard toolbar. iOS owns safe areas. */
   topInset?: number | 'auto';
   bottomInset?: number | 'auto';

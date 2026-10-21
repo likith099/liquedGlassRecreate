@@ -119,7 +119,10 @@ final class ALGNavigationTitle {
     let cap = max(0, g.largeWidth + (g.width - g.largeWidth) * p)
     let scale = min(1 + (end - 1) * p, cap / max(1, width))
     let x = g.start.x + (g.dock.x - g.start.x) * p
-    let followsPull = display == "large" && offset < 0 && !compactHeight && !UIAccessibility.isReduceMotionEnabled
+    // Pulled past the top the title follows the content like UIKit's large title, except with a
+    // refresh control: UIKit draws the spinner just above the content, which is this title's row,
+    // so the title stays and the spinner appears between it and the list.
+    let followsPull = display == "large" && offset < 0 && !compactHeight && !UIAccessibility.isReduceMotionEnabled && scroll.refreshControl == nil
     let y = followsPull ? g.start.y - offset : g.start.y + (g.dock.y - g.start.y) * p
     let center = CGPoint(x: x + (g.rtl ? -1 : 1) * width * scale / 2, y: y)
     if label.center != center { label.center = center }

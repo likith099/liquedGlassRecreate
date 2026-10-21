@@ -3,8 +3,18 @@ import {Platform, FlatList, Pressable, RefreshControl, Text, View, useColorSchem
 import {NavigationContainer, NavigationIndependentTree, DarkTheme, DefaultTheme, useScrollToTop} from '@react-navigation/native';
 import {createNativeStackNavigator, type NativeStackScreenProps} from '@react-navigation/native-stack';
 import {createBottomTabNavigator} from '@react-navigation/bottom-tabs';
-import {GlassNavigationView, type GlassNavigationHandle} from '@likith99/react-native-adaptive-liquid-glass';
+import {GlassNavigationView, type GlassNavigationHandle, type GlassHeaderBand} from '@likith99/react-native-adaptive-liquid-glass';
 import NativeNavigationTabBar from './navigation/NativeNavigationTabBar';
+const avatarColors = ['#E05A5A', '#4F8FE0', '#8E6FD8', '#3FA77A', '#E0A23F'];
+// Hard-edge band presets: the package default, a lighter band, a tinted one, UIKit's own.
+const bands = {
+  default: undefined,
+  lighter: {color: {light: '#FFFFFF', dark: '#3A3A3C'}, opacity: 0.35, blur: 0.4},
+  tinted: {color: '#2C4A7A', opacity: 0.55, blur: 0.8, separator: '#5B8BD9'},
+  system: 'system',
+} as const satisfies Record<string, GlassHeaderBand | 'system' | undefined>;
+type BandName = keyof typeof bands;
+const bandOrder: BandName[] = ['default', 'lighter', 'tinted', 'system'];
 const Stack = createNativeStackNavigator<{Gallery: undefined; Detail: undefined}>();
 const Tabs = createBottomTabNavigator();
 const names = Array.from({length: 50}, (_, i) => `Contact ${i + 1}`);
@@ -14,6 +24,8 @@ function Gallery({navigation, close}: {navigation: NativeStackScreenProps<{Galle
   const dark = useColorScheme() === 'dark', ink = dark ? 'white' : '#18202D';
   const [mode, setMode] = useState<'large' | 'inlineLarge' | 'inline'>('large');
   const [morph, setMorph] = useState(true), [hard, setHard] = useState(true), [slots, setSlots] = useState(false);
+  const [band, setBand] = useState<BandName>('default');
+  const nextBand = bandOrder[(bandOrder.indexOf(band) + 1) % bandOrder.length];
   const [compact, setCompact] = useState(22), [refreshing, setRefreshing] = useState(false), [refreshes, setRefreshes] = useState(0);
   const [query, setQuery] = useState(''), [search, setSearch] = useState(false), [scope, setScope] = useState('all'), [badge, setBadge] = useState(5);
   const [placement, setPlacement] = useState<'stacked' | 'integratedButton'>('stacked');
@@ -22,7 +34,7 @@ function Gallery({navigation, close}: {navigation: NativeStackScreenProps<{Galle
   const options = [
     {id: 'large', title: 'Large below bar'}, {id: 'inlineLarge', title: 'Large in bar', subtitle: morph ? undefined : 'UIKit shows it below the bar while a back button is present'}, {id: 'inline', title: 'Compact only'},
     {id: 'morph', title: morph ? 'Native title transition' : 'Single title morph'},
-    {id: 'font', title: 'Toggle compact title size'}, {id: 'edge', title: hard ? 'Soft edge' : 'Hard edge'},
+    {id: 'font', title: 'Toggle compact title size'}, {id: 'edge', title: hard ? 'Soft edge' : 'Hard edge'}, {id: 'band', title: `Hard band: ${nextBand}`},
     {id: 'slots', title: slots ? 'Text title' : 'Custom title and subtitles'},
     {id: 'accessory', title: accessory ? 'Hide pinned filter' : 'Show pinned filter'},
     {id: 'placement', title: 'Toggle search placement'},
@@ -33,6 +45,7 @@ function Gallery({navigation, close}: {navigation: NativeStackScreenProps<{Galle
     else if (id === 'morph') setMorph(v => !v);
     else if (id === 'font') setCompact(v => v === 22 ? 17 : 22);
     else if (id === 'edge') setHard(v => !v);
+    else if (id === 'band') { setBand(nextBand); setHard(true); }
     else if (id === 'slots') setSlots(v => !v);
     else if (id === 'accessory') setAccessory(v => !v);
     else if (id === 'placement') { setPlacement(v => v === 'stacked' ? 'integratedButton' : 'stacked'); setSearch(true); }
@@ -40,7 +53,7 @@ function Gallery({navigation, close}: {navigation: NativeStackScreenProps<{Galle
   };
   return <GlassNavigationView ref={header} title="Contacts" titleTestID="review-title" scrollViewRef={list}
     titleDisplayMode={mode} titleTransition={morph ? 'morph' : 'native'} titlePosition="leading" titleFont={{compactSize: compact}}
-    edgeEffect={{top: hard ? 'hard' : 'soft'}} onBack={close} backTestID="review-close" handlesSystemBack androidCollapsing
+    edgeEffect={{top: hard ? 'hard' : 'soft', band: bands[band]}} onBack={close} backTestID="review-close" handlesSystemBack androidCollapsing
     titleView={slots ? slot('◉  Custom contact', 36) : undefined}
     subtitleView={slots ? slot('Available now', 20) : undefined}
     largeSubtitleView={slots ? slot('Your contacts nearby', 24) : undefined}
@@ -58,8 +71,13 @@ function Gallery({navigation, close}: {navigation: NativeStackScreenProps<{Galle
     <FlatList ref={list} nestedScrollEnabled style={{flex: 1}} testID="review-list" contentInsetAdjustmentBehavior="automatic" keyboardShouldPersistTaps="handled"
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); setTimeout(() => { setRefreshing(false); setRefreshes(v => v + 1); }, 800); }} />}
       data={names.filter(n => n.toLowerCase().includes(query.toLowerCase()))} keyExtractor={name => name}
-      ListHeaderComponent={<Text testID="review-state" style={{color: ink, padding: 16}}>{mode} · {morph ? 'morph' : 'native'} · {hard ? 'hard' : 'soft'} · refresh {refreshes}</Text>}
-      renderItem={({item}) => <Pressable accessibilityRole="button" accessibilityLabel={item} onPress={() => navigation.navigate('Detail')} style={{height: 64, justifyContent: 'center', paddingHorizontal: 20}}><Text style={{color: ink, fontSize: 18}}>{item}</Text></Pressable>} />
+      ListHeaderComponent={<Text testID="review-state" style={{color: ink, padding: 16}}>{mode} · {morph ? 'morph' : 'native'} · {hard ? `hard (${band})` : 'soft'} · refresh {refreshes}</Text>}
+      renderItem={({item, index}) => <Pressable accessibilityRole="button" accessibilityLabel={item} onPress={() => navigation.navigate('Detail')}
+        style={{height: 64, flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: 20}}>
+        {/* Coloured avatars make the header edge's blur and dimming visible as rows pass beneath it. */}
+        <View style={{width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', backgroundColor: avatarColors[index % avatarColors.length]}}>
+          <Text style={{color: 'white', fontWeight: '600'}}>{`C${index + 1}`}</Text></View>
+        <Text style={{color: ink, fontSize: 18}}>{item}</Text></Pressable>} />
   </GlassNavigationView>;
 }
 function Detail({navigation}: NativeStackScreenProps<{Gallery: undefined; Detail: undefined}, 'Detail'>) {

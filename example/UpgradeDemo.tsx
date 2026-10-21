@@ -66,10 +66,17 @@ export default function UpgradeDemo({onClose}: {onClose: () => void}) {
       <View style={{height: 65}}><GlassHeaderHost><HeaderPage detail={detail} setDetail={setDetail} /></GlassHeaderHost></View>
       <GlassBackgroundExtension style={{height: 60}}><View style={{height: 60, backgroundColor: '#5268A0'}}>{text('Background extension')}</View></GlassBackgroundExtension>
       {command('Toggle 20 surfaces', 'upgrade-toggle-surfaces', () => setSurfaces(!surfaces))}
-      <ScreenContainer style={{height: 160}}>
+      <ScreenContainer style={{height: 270}}>
         <Screen activityState={surfaces ? 2 : 0} style={{position: 'absolute', inset: 0}}>
           <View testID="upgrade-surfaces" collapsable={false} style={{flexDirection: 'row', flexWrap: 'wrap', gap: 4, backgroundColor: '#34465B', padding: 8}}>
             {Array.from({length: 20}, (_, i) => <GlassView key={i} tintColor="#A5A2FF30" style={{width: 55, height: 32, alignItems: 'center', justifyContent: 'center'}}>{text(String(i))}</GlassView>)}
+          </View>
+          {/* Control for G1: UIKit-owned button glass on the same detached screen. */}
+          <View testID="upgrade-control-buttons" collapsable={false} style={{flexDirection: 'row', gap: 8, backgroundColor: '#34465B', paddingHorizontal: 8, paddingBottom: 8}}>
+            {['star', 'heart', 'bell', 'bookmark', 'flag'].map(name => <GlassIconButton key={name} symbol={name} androidIcon="demo_add" accessibilityLabel={`Control ${name}`} onPress={() => {}} />)}
+          </View>
+          <View testID="upgrade-untinted-surfaces" collapsable={false} style={{flexDirection: 'row', gap: 4, backgroundColor: '#34465B', paddingHorizontal: 8, paddingBottom: 8}}>
+            {Array.from({length: 5}, (_, i) => <GlassView key={i} style={{width: 55, height: 32, alignItems: 'center', justifyContent: 'center'}}>{text(`u${i}`)}</GlassView>)}
           </View>
         </Screen>
         <Screen activityState={surfaces ? 0 : 2} style={{position: 'absolute', inset: 0, backgroundColor: '#34465B'}}>{text('Covered screen')}</Screen>

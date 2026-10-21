@@ -1,6 +1,6 @@
 import {controlAction, controlItems} from './controlConfig';
 import {iconColor} from './iconOptions';
-import type {GlassNavigationViewProps, GlassNavigationAction, GlassNavigationSpacer, GlassSchemeColor} from './types';
+import type {GlassNavigationViewProps, GlassNavigationAction, GlassNavigationSpacer, GlassSchemeColor, GlassHeaderBand} from './types';
 const warned = new Set<string>();
 export function navigationWarning(message: string) {
   if (!warned.has(message)) { warned.add(message); console.warn(`[GlassNavigationView] ${message}`); }
@@ -46,4 +46,11 @@ export function navigationTitleOptions(props: GlassNavigationViewProps) {
 }
 export function navigationColor(value: GlassSchemeColor | undefined, dark: boolean) {
   return iconColor(value && typeof value === 'object' && 'light' in value ? value[dark ? 'dark' : 'light'] : value);
+}
+/** Native hard-band config: `system` keeps UIKit's hard edge; fields are clamped, colours resolved. */
+export function navigationBand(band: GlassHeaderBand | 'system' | undefined, dark: boolean) {
+  if (band === 'system') return {system: true};
+  const unit = (value: number | undefined) => value === undefined || !Number.isFinite(value) ? undefined : Math.min(1, Math.max(0, value));
+  return {color: navigationColor(band?.color, dark), opacity: unit(band?.opacity), blur: unit(band?.blur), progressive: band?.progressive,
+    separator: band?.separator === false ? undefined : navigationColor(band?.separator, dark), hideSeparator: band?.separator === false};
 }

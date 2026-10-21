@@ -12,14 +12,22 @@ Morphing glass, grouped and scoped controls, full icon control and lower cost. E
 
 ### New
 - `GlassMorphButton`: one control whose glass reshapes with its content (⋯ → "Select"), trailing
-  edge fixed, glass present in every frame; Reduce Motion cross-fades at the final size.
-  `glassID` pairs neighbouring shapes in a `GlassContainer`.
+  edge fixed, glass present in every frame. On iOS 26 it is SwiftUI's own glass morph
+  (per-content `glassEffectID` in a `GlassEffectContainer`): the old content blurs out while
+  its glass flows into the new shape like liquid and the new content focuses in (≈0.5 s, as in Contacts). Reduce Motion cross-fades at the final
+  size. `glassID` pairs neighbouring shapes in a `GlassContainer`.
 - `GlassPresence` / `transition`: materialize on mount, dematerialize on unmount; `onExited`
   fires exactly once, including when the parent unmounts mid-exit.
 - `GlassHeaderHost` / `useGlassHeader`: one persistent header above a native stack. On iOS the
   host follows react-native-screens' own transition (route key = `screenId`): shared slots
-  morph, new controls appear at full size, leaving ones shrink to their centre, and an
-  interactive swipe back scrubs and cancels the morph natively. Android animates on focus.
+  morph (iOS 26: the same SwiftUI blur morph, neighbouring glass flows together and apart),
+  new controls appear at full size and leaving ones go, unaffected by a JavaScript stall. On an
+  interactive swipe back the controls stay while the finger is down and morph on release when
+  the pop completes; a cancelled swipe changes nothing. A control on both screens (same side and
+  content, such as a back button on each) keeps its glass and stays still, as in system apps;
+  named slots morph their content and the rest pair by position. Menus and badges work on header slots. Optional on iOS 26: pass `navigation` to use
+  UIKit bar button items in the stack's own bar (`glassHeaderOptions`). Android animates on
+  focus.
 - `GlassIconGroup` (several icons in one capsule) and `GlassPillBar` (header scope pills).
 - Shadow-node measurement for these controls: React Native's layout asks UIKit / the Android
   view manager for the native size, so the first frame is correct and resizes do not wait for JS.
@@ -45,6 +53,23 @@ Morphing glass, grouped and scoped controls, full icon control and lower cost. E
   icon-only glyphs, long-press cancellation, tab tint; search keeps its input connection.
 - iOS navigation: native large titles stay sharp under soft and hard edges; search opens,
   focuses and closes without stale header height; scroll binding retries when a list mounts late.
+- iOS navigation: the native large title no longer flickers under the header's edge effect when
+  pulling past the top and scrolling back (collapse is detected as a state change, not per frame).
+- iOS navigation: closing search while the large title is collapsed brings the compact bar title
+  back with the dismissal instead of seconds later.
+- iOS navigation: showing or hiding a stacked search bar at the top keeps the large title in place
+  (it no longer collapses into the bar, clips and expands again, or shows two titles at once); the
+  list slides into place and the field fades instead of growing from the leading edge.
+- iOS navigation: search opened from an icon (`active: true`) and removed when it closes no longer
+  draws the title over the field (native or morph title) or a second title while closing.
+- `GlassNavigationView` `edgeEffect.band`: style the hard top edge — colour (light/dark), opacity,
+  blur amount, progressive blur and separator. The default is a lighter band like system list
+  headers (content dimmed and blurred beneath, ending at a line); `band: 'system'` keeps UIKit's own
+  hard edge. Older iOS styles the bar appearance; Android colours the app bar when the list scrolls.
+- iOS navigation, morph title: pull-to-refresh shows the spinner (between the title and the list);
+  the title no longer moves down over it and returns exactly after the refresh.
+- iOS 18 and earlier: `scrollToTop()` from a collapsed native large title expands it on the way up,
+  as the status-bar tap does (it stayed in the bar).
 - Unset symbol scale keeps UIKit's default again (0.1.x rendering).
 
 ### Known limits

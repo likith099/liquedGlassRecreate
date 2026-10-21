@@ -116,14 +116,18 @@ function Lab({open, onClose}: {open: (scene: Scene) => void; onClose: () => void
 }
 
 // G7: a two-screen native stack under one persistent header host.
-type Routes = {Home: undefined; All: undefined; System: undefined};
+type Routes = {Home: undefined; All: undefined; Item: {name: string}; Details: {name: string}; System: undefined};
 const Stack = createNativeStackNavigator<Routes>();
 const stallPush = {next: false};
 function HomeScreen({navigation, route}: NativeStackScreenProps<Routes, 'Home'>) {
   const dark = useColorScheme() === 'dark', focused = useIsFocused();
   const [stall, setStall] = useState(false), [menu, setMenu] = useState('None');
   const trailing = useMemo<GlassHeaderItem[]>(() => [{slot: 'primary', kind: 'symbol', symbol: 'ellipsis', androidIcon: 'demo_more',
-    accessibilityLabel: 'More', testID: 'acc-header-primary', onPress: () => setMenu('More')}], []);
+    accessibilityLabel: 'More', testID: 'acc-header-primary', onPress: () => setMenu('More')},
+    // A second trailing slot (placed left of the first) with a menu and a badge.
+    {slot: 'sort', kind: 'symbol', symbol: 'arrow.up.arrow.down', androidIcon: 'demo_more', accessibilityLabel: 'Sort',
+      testID: 'acc-header-sort', badge: {count: 2},
+      menu: {items: [{id: 'name', title: 'Name'}, {id: 'date', title: 'Date'}], onAction: id => setMenu(`Sort ${id}`)}}], []);
   useGlassHeader({routeKey: route.key, active: focused, trailing});
   return <View style={{flex: 1, backgroundColor: dark ? '#000000' : '#FFFFFF', paddingTop: 120, paddingHorizontal: 20}}>
     <Text style={{color: dark ? '#FFF' : '#000', fontSize: 34, fontWeight: '700'}}>Library</Text>
@@ -145,12 +149,54 @@ function AllScreen({navigation, route}: NativeStackScreenProps<Routes, 'All'>) {
   // Runs right after this screen's first commit, while the native push is under way.
   useEffect(() => { if (stallPush.next) { stallPush.next = false; setTimeout(() => blockJS(500), 0); } }, []);
   const leading = useMemo<GlassHeaderItem[]>(() => [{slot: 'back', kind: 'back', accessibilityLabel: 'Back', testID: 'acc-header-back', onPress: navigation.goBack}], [navigation]);
+  const [shared, setShared] = useState(0);
   const trailing = useMemo<GlassHeaderItem[]>(() => [{slot: 'primary', kind: 'title', title: 'Select', accessibilityLabel: 'Select',
-    testID: 'acc-header-primary', onPress: () => setSelecting(v => !v)}], []);
+    testID: 'acc-header-primary', onPress: () => setSelecting(v => !v)},
+    // Share's badge counts shares here; Item's Share has none. Same control: the glass stays, the badge changes.
+    {kind: 'symbol', symbol: 'square.and.arrow.up', androidIcon: 'demo_forward', accessibilityLabel: 'Share', testID: 'acc-header-share',
+      ...(shared > 0 ? {badge: {count: shared}} : {}), onPress: () => setShared(n => n + 1)}], [shared]);
   useGlassHeader({routeKey: route.key, active: focused, leading, trailing});
   return <View style={{flex: 1, backgroundColor: dark ? '#000000' : '#FFFFFF', paddingTop: 120, paddingHorizontal: 20}}>
     <Text testID="acc-all-title" style={{color: dark ? '#FFF' : '#000', fontSize: 34, fontWeight: '700'}}>All</Text>
-    <Text testID="acc-all-state" style={{color: dark ? '#FFF' : '#000', marginTop: 12}}>{selecting ? 'Selecting' : 'Browsing'}</Text>
+    <Text testID="acc-all-state" style={{color: dark ? '#FFF' : '#000', marginTop: 12}}>{`${selecting ? 'Selecting' : 'Browsing'} · shared ${shared}`}</Text>
+    {['Item 1', 'Item 2'].map(name => <Pressable key={name} testID={`acc-row-${name.replace(' ', '')}`} accessibilityRole="button"
+      onPress={() => navigation.navigate('Item', {name})} style={{paddingVertical: 14}}>
+      <Text style={{color: dark ? '#FFF' : '#000', fontSize: 17}}>{name}</Text></Pressable>)}
+  </View>;
+}
+// A screen with a back button pushed from a screen with one: the back button and Share, present
+// on both, keep their glass and stay still while Select morphs into Edit. Item names its slots
+// differently from All on purpose; controls on both screens pair by side and content.
+function ItemScreen({navigation, route}: NativeStackScreenProps<Routes, 'Item'>) {
+  const dark = useColorScheme() === 'dark', focused = useIsFocused();
+  const [state, setState] = useState('Viewing'), [editing, setEditing] = useState(false);
+  // Edit mode, as in Contacts: back becomes Cancel and Edit becomes Done (both morph in place),
+  // Share leaves; Done or Cancel brings them back.
+  const leading = useMemo<GlassHeaderItem[]>(() => [editing
+    ? {kind: 'title', title: 'Cancel', accessibilityLabel: 'Cancel', testID: 'acc-item-cancel', onPress: () => { setEditing(false); setState('Cancelled'); }}
+    : {kind: 'back', accessibilityLabel: 'Back', testID: 'acc-item-back', onPress: navigation.goBack}], [navigation, editing]);
+  const trailing = useMemo<GlassHeaderItem[]>(() => [{slot: 'primary', kind: 'title', title: editing ? 'Done' : 'Edit', accessibilityLabel: editing ? 'Done' : 'Edit',
+    testID: 'acc-item-primary', onPress: () => { setState(editing ? 'Saved' : 'Editing'); setEditing(v => !v); }},
+    ...(editing ? [] : [{slot: 'share', kind: 'symbol' as const, symbol: 'square.and.arrow.up', androidIcon: 'demo_forward', accessibilityLabel: 'Share', testID: 'acc-item-share', onPress: () => setState('Shared')}])], [editing]);
+  useGlassHeader({routeKey: route.key, active: focused, leading, trailing});
+  return <View style={{flex: 1, backgroundColor: dark ? '#000000' : '#FFFFFF', paddingTop: 120, paddingHorizontal: 20}}>
+    <Text testID="acc-item-title" style={{color: dark ? '#FFF' : '#000', fontSize: 34, fontWeight: '700'}}>{route.params.name}</Text>
+    <Text testID="acc-item-state" style={{color: dark ? '#FFF' : '#000', marginTop: 12}}>{state}</Text>
+    <Pressable testID="acc-item-details" accessibilityRole="button" onPress={() => navigation.navigate('Details', {name: route.params.name})} style={{paddingVertical: 14}}>
+      <Text style={{color: dark ? '#FFF' : '#000', fontSize: 17}}>Details</Text></Pressable>
+  </View>;
+}
+// Different controls and counts: Item [back | Share, Edit] → Details [Close | ⋯]. Back and Edit
+// morph by position into Close and ⋯; Share leaves. Popping reverses it.
+function DetailsScreen({navigation, route}: NativeStackScreenProps<Routes, 'Details'>) {
+  const dark = useColorScheme() === 'dark', focused = useIsFocused();
+  const [state, setState] = useState('Details');
+  const leading = useMemo<GlassHeaderItem[]>(() => [{kind: 'title', title: 'Close', accessibilityLabel: 'Close', testID: 'acc-details-close', onPress: navigation.goBack}], [navigation]);
+  const trailing = useMemo<GlassHeaderItem[]>(() => [{kind: 'symbol', symbol: 'ellipsis', androidIcon: 'demo_more', accessibilityLabel: 'More', testID: 'acc-details-more', onPress: () => setState('More')}], []);
+  useGlassHeader({routeKey: route.key, active: focused, leading, trailing});
+  return <View style={{flex: 1, backgroundColor: dark ? '#000000' : '#FFFFFF', paddingTop: 120, paddingHorizontal: 20}}>
+    <Text testID="acc-details-title" style={{color: dark ? '#FFF' : '#000', fontSize: 34, fontWeight: '700'}}>{`${route.params.name} details`}</Text>
+    <Text testID="acc-details-state" style={{color: dark ? '#FFF' : '#000', marginTop: 12}}>{state}</Text>
   </View>;
 }
 function SystemScreen({route}: NativeStackScreenProps<Routes, 'System'>) {
@@ -166,6 +212,8 @@ function StackScene({onClose}: {onClose: () => void}) {
         <Stack.Navigator screenOptions={{headerShown: false}}>
           <Stack.Screen name="Home" component={HomeScreen} />
           <Stack.Screen name="All" component={AllScreen} />
+          <Stack.Screen name="Item" component={ItemScreen} />
+          <Stack.Screen name="Details" component={DetailsScreen} />
           {/* UIKit's own navigation bar: the reference back indicator for G2 measurements. */}
           <Stack.Screen name="System" component={SystemScreen} options={{headerShown: true, title: 'Reference', headerBackButtonDisplayMode: 'minimal'}} />
         </Stack.Navigator>

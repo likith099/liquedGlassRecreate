@@ -1,7 +1,7 @@
 import React, {useImperativeHandle, useRef, useLayoutEffect, useState, useEffect} from 'react';
 import {BackHandler, findNodeHandle, Platform, View, useColorScheme} from 'react-native';
 import NativeNavigation, {Commands} from './specs/ALGNavigationNativeComponent';
-import {navigationAction, navigationItems, nativeNavigationItems, navigationTitleOptions, navigationColor} from './navigationConfig';
+import {navigationAction, navigationItems, nativeNavigationItems, navigationTitleOptions, navigationColor, navigationBand} from './navigationConfig';
 import {resolveScrollTarget, scrollTargetToTop} from './scrollTarget';
 import type {GlassNavigationViewProps} from './types';
 export default function GlassNavigationHost(props: GlassNavigationViewProps) {
@@ -52,11 +52,12 @@ export default function GlassNavigationHost(props: GlassNavigationViewProps) {
   }), [scrollViewRef]);
   const items = navigationItems(props);
   const edges = typeof edgeEffect === 'string' ? {top: edgeEffect} : edgeEffect;
+  const band = typeof edgeEffect === 'object' ? edgeEffect.band : undefined;
   const slots = [children, titleView, subtitleView, largeSubtitleView, accessory];
   return <NativeNavigation {...viewProps} ref={host} style={[{flex: 1}, style]} scrollViewTag={tag}
     configJSON={JSON.stringify({title, largeTitle, ...navigationTitleOptions(props), titleWeight, subtitle, largeSubtitle,
       mergingEnabled, tint: navigationColor(tintColor, dark), background: navigationColor(contentBackgroundColor, dark),
-      colorScheme, topEdge: edges.top ?? 'soft', bottomEdge: edges.bottom, hasBack: !!onBack, titleTestID,
+      colorScheme, topEdge: edges.top ?? 'soft', bottomEdge: edges.bottom, topBand: navigationBand(band, dark), hasBack: !!onBack, titleTestID,
       androidCollapsing, topInset, bottomInset, manualInsets: !!onBarInsetsChange,
       slots: slots.map((content, i) => ({present: i === 0 || content != null, height: heights[i]})),
       leading: nativeNavigationItems(items.leading), trailing: nativeNavigationItems(items.trailing), toolbar: nativeNavigationItems(items.toolbar),

@@ -29,6 +29,52 @@ private struct NavigationConfig: Decodable, Equatable {
   var leading: [NavigationAction]; var trailing: [NavigationAction]; var toolbar: [NavigationAction]
   var mergingEnabled: Bool; var tint: Double?; var background: Double?
   var colorScheme: String; var topEdge: String; var bottomEdge: String?; var search: NavigationSearch?
+  var topBand: NavigationBand?
+}
+/// Hard top band (`edgeEffect.band`): `system` keeps UIKit's hard edge.
+private struct NavigationBand: Decodable, Equatable {
+  var system: Bool?; var color: Double?; var opacity: Double?; var blur: Double?; var progressive: Bool?
+  var separator: Double?; var hideSeparator: Bool?
+  /// Any field set by the app (older iOS keeps the system bar background otherwise).
+  var customized: Bool { color != nil || opacity != nil || blur != nil || progressive != nil }
+  var blurStyle: UIBlurEffect.Style? {
+    let amount = blur ?? 0.6
+    return amount <= 0 ? nil : amount < 0.34 ? .systemThinMaterial : amount < 0.67 ? .systemMaterial : .systemThickMaterial
+  }
+  /// Default a step lighter than the screen (like system list headers over a black list).
+  var tint: UIColor { (color.map(ALGIcon.color) ?? .secondarySystemBackground).withAlphaComponent(1) }
+  var tintOpacity: CGFloat { CGFloat(opacity ?? 0.45) }
+}
+/// The hard band behind the header on iOS 26: the band colour over the content beneath, ending at
+/// the header's bottom line. The progressive blur under it is UIKit's own soft scroll edge (see
+/// `updateEdge`): a visual effect view cannot be masked into a gradient (any mask turns its blur
+/// off on iOS 26), so `progressive: false` uses an unmasked system material instead. The band
+/// appears by animating the material (`effect` to and from nil) and the colour layer's alpha; an
+/// alpha below 1 on a visual effect view or its ancestors would disable the blur.
+private final class NavigationBandView: UIView {
+  private let blur = UIVisualEffectView()
+  private let tint = UIView()
+  private var material: UIVisualEffect?
+  private(set) var shown = false
+  override init(frame: CGRect) {
+    super.init(frame: frame)
+    isUserInteractionEnabled = false
+    addSubview(blur); addSubview(tint); tint.alpha = 0
+  }
+  required init?(coder: NSCoder) { fatalError("init(coder:) unavailable") }
+  func configure(_ band: NavigationBand) {
+    let solid = UIAccessibility.isReduceTransparencyEnabled
+    material = solid || band.progressive != false ? nil : band.blurStyle.map { UIBlurEffect(style: $0) }
+    if shown { blur.effect = material }
+    tint.backgroundColor = band.tint.withAlphaComponent(solid ? max(band.tintOpacity, 0.94) : band.tintOpacity)
+  }
+  func show(_ visible: Bool, animated: Bool) {
+    guard visible != shown else { return }
+    shown = visible
+    let apply = { self.blur.effect = visible ? self.material : nil; self.tint.alpha = visible ? 1 : 0 }
+    if animated { UIView.animate(withDuration: 0.2, delay: 0, options: [.beginFromCurrentState, .allowUserInteraction], animations: apply) } else { apply() }
+  }
+  override func layoutSubviews() { super.layoutSubviews(); blur.frame = bounds; tint.frame = bounds }
 }
 private final class NavigationScreen: UIViewController {
   var onLayout: (() -> Void)?
@@ -80,6 +126,8 @@ public final class ALGNavigationView: UIView, UISearchResultsUpdating, UISearchB
   private let edgeHost = UIView()
   private let edgeMarker = UIImageView()
   private let separator = UIView()
+  private let band = NavigationBandView()
+  private var baseAppearances: (standard: UINavigationBarAppearance, compact: UINavigationBarAppearance?)?
   private var accessoryInteraction: AnyObject?
   private var edgeLeases: [String: AnyObject] = [:]
   private var insetWork: DispatchWorkItem?
@@ -91,6 +139,16 @@ public final class ALGNavigationView: UIView, UISearchResultsUpdating, UISearchB
   private var pendingActivation = false
   private var pendingSearchRemoval = false
   private var focusOnPresent = false
+  private var compactSearchTitleMode: UINavigationItem.LargeTitleDisplayMode?
+  private var compactSearchScrollPosition: CGFloat?
+  private var searchDismissing = false
+  /// Search the app added already active (a search icon). Apps usually remove it after it closes,
+  /// so the morph title waits for that removal before reappearing (see `didDismissSearchController`).
+  private var transientSearch = false
+  private var titleReveal: DispatchWorkItem?
+  /// Search whose field is fading out before removal (`removeSearch`).
+  private var fadingSearch: UISearchController?
+  private var titleRestoreScheduled = false
   private var searchEventCount = 0
   private var lastSearchText = ""
   private var loaders: [String: ALGIconLoader] = [:]
@@ -149,7 +207,10 @@ public final class ALGNavigationView: UIView, UISearchResultsUpdating, UISearchB
     let barFrame = bar.convert(bar.bounds, to: navigation.view)
     let height = config.slots[4].present ? CGFloat(config.slots[4].height) : 0
     let searching = morph.searching
-    let titleRow = morph.enabled && !searching ? max(0, morph.row - ((scroll?.contentOffset.y ?? 0) + (scroll?.adjustedContentInset.top ?? 0))) : 0
+    // The morph title row follows a pull past the top unless a refresh control owns that space (see
+    // `ALGNavigationTitle.layout`); an accessory below it follows the same way.
+    let scrolledBy = (scroll?.contentOffset.y ?? 0) + (scroll?.adjustedContentInset.top ?? 0)
+    let titleRow = morph.enabled && !searching ? max(0, morph.row - (scroll?.refreshControl != nil ? max(0, scrolledBy) : scrolledBy)) : 0
     // The public search bar includes its scope row. During presentation it can
     // extend below (or replace) the navigation bar, including stacked placement.
     var chromeBottom = navigation.isNavigationBarHidden ? navigation.view.safeAreaInsets.top : barFrame.maxY
@@ -184,7 +245,16 @@ public final class ALGNavigationView: UIView, UISearchResultsUpdating, UISearchB
     edgeHost.isHidden = !extendsEdge
     let pixel = 1 / max(1, window?.screen.scale ?? traitCollection.displayScale)
     separator.frame = CGRect(x: 0, y: (bottom / pixel).rounded() * pixel - pixel, width: bounds.width, height: pixel)
-    separator.isHidden = config.topEdge != "hard"
+    separator.isHidden = config.topEdge != "hard" || config.topBand?.hideSeparator == true
+    separator.backgroundColor = config.topBand?.separator.map(ALGIcon.color) ?? .separator
+    if usesBand {
+      if band.superview == nil { navigation.view.insertSubview(band, belowSubview: navigation.navigationBar) }
+      let frame = CGRect(x: 0, y: 0, width: bounds.width, height: max(0, bottom))
+      if band.frame != frame { band.frame = frame }
+      // Like an edge effect, the band shows only while content is beneath the header.
+      let scrolled = (scroll?.contentOffset.y ?? 0) + (scroll?.adjustedContentInset.top ?? 0)
+      band.show(extendsEdge && scrolled > 0.5, animated: window != nil && !UIAccessibility.isReduceMotionEnabled)
+    } else if band.superview != nil { band.show(false, animated: false); band.removeFromSuperview() }
     // Extend the native bar's own edge region. A separate edge interaction can
     // sample UIKit's large title even when its marker is a sibling below the bar.
     navigation.view.bringSubviewToFront(separator)
@@ -203,15 +273,64 @@ public final class ALGNavigationView: UIView, UISearchResultsUpdating, UISearchB
     morph.layout(); scheduleInsets()
     if pendingActivation { activateSearchWhenReady() }
   }
-  /// UIKit keeps the scroll view's safe area at the fully expanded header, and a
-  /// collapsing native large title raises the header bottom 1:1 with the scroll.
-  /// Once the header sits below that line the title has fully collapsed.
+  /// Whether UIKit's native large title has fully collapsed into the bar. Decided as a state
+  /// change, not per frame: UIKit updates the bar height and the scroll view's adjusted inset in
+  /// different scroll callbacks, so a per-frame comparison flips every frame through the collapse
+  /// range (the edge effect then flickers over the title), and a pull past the top stretches the
+  /// bar further than the content moves.
+  private var titleCollapsed = false
+  private var compactBarHeight: CGFloat = 0
+  private var lastBarHeight: CGFloat = 0
   private func nativeTitleCollapsed(chromeBottom: CGFloat, accessory: CGFloat) -> Bool {
-    guard let scroll else { return false }
-    let expandedBottom = scroll.convert(scroll.bounds.origin, to: navigation.view).y
-      + scroll.adjustedContentInset.top - scroll.contentInset.top - accessory
+    guard let scroll else { titleCollapsed = false; return false }
+    let barHeight = navigation.navigationBar.bounds.height
     let scrolled = scroll.contentOffset.y + scroll.adjustedContentInset.top
-    return chromeBottom > expandedBottom - scrolled + 0.5
+    let barSettled = abs(barHeight - lastBarHeight) < 0.25; lastBarHeight = barHeight
+    // Pulled past the top (the inset follows the bar, so a collapsing title keeps this near 0).
+    if scrolled < -0.5 { titleCollapsed = false; return false }
+    if titleCollapsed {
+      // The title starts to expand as soon as the bar grows again.
+      if barHeight > compactBarHeight + 1 { titleCollapsed = false }
+    } else {
+      // Collapsing, the header bottom follows the content 1:1 (within the inset lag); once the bar
+      // has stopped shrinking the content runs on beneath it.
+      let expandedBottom = scroll.convert(scroll.bounds.origin, to: navigation.view).y
+        + scroll.adjustedContentInset.top - scroll.contentInset.top - accessory
+      if barSettled, chromeBottom > expandedBottom - scrolled + 4 { titleCollapsed = true; compactBarHeight = barHeight }
+    }
+    return titleCollapsed
+  }
+  private func preserveCompactSearchTitle() {
+    // iOS 26 also reproduces this with a plain UITableViewController: dismissing
+    // search re-hides an already-collapsed large title until a later scroll/layout.
+    // Keep UIKit's existing compact title through that transition. Restoring the
+    // large mode in didDismiss triggers the same second disappearance.
+    guard #available(iOS 26.0, *), !morph.enabled, titleCollapsed,
+          screen.navigationItem.largeTitleDisplayMode == .always else { return }
+    compactSearchTitleMode = screen.navigationItem.largeTitleDisplayMode
+    UIView.performWithoutAnimation { screen.navigationItem.largeTitleDisplayMode = .never }
+  }
+  private func restoreSearchTitleMode() {
+    guard let mode = compactSearchTitleMode else { return }
+    compactSearchTitleMode = nil; compactSearchScrollPosition = nil
+    UIView.performWithoutAnimation {
+      screen.navigationItem.largeTitleDisplayMode = mode
+      navigation.navigationBar.setNeedsLayout(); navigation.navigationBar.layoutIfNeeded()
+    }
+  }
+  private func restoreSearchTitleAfterScroll() {
+    guard compactSearchTitleMode != nil, compactSearchScrollPosition != nil,
+          searchController?.isActive != true, !searchDismissing, !titleRestoreScheduled else { return }
+    titleRestoreScheduled = true
+    // Insets and offsets can update in separate callbacks. Compare their settled
+    // sum so keyboard/search inset compensation isn't mistaken for a new scroll.
+    DispatchQueue.main.async { [weak self] in
+      guard let self else { return }; self.titleRestoreScheduled = false
+      guard self.searchController?.isActive != true, !self.searchDismissing,
+            let previous = self.compactSearchScrollPosition, let scroll = self.scroll,
+            abs(scroll.contentOffset.y + scroll.adjustedContentInset.top - previous) > 0.5 else { return }
+      self.restoreSearchTitleMode()
+    }
   }
   private var isAtTop: Bool {
     guard let scroll else { return true }
@@ -219,18 +338,60 @@ public final class ALGNavigationView: UIView, UISearchResultsUpdating, UISearchB
   }
   /// Re-lays out the header after UIKit chrome changes outside a transition
   /// (search added or removed), animating the bar and keeping a top-anchored list at the top.
-  private func relayoutHeader(keepTop: Bool) {
-    navigation.navigationBar.setNeedsLayout(); navigation.view.setNeedsLayout()
-    let apply = { [weak self] in
+  /// Adds or removes the search bar outside a search transition. UIKit collapses an expanded
+  /// native large title into the bar when a stacked search bar is installed on a visible screen
+  /// (and re-expands it on a later scroll), which showed as a clipped title, two titles at once and
+  /// a late expansion (owner device reports); an animated relayout also grew the field from the
+  /// leading edge. The change and, at the top, the return to the expanded top happen in one
+  /// run-loop turn without animation, so UIKit's intermediate state is never drawn. The result is
+  /// then animated from where things were: the list's content slides (a transform on its content,
+  /// so the offset UIKit set stays and nothing reads the motion as scrolling), a morph title
+  /// slides with it, and an added field or a returning morph title fades in. A removed field has
+  /// already faded out (`removeSearch`), so no two of them are drawn on top of each other. Reduce Motion cross-dissolves instead;
+  /// `instant` (search about to activate) does not animate, since activation does.
+  private enum SearchBarChange { case instant, animated }
+  private func changeSearchBar(keepTop: Bool, _ style: SearchBarChange = .animated, _ change: @escaping () -> Void) {
+    let update = { [weak self] in
       guard let self else { return }
-      self.navigation.view.layoutIfNeeded()
-      if keepTop, let scroll = self.scroll { scroll.contentOffset.y = -scroll.adjustedContentInset.top }
-      self.layoutChrome()
+      UIView.performWithoutAnimation {
+        change()
+        self.navigation.navigationBar.setNeedsLayout(); self.navigation.view.setNeedsLayout(); self.navigation.view.layoutIfNeeded()
+        if keepTop, let scroll = self.scroll {
+          // Crossing the top by a point is what makes UIKit expand its large title (see `scrollToTop`).
+          scroll.contentOffset.y = -scroll.adjustedContentInset.top - 1; self.navigation.view.layoutIfNeeded()
+          scroll.contentOffset.y = -scroll.adjustedContentInset.top; self.navigation.view.layoutIfNeeded()
+          self.titleCollapsed = false
+        }
+        self.layoutChrome()
+      }
     }
-    guard window != nil, !UIAccessibility.isReduceMotionEnabled else { apply(); if keepTop { scrollToTop(false) }; return }
-    UIView.animate(withDuration: 0.3, delay: 0, options: [.beginFromCurrentState, .allowUserInteraction], animations: apply) { [weak self] _ in
-      if keepTop { self?.scrollToTop(false) }
+    guard window != nil, style == .animated else { update(); return }
+    guard !UIAccessibility.isReduceMotionEnabled, let scroll else {
+      UIView.transition(with: navigation.view, duration: 0.25, options: [.transitionCrossDissolve, .allowUserInteraction], animations: update)
+      return
     }
+    let label = morph.label, labelShown = morph.enabled && !label.isHidden && label.alpha > 0
+    let oldCenter = label.center, oldTransform = label.transform
+    let oldContent = scroll.convert(CGPoint.zero, to: navigation.view).y
+    let before = searchController
+    update()
+    let shift = oldContent - scroll.convert(CGPoint.zero, to: navigation.view).y
+    let entering = before == nil ? searchController?.searchBar : nil
+    // The app's content views; UIKit's own (large title, edge effects, indicators) stay put.
+    let content = scroll.subviews.filter { !String(describing: type(of: $0)).hasPrefix("_") && !($0 is UIRefreshControl) }
+    content.forEach { $0.transform = CGAffineTransform(translationX: 0, y: shift) }
+    let showsLabel = morph.enabled && !label.isHidden, newCenter = label.center, newTransform = label.transform
+    if showsLabel { if labelShown { label.center = oldCenter; label.transform = oldTransform } else { label.alpha = 0 } }
+    entering?.alpha = 0
+    let fadeIn = labelShown ? nil : (showsLabel ? label : nil)
+    // The list clears the field's area early (ease out); what arrives fades in once it has.
+    UIView.animate(withDuration: 0.3, delay: 0, options: [.curveEaseOut, .allowUserInteraction], animations: {
+      content.forEach { $0.transform = .identity }
+      if showsLabel { label.center = newCenter; label.transform = newTransform }
+    }, completion: { _ in content.forEach { $0.transform = .identity } })
+    UIView.animate(withDuration: 0.2, delay: 0.15, options: [.curveEaseOut, .allowUserInteraction], animations: {
+      fadeIn?.alpha = 1; entering?.alpha = 1
+    }, completion: { _ in fadeIn?.alpha = 1; entering?.alpha = 1 })
   }
   public override func didMoveToWindow() {
     super.didMoveToWindow()
@@ -249,6 +410,7 @@ public final class ALGNavigationView: UIView, UISearchResultsUpdating, UISearchB
   }
   @objc public func bindScrollView(_ view: UIScrollView?) {
     guard scroll !== view else { updateEdge(); return }
+    restoreSearchTitleMode()
     restoreEdges(); morph.bind(nil); scroll = view; screen.setContentScrollView(view, for: .all); morph.bind(view)
     applyTitle(); updateEdge(); layoutChrome()
     #if DEBUG
@@ -259,21 +421,41 @@ public final class ALGNavigationView: UIView, UISearchResultsUpdating, UISearchB
   }
   @objc public func scrollToTop(_ animated: Bool) {
     guard let scroll else { return }
+    restoreSearchTitleMode()
     pendingTop = true
-    scroll.setContentOffset(CGPoint(x: scroll.contentOffset.x, y: -scroll.adjustedContentInset.top - (morph.enabled ? 0 : 1)), animated: animated && !UIAccessibility.isReduceMotionEnabled)
+    scroll.setContentOffset(CGPoint(x: scroll.contentOffset.x, y: -scroll.adjustedContentInset.top - (morph.enabled ? 0 : 1) - collapsedLargeTitleRow), animated: animated && !UIAccessibility.isReduceMotionEnabled)
     if !animated || UIAccessibility.isReduceMotionEnabled { DispatchQueue.main.async { [weak self] in self?.finishTop() } }
+  }
+  /// Before iOS 26, a scroll to the compact top leaves a collapsed large title collapsed (the
+  /// status-bar tap scrolls past it instead). The row to reveal when the native large title is
+  /// collapsed; the same row height the morph title reserves to match UIKit's.
+  private var collapsedLargeTitleRow: CGFloat {
+    guard #unavailable(iOS 26.0), !morph.enabled, screen.navigationItem.largeTitleDisplayMode == .always,
+          navigation.traitCollection.verticalSizeClass != .compact else { return 0 }
+    let bar = navigation.navigationBar
+    var height = bar.bounds.height
+    if let search = searchController?.searchBar, search.window != nil, !search.isHidden, search.isDescendant(of: bar) { height -= search.bounds.height }
+    let font = bar.standardAppearance.largeTitleTextAttributes[.font] as? UIFont ?? .preferredFont(forTextStyle: .largeTitle)
+    let row = ceil(font.lineHeight + 11)
+    return height < 44 + row / 2 ? row : 0
   }
   private func finishTop() {
     guard pendingTop, let scroll, !scroll.isDragging else { return }; pendingTop = false
     navigation.view.layoutIfNeeded()
     scroll.setContentOffset(CGPoint(x: scroll.contentOffset.x, y: -scroll.adjustedContentInset.top), animated: false)
+    // At the top the title is expanded; UIKit can finish growing the bar after the last scroll callback.
+    titleCollapsed = false; layoutChrome()
   }
-  public func scrollViewWillBeginDragging(_ scrollView: UIScrollView) { pendingTop = false }
-  public func scrollViewDidScroll(_ scrollView: UIScrollView) { layoutChrome() }
+  public func scrollViewWillBeginDragging(_ scrollView: UIScrollView) {
+    pendingTop = false
+    if searchController?.isActive != true, !searchDismissing { restoreSearchTitleMode() }
+  }
+  public func scrollViewDidScroll(_ scrollView: UIScrollView) { layoutChrome(); restoreSearchTitleAfterScroll() }
   public func scrollViewDidChangeAdjustedContentInset(_ scrollView: UIScrollView) { layoutChrome() }
   public func scrollViewWillEndDragging(_ scrollView: UIScrollView, withVelocity velocity: CGPoint, targetContentOffset: UnsafeMutablePointer<CGPoint>) { morph.snap(targetContentOffset) }
   public func scrollViewDidEndDecelerating(_ scrollView: UIScrollView) { scheduleInsets() }
   public func scrollViewDidEndScrollingAnimation(_ scrollView: UIScrollView) { finishTop(); scheduleInsets() }
+  public func scrollViewShouldScrollToTop(_ scrollView: UIScrollView) -> Bool { restoreSearchTitleMode(); return true }
   public func scrollViewDidScrollToTop(_ scrollView: UIScrollView) { pendingTop = true; finishTop() }
   @objc public func focusSearch() {
     guard let controller = searchController else { return }
@@ -283,14 +465,23 @@ public final class ALGNavigationView: UIView, UISearchResultsUpdating, UISearchB
   public override func accessibilityPerformEscape() -> Bool {
     guard config?.hasBack == true else { return false }; onAction?("__navigation_back", ""); return true
   }
+  /// iOS 26 hard edge drawn by the package's band (not `band: 'system'`).
+  private var usesBand: Bool {
+    guard #available(iOS 26.0, *), let config else { return false }
+    return config.topEdge == "hard" && config.topBand?.system != true
+  }
   private func restoreEdges() {
     if #available(iOS 26.0, *) { for lease in edgeLeases.values { (lease as? NavigationEdgeLease)?.restore() } }
     edgeLeases.removeAll()
   }
   private func updateEdge() {
+    band.configure(config?.topBand ?? NavigationBand())
     if #available(iOS 26.0, *), let config, let scroll {
       // A string controls the top. Own the bottom only for an explicit option or our toolbar.
-      let values: [String: String?] = ["top": config.topEdge, "bottom": config.bottomEdge ?? (config.toolbar.isEmpty ? nil : config.topEdge)]
+      // The package's band replaces UIKit's hard top edge: beneath it UIKit's soft edge gives the
+      // progressive blur (none for `blur: 0`; a uniform material for `progressive: false`).
+      let bandEdge = (config.topBand?.blur ?? 0.6) <= 0 || config.topBand?.progressive == false || UIAccessibility.isReduceTransparencyEnabled ? "hidden" : "soft"
+      let values: [String: String?] = ["top": usesBand ? bandEdge : config.topEdge, "bottom": config.bottomEdge ?? (config.toolbar.isEmpty ? nil : config.topEdge)]
       for (key, value) in values {
         if let value {
           let lease = (edgeLeases[key] as? NavigationEdgeLease) ?? NavigationEdgeLease(key == "top" ? scroll.topEdgeEffect : scroll.bottomEdgeEffect)
@@ -318,7 +509,7 @@ public final class ALGNavigationView: UIView, UISearchResultsUpdating, UISearchB
     navigation.view.backgroundColor = reactContentView.backgroundColor
     navigation.navigationBar.tintColor = next.tint.map(ALGIcon.color) ?? .label; navigation.toolbar.tintColor = navigation.navigationBar.tintColor
     if previous?.leading != next.leading || previous?.trailing != next.trailing || previous?.toolbar != next.toolbar || previous?.mergingEnabled != next.mergingEnabled || previous?.tint != next.tint { rebuildActions() }
-    if previous?.title != next.title || previous?.largeTitle != next.largeTitle || previous?.titleDisplayMode != next.titleDisplayMode || previous?.titlePosition != next.titlePosition || previous?.titleTransition != next.titleTransition || previous?.titleWeight != next.titleWeight || previous?.titleFont != next.titleFont || previous?.slots != next.slots || previous?.subtitle != next.subtitle || previous?.largeSubtitle != next.largeSubtitle || previous?.titleTestID != next.titleTestID { applyTitle() }
+    if previous?.title != next.title || previous?.largeTitle != next.largeTitle || previous?.titleDisplayMode != next.titleDisplayMode || previous?.titlePosition != next.titlePosition || previous?.titleTransition != next.titleTransition || previous?.titleWeight != next.titleWeight || previous?.titleFont != next.titleFont || previous?.slots != next.slots || previous?.subtitle != next.subtitle || previous?.largeSubtitle != next.largeSubtitle || previous?.titleTestID != next.titleTestID || previous?.topBand != next.topBand || previous?.topEdge != next.topEdge { applyTitle() }
     configureSearch(next.search); updateEdge(); layoutChrome()
     // Switching title presentation at the top must show the expanded title, not the
     // compact one UIKit keeps for an unchanged offset.
@@ -328,6 +519,8 @@ public final class ALGNavigationView: UIView, UISearchResultsUpdating, UISearchB
   }
   private func applyTitle() {
     guard let config else { return }
+    // An explicit title/mode/typography change supersedes the saved native mode.
+    compactSearchTitleMode = nil; compactSearchScrollPosition = nil
     let item = screen.navigationItem, bar = navigation.navigationBar
     item.title = config.title; bar.accessibilityIdentifier = config.titleTransition == "morph" || config.slots[1].present ? nil : config.titleTestID
     slotHosts[0].accessibilityIdentifier = config.titleTestID
@@ -335,9 +528,17 @@ public final class ALGNavigationView: UIView, UISearchResultsUpdating, UISearchB
     let weights: [String: UIFont.Weight] = ["regular": .regular, "medium": .medium, "semibold": .semibold, "bold": .bold]
     let small = UIFontMetrics(forTextStyle: .headline).scaledFont(for: .systemFont(ofSize: config.titleFont.compactSize, weight: weights[config.titleFont.weight ?? "semibold"] ?? .semibold), maximumPointSize: config.titleFont.compactSize * 1.16, compatibleWith: traitCollection)
     let large = UIFontMetrics(forTextStyle: .largeTitle).scaledFont(for: .systemFont(ofSize: config.titleFont.largeSize, weight: weights[config.titleFont.weight ?? "bold"] ?? .bold), compatibleWith: traitCollection)
+    // Derived from the bar's appearances as first seen, so removing a band restores them.
+    if baseAppearances == nil { baseAppearances = (bar.standardAppearance.copy(), bar.compactAppearance?.copy()) }
+    let base = baseAppearances!
     for compact in [false, true] {
-      let appearance = (compact ? bar.compactAppearance ?? bar.standardAppearance : bar.standardAppearance).copy()
+      let appearance = (compact ? base.compact ?? base.standard : base.standard).copy()
       appearance.titleTextAttributes[.font] = small; appearance.largeTitleTextAttributes[.font] = large
+      // Before iOS 26 a styled hard band is the bar's own background (iOS 26 draws `band`).
+      if #unavailable(iOS 26.0), config.topEdge == "hard", let band = config.topBand, band.system != true, band.customized {
+        appearance.backgroundEffect = UIAccessibility.isReduceTransparencyEnabled ? nil : band.blurStyle.map { UIBlurEffect(style: $0) }
+        appearance.backgroundColor = band.tint.withAlphaComponent(UIAccessibility.isReduceTransparencyEnabled ? max(band.tintOpacity, 0.94) : band.tintOpacity)
+      }
       // The component's boundary follows the whole header, including accessories.
       // Suppress the bar's own shadow so it cannot bisect that region.
       appearance.shadowColor = .clear; appearance.shadowImage = UIImage()
@@ -363,7 +564,7 @@ public final class ALGNavigationView: UIView, UISearchResultsUpdating, UISearchB
     }
     setNeedsLayout()
   }
-  @objc private func accessibilityChanged() { rebuildActions(); morph.layout(); updateEdge() }
+  @objc private func accessibilityChanged() { rebuildActions(); morph.layout(); updateEdge(); applyTitle() }
   private func icon(_ symbol: ALGSymbol?, _ source: ALGImageSource?, key: String, original: Bool = false, circle: Bool = false) -> UIImage? {
     let loader = loaders[key] ?? ALGIconLoader(); loaders[key] = loader
     loader.load(source) { [weak self] in self?.rebuildActions(forceImages: true) }
@@ -446,20 +647,36 @@ public final class ALGNavigationView: UIView, UISearchResultsUpdating, UISearchB
     guard let controller = searchController else { return }
     // Let UIKit finish the dismissal animation first; removal completes in didDismissSearchController.
     if controller.isActive { pendingSearchRemoval = true; controller.isActive = false; return }
+    pendingSearchRemoval = false; pendingActivation = false; transientSearch = false
+    titleReveal?.cancel(); titleReveal = nil
+    // The field fades out before the header closes over it (a snapshot would lose its glass).
+    let bar = controller.searchBar
+    if window != nil, bar.window != nil, bar.alpha > 0, !UIAccessibility.isReduceMotionEnabled {
+      guard fadingSearch !== controller else { return }
+      fadingSearch = controller
+      UIView.animate(withDuration: 0.12, delay: 0, options: [.curveEaseIn], animations: { bar.alpha = 0 }) { [weak self] _ in
+        guard let self, self.fadingSearch === controller else { return }
+        self.fadingSearch = nil; self.removeSearch()
+      }
+      return
+    }
+    fadingSearch = nil
     let keepTop = isAtTop
-    pendingSearchRemoval = false; pendingActivation = false
-    screen.navigationItem.searchController = nil; searchController = nil; morph.setSearching(false); lastSearchText = ""
-    relayoutHeader(keepTop: keepTop)
+    changeSearchBar(keepTop: keepTop) {
+      self.screen.navigationItem.searchController = nil; self.searchController = nil; self.morph.setSearching(false); self.lastSearchText = ""
+    }
   }
   private func configureSearch(_ value: NavigationSearch?) {
     guard let value else { removeSearch(); return }
     pendingSearchRemoval = false
+    // Search came back while its field was fading out: keep it.
+    if let fading = fadingSearch { fadingSearch = nil; fading.searchBar.layer.removeAllAnimations(); fading.searchBar.alpha = 1 }
     var added = false
     if searchController == nil {
       let controller = NavigationSearchController(searchResultsController: nil)
       controller.obscuresBackgroundDuringPresentation = false; controller.searchResultsUpdater = self; controller.searchBar.delegate = self; controller.delegate = self
       controller.onLayout = { [weak self] in self?.layoutChrome() }
-      searchController = controller; screen.navigationItem.searchController = controller; added = true
+      searchController = controller; added = true
     }
     guard let controller = searchController else { return }
     if #available(iOS 16.0, *) {
@@ -482,8 +699,15 @@ public final class ALGNavigationView: UIView, UISearchResultsUpdating, UISearchB
     if value.eventCount >= searchEventCount && controller.searchBar.text != value.value { applyingSearch = true; controller.searchBar.text = value.value; lastSearchText = value.value; applyingSearch = false }
     if value.active == true, !controller.isActive { pendingActivation = true; activateSearchWhenReady() }
     else if value.active == false, controller.isActive { pendingActivation = false; controller.isActive = false }
-    // A visible search bar added outside a transition must push the title and list down smoothly.
-    if added && value.active != true { relayoutHeader(keepTop: isAtTop) }
+    // A visible search bar added outside a transition must push the list down, title unchanged.
+    // Added already active (a search icon), it is installed and activated in the same run-loop
+    // turn: no frame shows the inactive field (or a title over it), and UIKit animates the
+    // activation from the expanded header.
+    if added, value.active == true {
+      transientSearch = true
+      changeSearchBar(keepTop: isAtTop, .instant) { self.screen.navigationItem.searchController = controller }
+      if controller.searchBar.window != nil { activateSearch(controller) }
+    } else if added { changeSearchBar(keepTop: isAtTop) { self.screen.navigationItem.searchController = controller } }
   }
   /// UIKit ignores activation before a stacked search bar is in a window, so the
   /// request retries briefly; integrated placements may keep the bar out of the
@@ -499,14 +723,17 @@ public final class ALGNavigationView: UIView, UISearchResultsUpdating, UISearchB
       self.activationScheduled = false
       guard self.pendingActivation, let controller = self.searchController, self.window != nil else { self.activationAttempts = 0; return }
       if controller.searchBar.window == nil && self.activationAttempts < 8 { self.activationAttempts += 1; self.activateSearchWhenReady(); return }
-      self.pendingActivation = false; self.activationAttempts = 0
-      guard !controller.isActive else { return }
-      self.focusOnPresent = true; controller.isActive = true
-      // UIKit accepts first responder once activation has started; didPresent retries if it is still refused.
-      DispatchQueue.main.async { [weak self] in
-        guard let self, let controller = self.searchController, controller.isActive else { return }
-        if controller.searchBar.becomeFirstResponder() { self.focusOnPresent = false }
-      }
+      self.activateSearch(controller)
+    }
+  }
+  private func activateSearch(_ controller: UISearchController) {
+    pendingActivation = false; activationAttempts = 0
+    guard !controller.isActive else { return }
+    focusOnPresent = true; controller.isActive = true
+    // UIKit accepts first responder once activation has started; didPresent retries if it is still refused.
+    DispatchQueue.main.async { [weak self] in
+      guard let self, let controller = self.searchController, controller.isActive else { return }
+      if controller.searchBar.becomeFirstResponder() { self.focusOnPresent = false }
     }
   }
   public func updateSearchResults(for searchController: UISearchController) {
@@ -529,6 +756,8 @@ public final class ALGNavigationView: UIView, UISearchResultsUpdating, UISearchB
     layout()
   }
   public func willPresentSearchController(_ searchController: UISearchController) {
+    compactSearchScrollPosition = nil; searchDismissing = false
+    preserveCompactSearchTitle()
     onSearch?("focus", searchController.searchBar.text ?? "", searchEventCount)
     layoutSearchTransition(searchController, searching: true)
   }
@@ -537,10 +766,29 @@ public final class ALGNavigationView: UIView, UISearchResultsUpdating, UISearchB
     focusOnPresent = false
     layoutChrome()
   }
-  public func willDismissSearchController(_ searchController: UISearchController) { layoutSearchTransition(searchController, searching: false) }
+  public func willDismissSearchController(_ searchController: UISearchController) {
+    searchDismissing = true
+    preserveCompactSearchTitle()
+    // A morph title would appear below the returning field and then move when the app removes
+    // the search: for a search opened by the app, it stays hidden until then.
+    layoutSearchTransition(searchController, searching: morph.enabled && transientSearch)
+  }
   public func didDismissSearchController(_ searchController: UISearchController) {
     onSearch?("blur", searchController.searchBar.text ?? "", searchEventCount)
-    morph.setSearching(false); layoutChrome()
+    if morph.enabled, transientSearch, !pendingSearchRemoval {
+      // Usually the app removes the search now (`onActiveChange`); `removeSearch` then shows the
+      // title in its final place. If the search stays, the title fades in below it.
+      let reveal = DispatchWorkItem { [weak self] in
+        guard let self, self.searchController?.isActive == false, self.morph.searching else { return }
+        self.transientSearch = false; self.titleReveal = nil
+        self.changeSearchBar(keepTop: self.isAtTop) { self.morph.setSearching(false) }
+      }
+      titleReveal?.cancel(); titleReveal = reveal
+      DispatchQueue.main.asyncAfter(deadline: .now() + 0.35, execute: reveal)
+    } else { morph.setSearching(false) }
+    layoutChrome()
+    searchDismissing = false
+    if compactSearchTitleMode != nil, let scroll { compactSearchScrollPosition = scroll.contentOffset.y + scroll.adjustedContentInset.top }
     if pendingSearchRemoval { removeSearch() }
   }
 }

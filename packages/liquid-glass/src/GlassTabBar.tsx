@@ -1,6 +1,7 @@
 import React, {useMemo, useReducer, useLayoutEffect, useState} from 'react';
 import {View, Platform, findNodeHandle, useWindowDimensions, type ColorValue} from 'react-native';
 import adaptiveHeight from './adaptiveHeight';
+import {isLiquidGlassSupported} from './support';
 import NativeTabs from './specs/ALGTabsNativeComponent';
 import {resolveTabImage, staticColor, validateTabs} from './validateTabs';
 import type {GlassTabBarProps, GlassTabItem} from './types';
@@ -32,7 +33,7 @@ export default function GlassTabBar({items, value, onValueChange, onTabReselect,
     const tags = JSON.stringify(Object.fromEntries(items.map(item => [item.id, item.scrollViewRef?.current ? findNodeHandle(item.scrollViewRef.current as never) ?? -1 : -1])));
     setTags(current => current === tags ? current : tags);
   });
-  const nativeAccessory = Platform.OS === 'ios' && Number(Platform.Version) >= 26;
+  const nativeAccessory = isLiquidGlassSupported();
   const {fontScale} = useWindowDimensions();
   validateTabs(items, value);
   const itemsJSON = useMemo(() => nativeItems(items, inactiveTintColor), [items, inactiveTintColor]);

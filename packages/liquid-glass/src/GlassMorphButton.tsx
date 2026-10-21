@@ -10,6 +10,6 @@ export default function GlassMorphButton({content, anchor = 'trailing', onPress,
   const height = GlassMetrics.control[controlSize];
   return <NativeControl {...props} minimumHeight={height} style={[{alignSelf: anchor === 'trailing' ? 'flex-end' : anchor === 'leading' ? 'flex-start' : 'center'}, style]}
     configJSON={JSON.stringify({mode: 'morph', items: controlItems([item]).map(entry => ({...entry,
-      title: content.kind === 'title' ? content.title : undefined})), height, anchor, disabled, colorScheme, forceFallback})}
+      title: content.kind === 'title' ? content.title : undefined})), height, anchor, disabled, colorScheme, forceFallback, swiftUIMorph: true})}
     onControlAction={({nativeEvent: {id, action}}) => {if (!disabled) controlAction([item], id, action, () => onPress?.());}} />;
 }

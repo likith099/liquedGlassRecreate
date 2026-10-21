@@ -36,9 +36,9 @@ where glass is not available.
   custom corner radius and colours) with sections, checkmarks and destructive
   items; a native tab bar with badges, custom artwork and per-tab colours.
 - **New in 0.2.0:** glass that changes shape instead of disappearing — `GlassMorphButton`
-  (⋯ → "Select"), `GlassPresence` (materialize / dematerialize) and `GlassHeaderHost`, which
-  morphs header controls across native-stack pushes and pops and scrubs with the swipe-back
-  gesture. Also `GlassIconGroup` (several icons in one capsule), `GlassPillBar` (header scope
+  (⋯ → "Select", with iOS 26's own blur-and-reshape morph), `GlassPresence` (materialize /
+  dematerialize) and `GlassHeaderHost`, which morphs header controls across native-stack pushes
+  and pops and follows the swipe-back gesture. Also `GlassIconGroup` (several icons in one capsule), `GlassPillBar` (header scope
   pills), full SF Symbol control (weight, scale, rendering, replace transitions, bounce), badges
   that ride the glass, standard `controlSize`s with exported `GlassMetrics`, tab bar
   minimization and bottom accessories. Controls are measured natively during layout, so they

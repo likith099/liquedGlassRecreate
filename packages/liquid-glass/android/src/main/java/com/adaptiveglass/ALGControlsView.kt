@@ -75,6 +75,45 @@ class ALGControlsView(private val reactContext: ThemedReactContext) : FrameLayou
   private val isOverlay get() = mode == "morph" || mode == "header"
   /** Header slots keep one capsule across screens; `id` stays route-qualified for presses. */
   private fun slotKey(item: JSONObject) = item.optString("slot").ifEmpty { item.getString("id") }
+  /** Header: the focused screen's slot keys → the capsules they took over (see [pairSlots]). */
+  private var slotAliases = mutableMapOf<String, String>()
+  private var shownRoute: String? = null
+  private var shownItems = listOf<JSONObject>()
+  /** The same control on two screens: same side and visible content (badge and tint may change). */
+  private fun sameContent(a: JSONObject, b: JSONObject) =
+    listOf("side", "title", "androidIcon").all { a.optString(it) == b.optString(it) } &&
+      listOf("symbol", "imageSource").all { a.optJSONObject(it)?.toString() == b.optJSONObject(it)?.toString() }
+  /**
+   * Header slot pairing when the focused screen changes, as the system bar pairs its items: a
+   * named slot on both screens keeps its capsule and morphs its content; a control on both screens
+   * (same side and content, at any position or slot name) keeps its capsule and stays still, like
+   * a back button; the rest pair by position on each side and morph. Within a screen the pairing
+   * holds, so a carried control still morphs when its own content changes. Rewrites `slot`.
+   */
+  private fun pairSlots(items: JSONArray) {
+    val next = (0 until items.length()).map { items.getJSONObject(it) }
+    val route = config.optString("active").ifEmpty { null }
+    if (route != shownRoute) {
+      shownRoute = route; slotAliases = mutableMapOf()
+      val taken = mutableSetOf<String>()
+      fun claim(item: JSONObject, key: String) { slotAliases[slotKey(item)] = key; taken.add(key) }
+      val shownKeys = shownItems.map(::slotKey).toSet()
+      next.filter { it.optBoolean("slotNamed") && slotKey(it) in shownKeys }.forEach { claim(it, slotKey(it)) }
+      next.filter { slotKey(it) !in slotAliases }.forEach { item ->
+        shownItems.firstOrNull { slotKey(it) !in taken && sameContent(it, item) }?.let { claim(item, slotKey(it)) }
+      }
+      next.filter { slotKey(it) !in slotAliases }.forEach { item ->
+        shownItems.firstOrNull { slotKey(it) !in taken && it.optString("side") == item.optString("side") }?.let { claim(item, slotKey(it)) }
+      }
+    }
+    val used = next.mapNotNull { slotAliases[slotKey(it)] }.toMutableSet()
+    for (item in next) {
+      val original = slotKey(item)
+      val key = slotAliases[original] ?: generateSequence(original) { it + "\u0002" }.first { it !in used }
+      used.add(key); slotAliases[original] = key; item.put("slot", key)
+    }
+    shownItems = next
+  }
   private fun animationsEnabled() = isAttachedToWindow && (android.os.Build.VERSION.SDK_INT < 26 || ValueAnimator.areAnimatorsEnabled())
   init {
     clipChildren = false; clipToPadding = false
@@ -92,6 +131,7 @@ class ALGControlsView(private val reactContext: ThemedReactContext) : FrameLayou
     val overlay = isOverlay
     scroll.visibility = if (overlay) View.GONE else View.VISIBLE
     val items = config.optJSONArray("items") ?: JSONArray()
+    if (mode == "header") pairSlots(items)
     // The same widths React Native measured for this view (see ALGControlsGeometry).
     val geometry = ALGControlsGeometry.compute(context, config)
     val keys = (0 until items.length()).map { slotKey(items.getJSONObject(it)) }.toSet()
@@ -187,7 +227,15 @@ class ALGControlsView(private val reactContext: ThemedReactContext) : FrameLayou
         else if (!TabImageLoader.hasFailed(uri)) TabImageLoader.load(context, uri) { applied = ""; applyConfiguration() }
       }
       val padding = dp(if (mode == "group") 14.0 else config.optDouble("horizontalPadding", 15.0))
-      button.setPadding(padding, 0, padding, 0)
+      // A selected pill keeps its regular-label width (ALGControlsGeometry): the bold label takes the
+      // difference from its padding, so it never wraps or moves the row.
+      val titlePadding = if (mode == "pills" && hasTitle && emphasized) {
+        val probe = android.text.TextPaint(button.paint)
+        probe.typeface = android.graphics.Typeface.DEFAULT; val regular = probe.measureText(titleText)
+        probe.typeface = android.graphics.Typeface.DEFAULT_BOLD; val bold = probe.measureText(titleText)
+        maxOf(dp(4.0), padding - kotlin.math.ceil((bold - regular) / 2.0).toInt())
+      } else padding
+      button.setPadding(titlePadding, 0, titlePadding, 0)
       val h = dp(maxOf(44.0, config.optDouble("height", 44.0), (labelSize + 20).toDouble()))
       // An icon-only control centres its glyph in its own view; a compound drawable sits after the
       // padding and lands off-centre in a 44 dp circle.

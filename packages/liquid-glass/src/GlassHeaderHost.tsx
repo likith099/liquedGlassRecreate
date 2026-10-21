@@ -4,6 +4,8 @@ import NativeControl from './NativeControl';
 import {controlItems, controlAction} from './controlConfig';
 import {GlassMetrics} from './GlassMetrics';
 import type {GlassControlItem, GlassMorphContent, GlassViewProps} from './types';
+import {glassHeaderOptions} from './nativeHeaderOptions';
+import {isLiquidGlassSupported} from './support';
 export type GlassHeaderItem = GlassMorphContent & {slot?: string; onPress?: () => void; disabled?: boolean; testID?: string};
 export interface GlassHeaderOptions {
   /** Use the navigator's route.key. Omit only for a single mounted screen. */
@@ -12,7 +14,20 @@ export interface GlassHeaderOptions {
   active?: boolean;
   leading?: readonly GlassHeaderItem[];
   trailing?: readonly GlassHeaderItem[];
+  /**
+   * iOS 26+: pass the screen's React Navigation `navigation` (native stack, react-native-screens
+   * 4.2x) to show these controls as UIKit bar button items in the stack's own navigation bar.
+   * UIKit then morphs them between screens exactly as system apps do, scrubs the morph with the
+   * swipe back and moves VoiceOver focus. `kind: 'back'` becomes UIKit's back button (it pops
+   * the stack itself). Elsewhere the host's overlay draws them.
+   */
+  navigation?: {setOptions: (options: object) => void};
+  /** Native header only: the bar title. Defaults to none. */
+  title?: string;
 }
+/** iOS 26+ with a `navigation` object: header controls are UIKit bar items. */
+const nativeBarItems = (options: GlassHeaderOptions) =>
+  isLiquidGlassSupported() && typeof options.navigation?.setOptions === 'function';
 export interface GlassHeaderHostProps extends ViewProps {
   children: React.ReactNode;
   /** Safe-area top inset supplied by the application. */
@@ -45,14 +60,16 @@ export function GlassHeaderHost({children, topInset = 0, colorScheme = 'system',
     const control: GlassControlItem = {...item, id: `${routeOf(entry)}\u0001${slot}`,
       ...(item.kind === 'back' ? {symbol: {name: 'chevron.backward', weight: 'semibold' as const, pointSize: GlassMetrics.symbol.backPointSize, scale: 'large' as const}, androidIcon: 'alg_back'} : {})};
     controls.push(control); handlers.set(control.id, item.onPress);
-    return {...controlItems([control])[0], side, slot, title: item.kind === 'title' ? item.title : undefined};
+    // Native pairing across screens: a named slot keeps its glass; unnamed ones pair by content, then position.
+    return {...controlItems([control])[0], side, slot, slotNamed: item.slot !== undefined || undefined,
+      title: item.kind === 'title' ? item.title : undefined};
   }));
   const routes = registrations.map(entry => ({key: routeOf(entry), items: itemsFor(entry)}));
   const activeKey = active ? routeOf(active) : undefined;
   const items = routes.find(route => route.key === activeKey)?.items ?? [];
   return <Context.Provider value={registry}><View {...props} style={[{flex: 1}, style]}>{children}
     <NativeControl minimumHeight={44} pointerEvents="box-none" style={{position: 'absolute', left: 0, right: 0, top: topInset, width: '100%', height: 44}}
-      configJSON={JSON.stringify({mode: 'header', items, routes, active: activeKey, height: 44, contentInset: GlassMetrics.pageMargin(width), colorScheme})}
+      configJSON={JSON.stringify({mode: 'header', items, routes, active: activeKey, height: 44, contentInset: GlassMetrics.pageMargin(width), colorScheme, swiftUIMorph: true})}
       onControlAction={({nativeEvent: {id, action}}) => controlAction(controls, id, action, chosen => handlers.get(chosen)?.())} />
   </View></Context.Provider>;
 }
@@ -63,7 +80,13 @@ export function useGlassHeader(options: GlassHeaderOptions) {
   if (!registry) throw new Error('useGlassHeader must be used inside GlassHeaderHost.');
   const token = useId();
   const latest = useRef(options); latest.current = options;
+  const native = nativeBarItems(options);
+  useLayoutEffect(() => {
+    if (native) latest.current.navigation?.setOptions(glassHeaderOptions(latest.current));
+  }, [native, options.navigation, options.leading, options.trailing, options.title]);
   // A screen update changes the registry once; provider renders do not repeat registration.
-  useLayoutEffect(() => { registry.set(token, latest.current); }, [registry, token, options.routeKey, options.active, options.leading, options.trailing]);
+  // A screen whose controls are native bar items registers none, so the overlay stays clear.
+  useLayoutEffect(() => { registry.set(token, native ? {...latest.current, leading: [], trailing: []} : latest.current); },
+    [registry, token, native, options.routeKey, options.active, options.leading, options.trailing]);
   useLayoutEffect(() => () => registry.set(token, null), [registry, token]);
 }

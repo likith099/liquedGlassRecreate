@@ -75,6 +75,13 @@ class ALGNavigationView(private val reactContext: ThemedReactContext) : FrameLay
   private val leadingViews = mutableListOf<View>()
   private val headerSize = 56
   private var relayoutPending = false
+  /** Hard top edge band (`edgeEffect.band`): app bar colour and divider once the list has scrolled. */
+  private val divider = View(themed).apply { visibility = INVISIBLE }
+  private var headerBackground = Color.TRANSPARENT
+  private var dark = false
+  private var bandScroll: java.lang.ref.WeakReference<View>? = null
+  private var bandShown: Boolean? = null
+  private val bandListener = android.view.ViewTreeObserver.OnScrollChangedListener { updateBand(false) }
   private fun dp(value: Double) = (value * resources.displayMetrics.density).toInt()
   private fun px(value: Int) = value / resources.displayMetrics.density.toDouble()
   private fun emit(name: String, data: WritableMap) {
@@ -100,6 +107,7 @@ class ALGNavigationView(private val reactContext: ThemedReactContext) : FrameLay
     appBar.addView(largeSubtitleSlot, AppBarLayout.LayoutParams(-1, 0))
     appBar.addView(searchBar, AppBarLayout.LayoutParams(-1, dp(56.0)))
     appBar.addView(accessory, AppBarLayout.LayoutParams(-1, 0))
+    appBar.addView(divider, AppBarLayout.LayoutParams(-1, maxOf(1, (resources.displayMetrics.density / 2).toInt())))
     appBar.isLiftOnScroll = true
     searchView.setupWithSearchBar(searchBar)
     searchResults.addView(scopes, LinearLayout.LayoutParams(-1, -2))
@@ -133,7 +141,37 @@ class ALGNavigationView(private val reactContext: ThemedReactContext) : FrameLay
     }
     appBar.addOnOffsetChangedListener(AppBarLayout.OnOffsetChangedListener { _, _ -> reportInsets() })
   }
-  override fun onAttachedToWindow() { super.onAttachedToWindow(); ViewCompat.requestApplyInsets(this) }
+  override fun onAttachedToWindow() { super.onAttachedToWindow(); ViewCompat.requestApplyInsets(this); viewTreeObserver.addOnScrollChangedListener(bandListener) }
+  override fun onDetachedFromWindow() { viewTreeObserver.removeOnScrollChangedListener(bandListener); super.onDetachedFromWindow() }
+  /** The list under the header: the first vertical scroll container in the screen's content. */
+  private fun scrollingChild(): View? {
+    bandScroll?.get()?.takeIf { it.isAttachedToWindow }?.let { return it }
+    val queue = ArrayDeque<View>(); queue.add(content)
+    while (queue.isNotEmpty()) {
+      val view = queue.removeFirst()
+      if (view !== content && (view is android.widget.ScrollView || view is androidx.core.view.ScrollingView)) { bandScroll = java.lang.ref.WeakReference(view); return view }
+      if (view is ViewGroup) for (i in 0 until view.childCount) queue.add(view.getChildAt(i))
+    }
+    return null
+  }
+  /**
+   * Material counterpart of the iOS hard band: content does not pass beneath the app bar here, so
+   * once the list has scrolled the bar takes the band colour (mixed over the screen background by
+   * `opacity`; default a surface-container tone) and shows the divider. `system` keeps the colour.
+   */
+  private fun updateBand(force: Boolean) {
+    val hard = config.optString("topEdge") == "hard"
+    val band = config.optJSONObject("topBand") ?: JSONObject()
+    val shown = hard && scrollingChild()?.canScrollVertically(-1) == true
+    if (!force && shown == bandShown) return
+    bandShown = shown
+    val tone = color(band, "color", if (dark) Color.rgb(44, 46, 54) else Color.rgb(232, 234, 240))
+    val opacity = band.optDouble("opacity", if (band.has("color")) 0.45 else 1.0).toFloat().coerceIn(0f, 1f)
+    val fill = if (shown && !band.optBoolean("system")) androidx.core.graphics.ColorUtils.blendARGB(headerBackground, tone, opacity) else headerBackground
+    appBar.setBackgroundColor(fill); toolbar.setBackgroundColor(fill)
+    divider.setBackgroundColor(color(band, "separator", if (dark) Color.argb(64, 255, 255, 255) else Color.argb(40, 0, 0, 0)))
+    divider.visibility = if (shown && !band.optBoolean("hideSeparator")) VISIBLE else INVISIBLE
+  }
   override fun requestLayout() {
     super.requestLayout()
     if (!relayoutPending) { relayoutPending = true; post { relayoutPending = false; if (width > 0 && height > 0) { measure(MeasureSpec.makeMeasureSpec(width, MeasureSpec.EXACTLY), MeasureSpec.makeMeasureSpec(height, MeasureSpec.EXACTLY)); layout(left, top, right, bottom) } } }
@@ -157,6 +195,7 @@ class ALGNavigationView(private val reactContext: ThemedReactContext) : FrameLay
     val background = color(config, "background", if (dark) Color.rgb(18,20,26) else Color.rgb(247,248,252))
     val tint = color(config, "tint", ink)
     setBackgroundColor(background); appBar.setBackgroundColor(background); toolbar.setBackgroundColor(background); bottomBar.setBackgroundColor(background)
+    headerBackground = background; this.dark = dark; updateBand(true)
     toolbar.setTitleTextColor(ink); toolbar.setSubtitleTextColor(ink); toolbar.setNavigationIconTint(tint)
     val slots = config.optJSONArray("slots")
     fun slot(index: Int) = slots?.optJSONObject(index)

@@ -1,5 +1,6 @@
 """Material header: collapse, slots, nested navigation, scopes and refresh integration."""
-import runpy, time
+import io, runpy, subprocess, time
+from PIL import Image
 from pathlib import Path
 h = runpy.run_path(str(Path(__file__).with_name('verify-android-menu.py')))
 adb, tree, find, bounds = (h[k] for k in ('adb', 'tree', 'find', 'bounds'))
@@ -13,6 +14,20 @@ def option(value):
 tap('open-search-demo'); tap('open-scroll-header'); tap('nav-review')
 find(tree(), 'review-close')
 adb('shell','input','swipe',650,1800,650,600,450); time.sleep(.6)
+# Hard band (edgeEffect.band): once the list has scrolled, the app bar takes the band colour.
+def bar_rgb():
+    png = subprocess.check_output([h['ADB'], '-s', h['SERIAL'], 'exec-out', 'screencap', '-p'])
+    image = Image.open(io.BytesIO(png)).convert('RGB')
+    x1, y1, x2, y2 = bounds(find(tree(), 'review-options'))
+    pixels = list(image.crop((x1 - 140, y1 + 8, x1 - 60, y2 - 8)).getdata())
+    return [sum(p[i] for p in pixels) / len(pixels) for i in range(3)]
+bands = {'default': bar_rgb()}
+for name in ('lighter', 'tinted', 'system', 'default'):
+    option(f'Hard band: {name}'); time.sleep(.6); bands[name + ('-again' if name == 'default' else '')] = bar_rgb()
+print('band colours', {k: [round(c) for c in v] for k, v in bands.items()})
+assert bands['tinted'][2] > bands['tinted'][0] + 10, 'The band takes the app colour'
+assert max(abs(a - b) for a, b in zip(bands['default'], bands['system'])) > 3, 'The default band changes the bar colour; system keeps it'
+assert max(abs(a - b) for a, b in zip(bands['default'], bands['default-again'])) <= 2, 'The default band returns'
 tap('review-top'); find(tree(),'Contact 1')
 option('Large in bar'); option('Show pinned filter'); find(tree(),'Filter: all')
 option('Custom title and subtitles'); find(tree(),'◉  Custom contact')

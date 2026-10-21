@@ -55,6 +55,8 @@ final class GlassInteractionTests: XCTestCase {
     let surfaces = app.otherElements["upgrade-surfaces"]
     XCTAssertTrue(surfaces.waitForExistence(timeout: 5)); Thread.sleep(forTimeInterval: 1)
     let first = surfaces.screenshot().image
+    let controls = app.otherElements["upgrade-control-buttons"], untinted = app.otherElements["upgrade-untinted-surfaces"]
+    let controlFirst = controls.screenshot().image, untintedFirst = untinted.screenshot().image
     // Warm-up cycle: the comparison below is between two returns to the same state.
     // Device glass keeps adapting for 1.5–3 s after a re-attach; compare settled states only.
     toggle.tap(); Thread.sleep(forTimeInterval: 0.3); toggle.tap(); Thread.sleep(forTimeInterval: 3.5)
@@ -66,6 +68,7 @@ final class GlassInteractionTests: XCTestCase {
     Thread.sleep(forTimeInterval: 2.5)
     let after = surfaces.screenshot().image
     Thread.sleep(forTimeInterval: 1); let afterStill = surfaces.screenshot().image
+    let controlAfter = controls.screenshot().image, untintedAfter = untinted.screenshot().image
     for (name, image) in [("reattach-before", before), ("reattach-after", after)] {
       let attachment = XCTAttachment(image: image); attachment.name = name; attachment.lifetime = .keepAlways; add(attachment)
     }
@@ -91,6 +94,11 @@ final class GlassInteractionTests: XCTestCase {
     // channels at 3/255. Device: each fresh effect lands within 17/255 of the earlier look
     // (iPhone 13 Pro, iOS 26.7.1); recorded in docs/upgrade-0.2.0.md.
     let settled = zip(b, pixels(afterStill)).map { abs(Int($0.0) - Int($0.1)) }.max() ?? 0
+    // Control: UIKit-owned UIButton glass, re-attached by the same screen swap (first state vs final).
+    let cf = pixels(controlFirst), ca = pixels(controlAfter)
+    let uf = pixels(untintedFirst), ua = pixels(untintedAfter)
+    print("ALG-INFO reattach-untinted-glass max=\(zip(uf, ua).map { abs(Int($0.0) - Int($0.1)) }.max() ?? 0) over2=\(zip(uf, ua).filter { abs(Int($0.0) - Int($0.1)) > 2 }.count) of=\(uf.count)")
+    print("ALG-INFO reattach-uikit-control max=\(zip(cf, ca).map { abs(Int($0.0) - Int($0.1)) }.max() ?? 0) over2=\(zip(cf, ca).filter { abs(Int($0.0) - Int($0.1)) > 2 }.count) of=\(cf.count) surfaceFirstVsAfter=\(zip(f, b).map { abs(Int($0.0) - Int($0.1)) }.max() ?? 0)")
     print("ALG-INFO reattach settled=\(settled)")
     XCTAssertEqual(noise, 0, "identical captures")
     XCTAssertLessThanOrEqual(settled, 2, "re-attached glass keeps changing")
@@ -302,10 +310,15 @@ final class GlassInteractionTests: XCTestCase {
     // A uniform material made this empty region grey (39/39/42). The native
     // soft edge preserves the backdrop while progressively softening list ink.
     let background = try meanColor(CGRect(x: 250, y: 10, width: 30, height: 20))
-    for (actual, expected) in zip(background, [18.0, 20.0, 26.0]) { XCTAssertEqual(actual, expected, accuracy: 8) }
     let avatar = try meanColor(CGRect(x: 38, y: 52, width: 8, height: 8))
     XCTAssertLessThan(avatar[0], 130, "Unprocessed scrolling content must not overlap header text")
-    XCTAssertGreaterThan(avatar[0], 30, "The effect must preserve underlying content, not paint an opaque panel")
+    if #available(iOS 26.0, *) {
+      for (actual, expected) in zip(background, [18.0, 20.0, 26.0]) { XCTAssertEqual(actual, expected, accuracy: 8) }
+      XCTAssertGreaterThan(avatar[0], 30, "The effect must preserve underlying content, not paint an opaque panel")
+    } else {
+      // Older iOS has no scroll edge effect: the documented fallback is a uniform material or fill.
+      XCTAssertLessThan(background.max()! - background.min()!, 12, "Older iOS: a uniform fallback panel, not tinted content")
+    }
     app.buttons["header-add"].tap()
     XCTAssertTrue(app.staticTexts["header-added"].label.contains("21"))
     app.buttons["header-reset"].tap()
@@ -575,21 +588,34 @@ final class GlassInteractionTests: XCTestCase {
     app.launch(); defer { app.terminate() }
     openAcceptance(app)
     let open = app.buttons["acc-open-stack"]; reveal(app, open); open.tap()
-    let primary = app.buttons["acc-header-primary"]
+    // iOS 26: UIKit bar items in the stack's navigation bar (found by label; bar items carry no
+    // test ID). Elsewhere: the host overlay's buttons (test IDs).
+    let native = false  // the acceptance stack uses the host overlay (SwiftUI glass morph on iOS 26)
+    let bar = app.navigationBars.firstMatch
+    var primary: XCUIElement { native ? bar.buttons.matching(NSPredicate(format: "label == 'More' OR label == 'Select'")).firstMatch : app.buttons["acc-header-primary"] }
+    var back: XCUIElement { native ? bar.buttons["Back"] : app.buttons["acc-header-back"] }
     XCTAssertTrue(primary.waitForExistence(timeout: 5)); XCTAssertEqual(primary.label, "More")
-    XCTAssertFalse(app.buttons["acc-header-back"].exists)
+    XCTAssertFalse(back.exists)
     Thread.sleep(forTimeInterval: 0.6); rect("header-home", primary.frame)
+    // Second trailing slot: left of the first, 12 pt apart; its menu reaches the screen.
+    let sort = app.buttons["acc-header-sort"]
+    XCTAssertTrue(sort.exists); rect("header-sort", sort.frame)
+    XCTAssertEqual(sort.frame.maxX, primary.frame.minX - 12, accuracy: 1, "First trailing item is outermost")
+    sort.tap(); let date = app.buttons["Date"]; XCTAssertTrue(date.waitForExistence(timeout: 3)); date.tap()
+    XCTAssertTrue(app.staticTexts["acc-home-state"].label.contains("Sort date"), "Header menu action reaches Home: \(app.staticTexts["acc-home-state"].label)")
+    Thread.sleep(forTimeInterval: 0.6)
     for stalled in [false, true] {
       if stalled { app.switches["acc-stall-push"].tap() }
       mark("push-\(stalled ? "stall" : "free")"); app.buttons["acc-row-All"].tap()
       XCTAssertTrue(app.staticTexts["acc-all-title"].waitForExistence(timeout: 5))
       Thread.sleep(forTimeInterval: 1.0)
-      XCTAssertEqual(primary.label, "Select"); XCTAssertTrue(app.buttons["acc-header-back"].isHittable)
-      rect("header-all-\(stalled ? "stall" : "free")", primary.frame); rect("header-back", app.buttons["acc-header-back"].frame)
+      XCTAssertEqual(primary.label, "Select"); XCTAssertTrue(back.isHittable)
+      XCTAssertFalse(app.buttons["acc-header-sort"].exists && app.buttons["acc-header-sort"].isHittable, "All has no sort slot")
+      rect("header-all-\(stalled ? "stall" : "free")", primary.frame); rect("header-back", back.frame)
       primary.tap(); XCTAssertTrue(app.staticTexts["acc-all-state"].label.contains("Selecting"), "Select reaches the All screen")
-      mark("pop-\(stalled ? "stall" : "free")"); app.buttons["acc-header-back"].tap()
+      mark("pop-\(stalled ? "stall" : "free")"); back.tap()
       XCTAssertTrue(app.buttons["acc-row-All"].waitForExistence(timeout: 5)); Thread.sleep(forTimeInterval: 1.0)
-      XCTAssertEqual(primary.label, "More"); XCTAssertFalse(app.buttons["acc-header-back"].exists)
+      XCTAssertEqual(primary.label, "More"); XCTAssertFalse(back.exists)
     }
     // Interactive swipe back: cancelled halfway, the header returns to All's controls.
     app.switches["acc-stall-push"].tap()
@@ -599,11 +625,17 @@ final class GlassInteractionTests: XCTestCase {
     Thread.sleep(forTimeInterval: 1.0)
     XCTAssertTrue(app.staticTexts["acc-all-title"].exists, "Cancelled swipe stays on All")
     XCTAssertEqual(primary.label, "Select", "Cancelled swipe restores All's header")
-    XCTAssertTrue(app.buttons["acc-header-back"].isHittable)
+    XCTAssertTrue(back.isHittable)
+    // Held further across, then released short of half way: the swipe cancels. All's controls
+    // stay for the whole swipe (the recording shows no change while held).
+    mark("swipe-cross"); edge.press(forDuration: 0.01, thenDragTo: edge.withOffset(CGVector(dx: 190, dy: 0)), withVelocity: .slow, thenHoldForDuration: 0.8)
+    Thread.sleep(forTimeInterval: 1.0)
+    XCTAssertTrue(app.staticTexts["acc-all-title"].exists, "Released short of half way, the swipe cancels")
+    XCTAssertEqual(primary.label, "Select", "A longer cancelled swipe keeps All's header")
     mark("swipe-complete"); edge.press(forDuration: 0.01, thenDragTo: edge.withOffset(CGVector(dx: 330, dy: 0)), withVelocity: .default, thenHoldForDuration: 0)
     XCTAssertTrue(app.buttons["acc-row-All"].waitForExistence(timeout: 5)); Thread.sleep(forTimeInterval: 1.0)
     XCTAssertEqual(primary.label, "More", "Completed swipe shows Home's header")
-    XCTAssertFalse(app.buttons["acc-header-back"].exists)
+    XCTAssertFalse(back.exists)
     primary.tap(); XCTAssertTrue(app.staticTexts["acc-home-state"].label.contains("More"), "Home's ⋯ reaches Home")
     // UIKit's own back indicator, for the G2 glyph comparison.
     app.buttons["acc-row-System"].tap()
@@ -613,6 +645,122 @@ final class GlassInteractionTests: XCTestCase {
     rect("uikit-back", systemBar.buttons.firstMatch.frame)
     let reference = XCTAttachment(screenshot: app.screenshot()); reference.name = "uikit-back"; reference.lifetime = .keepAlways; add(reference)
     systemBar.buttons.firstMatch.tap(); XCTAssertTrue(app.buttons["acc-row-All"].waitForExistence(timeout: 5))
+    app.buttons["acc-stack-close"].tap()
+  }
+
+  /// A screen with a back button pushed from a screen with one (Contacts' list → detail): the back
+  /// button and Share, present on both, keep their glass and stay still while Select morphs into
+  /// Edit. Item names its slots differently from All, so only content pairing keeps them. The
+  /// frames are asserted here; stillness during each transition comes from the recording
+  /// (`scripts/verify-static-header-video.py`, marks `push-from-home` = back appears, a positive
+  /// control, then `push-item` / `swipe-item` = must stay still).
+  func testAcceptanceSharedHeaderControls() throws {
+    continueAfterFailure = false
+    let app = XCUIApplication(); app.launchArguments += ["-ALGAppearance", "dark"]
+    app.launch(); defer { app.terminate() }
+    openAcceptance(app)
+    let open = app.buttons["acc-open-stack"]; reveal(app, open); open.tap()
+    XCTAssertTrue(app.buttons["acc-row-All"].waitForExistence(timeout: 5)); Thread.sleep(forTimeInterval: 0.8)
+    mark("push-from-home"); app.buttons["acc-row-All"].tap()
+    XCTAssertTrue(app.staticTexts["acc-all-title"].waitForExistence(timeout: 5)); Thread.sleep(forTimeInterval: 1.0)
+    let back = app.buttons["acc-header-back"], share = app.buttons["acc-header-share"]
+    XCTAssertTrue(back.isHittable); XCTAssertTrue(share.isHittable)
+    let backFrame = back.frame, shareFrame = share.frame
+    rect("shared-back-all", backFrame); rect("shared-share-all", shareFrame)
+    XCTAssertEqual(shareFrame.maxX, app.buttons["acc-header-primary"].frame.minX - 12, accuracy: 1, "Share sits inside Select")
+    for (index, how) in ["tap", "swipe"].enumerated() {
+      mark("push-item\(index == 0 ? "" : "-2")"); app.buttons["acc-row-Item\(index + 1)"].tap()
+      XCTAssertTrue(app.staticTexts["acc-item-title"].waitForExistence(timeout: 5)); Thread.sleep(forTimeInterval: 1.0)
+      let itemBack = app.buttons["acc-item-back"], edit = app.buttons["acc-item-primary"], itemShare = app.buttons["acc-item-share"]
+      XCTAssertEqual(edit.label, "Edit"); XCTAssertTrue(itemBack.isHittable); XCTAssertTrue(itemShare.isHittable)
+      XCTAssertFalse(back.exists, "All's back button became Item's (one glass)")
+      XCTAssertEqual(itemBack.frame, backFrame, "The back button does not move")
+      XCTAssertEqual(itemShare.frame.maxX, edit.frame.minX - 12, accuracy: 1, "Share follows Edit's width")
+      rect("shared-share-item", itemShare.frame)
+      itemShare.tap(); XCTAssertEqual(app.staticTexts["acc-item-state"].label, "Shared", "Carried Share reaches Item")
+      if how == "tap" {
+        mark("pop-item"); itemBack.tap()
+      } else {
+        let edge = app.coordinate(withNormalizedOffset: CGVector(dx: 0.005, dy: 0.5))
+        mark("swipe-item"); edge.press(forDuration: 0.01, thenDragTo: edge.withOffset(CGVector(dx: 330, dy: 0)), withVelocity: .default, thenHoldForDuration: 0)
+      }
+      XCTAssertTrue(app.staticTexts["acc-all-title"].waitForExistence(timeout: 5)); Thread.sleep(forTimeInterval: 1.0)
+      XCTAssertEqual(app.buttons["acc-header-primary"].label, "Select")
+      XCTAssertEqual(back.frame, backFrame, "\(how) back: the back button does not move"); XCTAssertEqual(share.frame, shareFrame)
+    }
+    share.tap(); XCTAssertTrue(app.staticTexts["acc-all-state"].label.hasSuffix("shared 1"), "Share reaches All again")
+    back.tap(); XCTAssertTrue(app.buttons["acc-row-All"].waitForExistence(timeout: 5)); Thread.sleep(forTimeInterval: 1.0)
+    XCTAssertFalse(back.exists); XCTAssertEqual(app.buttons["acc-header-primary"].label, "More")
+    app.buttons["acc-stack-close"].tap()
+  }
+
+  /// Header pairing beyond shared controls (owner, Oct 21): within a screen, back ⇄ Cancel and
+  /// Edit ⇄ Done morph in place while Share leaves and returns; across screens with different
+  /// controls and counts (Item [back | Share, Edit] → Details [Close | ⋯]) controls morph by
+  /// position and the extra one leaves; a shared control keeps its glass while its badge changes;
+  /// a cancelled swipe keeps the pairing. Each slot keeps its edge; presses reach the right screen.
+  func testAcceptanceHeaderPairingScenarios() throws {
+    continueAfterFailure = false
+    let app = XCUIApplication(); app.launchArguments += ["-ALGAppearance", "dark"]
+    app.launch(); defer { app.terminate() }
+    openAcceptance(app)
+    let open = app.buttons["acc-open-stack"]; reveal(app, open); open.tap()
+    XCTAssertTrue(app.buttons["acc-row-All"].waitForExistence(timeout: 5)); Thread.sleep(forTimeInterval: 0.8)
+    app.buttons["acc-row-All"].tap(); XCTAssertTrue(app.staticTexts["acc-all-title"].waitForExistence(timeout: 5)); Thread.sleep(forTimeInterval: 1.0)
+    // Badge on a shared control: All's Share counts shares; Item's has none.
+    let allShare = app.buttons["acc-header-share"]
+    allShare.tap(); Thread.sleep(forTimeInterval: 0.6)
+    XCTAssertEqual(allShare.value as? String, "1 new", "All's Share shows its badge (spoken as \"1 new\")")
+    app.buttons["acc-row-Item1"].tap(); XCTAssertTrue(app.staticTexts["acc-item-title"].waitForExistence(timeout: 5)); Thread.sleep(forTimeInterval: 1.0)
+    let back = app.buttons["acc-item-back"], primary = app.buttons["acc-item-primary"], share = app.buttons["acc-item-share"]
+    let cancel = app.buttons["acc-item-cancel"], state = app.staticTexts["acc-item-state"]
+    XCTAssertTrue(back.isHittable); XCTAssertTrue(share.isHittable)
+    XCTAssertEqual(share.value as? String ?? "", "", "Item's Share has no badge")
+    let backFrame = back.frame, primaryFrame = primary.frame, shareFrame = share.frame
+    rect("pair-leading", backFrame); rect("pair-primary", primaryFrame)
+
+    // Within a screen: back → Cancel and Edit → Done in place; Share leaves.
+    for exit in ["Done", "Cancel"] {
+      mark("edit-on-\(exit)"); primary.tap(); Thread.sleep(forTimeInterval: 1.0)
+      XCTAssertEqual(state.label, "Editing")
+      XCTAssertTrue(cancel.isHittable, "Back became Cancel"); XCTAssertFalse(back.exists)
+      XCTAssertEqual(cancel.frame.minX, backFrame.minX, accuracy: 1, "Cancel keeps the leading edge")
+      XCTAssertEqual(primary.label, "Done"); XCTAssertEqual(primary.frame.maxX, primaryFrame.maxX, accuracy: 1, "Done keeps the trailing edge")
+      XCTAssertFalse(share.exists, "Share leaves in edit mode")
+      mark("edit-off-\(exit)"); (exit == "Done" ? primary : cancel).tap(); Thread.sleep(forTimeInterval: 1.0)
+      XCTAssertEqual(state.label, exit == "Done" ? "Saved" : "Cancelled")
+      XCTAssertTrue(back.isHittable); XCTAssertFalse(cancel.exists)
+      XCTAssertEqual(back.frame, backFrame, "Back returns to its place"); XCTAssertEqual(primary.frame, primaryFrame)
+      XCTAssertEqual(primary.label, "Edit"); XCTAssertEqual(share.frame, shareFrame, "Share returns to its place")
+    }
+
+    // Across screens with different controls and counts.
+    let close = app.buttons["acc-details-close"], more = app.buttons["acc-details-more"]
+    mark("push-details"); app.buttons["acc-item-details"].tap()
+    XCTAssertTrue(app.staticTexts["acc-details-title"].waitForExistence(timeout: 5)); Thread.sleep(forTimeInterval: 1.0)
+    XCTAssertTrue(close.isHittable); XCTAssertEqual(close.label, "Close"); XCTAssertFalse(back.exists)
+    XCTAssertEqual(close.frame.minX, backFrame.minX, accuracy: 1, "Close takes the back button's place")
+    XCTAssertEqual(more.frame.maxX, primaryFrame.maxX, accuracy: 1, "⋯ takes Edit's place at the trailing edge")
+    XCTAssertFalse(share.exists, "Details has no Share")
+    more.tap(); XCTAssertEqual(app.staticTexts["acc-details-state"].label, "More", "⋯ reaches Details")
+    mark("pop-details"); close.tap()
+    XCTAssertTrue(app.staticTexts["acc-item-title"].waitForExistence(timeout: 5)); Thread.sleep(forTimeInterval: 1.0)
+    XCTAssertEqual(back.frame, backFrame); XCTAssertEqual(primary.frame, primaryFrame); XCTAssertEqual(share.frame, shareFrame)
+    share.tap(); XCTAssertEqual(state.label, "Shared", "Share reaches Item after Details")
+
+    // A cancelled swipe back keeps the pairing: edit mode still morphs in place afterwards.
+    let edge = app.coordinate(withNormalizedOffset: CGVector(dx: 0.005, dy: 0.5))
+    mark("swipe-cancel-item"); edge.press(forDuration: 0.01, thenDragTo: edge.withOffset(CGVector(dx: 120, dy: 0)), withVelocity: .slow, thenHoldForDuration: 0.4)
+    Thread.sleep(forTimeInterval: 1.0)
+    XCTAssertTrue(app.staticTexts["acc-item-title"].exists, "Cancelled swipe stays on Item")
+    XCTAssertEqual(back.frame, backFrame); XCTAssertEqual(share.frame, shareFrame)
+    primary.tap(); Thread.sleep(forTimeInterval: 1.0)
+    XCTAssertEqual(cancel.frame.minX, backFrame.minX, accuracy: 1); XCTAssertEqual(primary.label, "Done")
+    cancel.tap(); Thread.sleep(forTimeInterval: 1.0)
+    // Back to All: its Share still carries the badge.
+    back.tap(); XCTAssertTrue(app.staticTexts["acc-all-title"].waitForExistence(timeout: 5)); Thread.sleep(forTimeInterval: 1.0)
+    XCTAssertEqual(allShare.value as? String, "1 new", "All's badge is back with its Share")
+    app.buttons["acc-header-back"].tap(); XCTAssertTrue(app.buttons["acc-row-All"].waitForExistence(timeout: 5))
     app.buttons["acc-stack-close"].tap()
   }
 
@@ -720,6 +868,262 @@ final class GlassInteractionTests: XCTestCase {
     option("Hide pinned filter")
     XCTAssertFalse(accessory.exists)
     app.buttons["review-close"].tap()
+  }
+
+  /// Pull past the top, release, then scroll slowly up and back: the native large title must not
+  /// flicker under the header's edge effect (owner device report).
+  func testLargeTitlePullAndReturn() throws {
+    continueAfterFailure = false
+    let app = XCUIApplication(); app.launchArguments += ["-ALGAppearance", "dark"]
+    app.launch(); defer { app.terminate() }
+    XCTAssertTrue(app.buttons["open-search-demo"].waitForExistence(timeout: launchTimeout))
+    app.buttons["open-search-demo"].tap(); app.buttons["open-scroll-header"].tap()
+    XCTAssertTrue(app.buttons["nav-add"].waitForExistence(timeout: 5)); Thread.sleep(forTimeInterval: 1.0)
+    let list = app.otherElements["navigation-contacts"].exists ? app.otherElements["navigation-contacts"] : app.scrollViews.firstMatch
+    let start = list.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.45))
+    mark("pull"); start.press(forDuration: 0.05, thenDragTo: start.withOffset(CGVector(dx: 0, dy: 260)), withVelocity: .slow, thenHoldForDuration: 0.3)
+    Thread.sleep(forTimeInterval: 1.0)
+    mark("scroll-up"); start.press(forDuration: 0.05, thenDragTo: start.withOffset(CGVector(dx: 0, dy: -160)), withVelocity: 120, thenHoldForDuration: 0.3)
+    Thread.sleep(forTimeInterval: 0.8)
+    let back = list.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.3))
+    mark("scroll-back"); back.press(forDuration: 0.05, thenDragTo: back.withOffset(CGVector(dx: 0, dy: 300)), withVelocity: 120, thenHoldForDuration: 0.3)
+    Thread.sleep(forTimeInterval: 1.2)
+    XCTAssertTrue(app.buttons["nav-add"].isHittable)
+  }
+
+  /// Owner device report (Oct 21): showing the stacked search at the top collapsed the large title
+  /// into the bar and re-expanded it (clipped title, two titles at once, compact one drifting).
+  /// The large title must stay put while the field slides in and out below it; collapsed, the
+  /// compact title must stay. Stillness comes from the recording: `scripts/verify-static-header-video.py`
+  /// with `--rect search-large-title --still show-top --still hide-top` and
+  /// `--rect search-compact-title --absent show-top --absent hide-top`.
+  func testSearchToggleKeepsTitle() throws {
+    continueAfterFailure = false
+    let app = XCUIApplication(); app.launchArguments += ["-ALGAppearance", "dark"]
+    app.launch(); defer { app.terminate() }
+    XCTAssertTrue(app.buttons["open-search-demo"].waitForExistence(timeout: launchTimeout))
+    app.buttons["open-search-demo"].tap(); app.buttons["open-scroll-header"].tap()
+    let toggle = app.buttons["nav-search-toggle"], status = app.staticTexts["nav-status"]
+    XCTAssertTrue(toggle.waitForExistence(timeout: 5)); Thread.sleep(forTimeInterval: 1.0)
+    let titles = app.navigationBars.firstMatch.staticTexts.matching(identifier: "Contacts").allElementsBoundByIndex
+    guard let large = titles.map(\.frame).max(by: { $0.height < $1.height }) else { return XCTFail("No large title") }
+    rect("search-large-title", large)
+    let width = app.windows.firstMatch.frame.width
+    rect("search-compact-title", CGRect(x: width / 2 - 60, y: toggle.frame.minY, width: 120, height: toggle.frame.height))
+    let resting = status.frame
+    for cycle in 0..<2 {
+      mark("show-top\(cycle == 0 ? "" : "-2")"); toggle.tap()
+      XCTAssertTrue(app.searchFields.firstMatch.waitForExistence(timeout: 5)); Thread.sleep(forTimeInterval: 1.2)
+      XCTAssertGreaterThanOrEqual(status.frame.minY, app.searchFields.firstMatch.frame.maxY - 1, "The field pushes the list down")
+      XCTAssertEqual(app.navigationBars.firstMatch.staticTexts.matching(identifier: "Contacts").allElementsBoundByIndex.map(\.frame).max(by: { $0.height < $1.height }) ?? .zero, large, "The large title stays")
+      mark("hide-top\(cycle == 0 ? "" : "-2")"); toggle.tap(); Thread.sleep(forTimeInterval: 1.2)
+      XCTAssertFalse(app.searchFields.firstMatch.exists)
+      XCTAssertEqual(status.frame.minY, resting.minY, accuracy: 1, "The list returns to its resting position")
+    }
+    // Collapsed: the compact title stays in the bar while the field comes and goes.
+    let list = app.otherElements["navigation-contacts"].scrollViews.firstMatch
+    list.swipeUp(); Thread.sleep(forTimeInterval: 1.0)
+    mark("show-collapsed"); toggle.tap(); XCTAssertTrue(app.searchFields.firstMatch.waitForExistence(timeout: 5)); Thread.sleep(forTimeInterval: 1.2)
+    mark("hide-collapsed"); toggle.tap(); Thread.sleep(forTimeInterval: 1.2)
+    XCTAssertFalse(app.searchFields.firstMatch.exists)
+  }
+
+  /// Owner device report (Oct 21): pulling the review list down shows no refresh spinner, and the
+  /// title moves down and clips. Recorded per title transition: a slow pull held past the refresh
+  /// threshold (marks `pull-<title>`), then released.
+  func testPullToRefreshSpinner() throws {
+    continueAfterFailure = false
+    let app = XCUIApplication(); app.launchArguments += ["-ALGAppearance", "dark"]
+    app.launch(); defer { app.terminate() }
+    XCTAssertTrue(app.buttons["open-search-demo"].waitForExistence(timeout: launchTimeout))
+    app.buttons["open-search-demo"].tap(); app.buttons["open-scroll-header"].tap(); app.buttons["nav-review"].tap()
+    XCTAssertTrue(app.buttons["review-options"].waitForExistence(timeout: 5)); Thread.sleep(forTimeInterval: 1.0)
+    let state = app.staticTexts["review-state"], list = app.otherElements["review-list"].scrollViews.firstMatch
+    rect("pull-header", CGRect(x: 0, y: 0, width: app.windows.firstMatch.frame.width, height: state.frame.maxY + 40))
+    for (index, title) in ["morph", "native"].enumerated() {
+      if title == "native" { app.buttons["review-options"].tap(); app.buttons["Native title transition"].tap(); Thread.sleep(forTimeInterval: 0.5) }
+      app.buttons["review-top"].tap(); Thread.sleep(forTimeInterval: 1.0)
+      let resting = state.frame
+      let start = list.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.4))
+      mark("pull-\(title)")
+      start.press(forDuration: 0.05, thenDragTo: start.withOffset(CGVector(dx: 0, dy: 420)), withVelocity: .slow, thenHoldForDuration: 0.8)
+      let refreshed = NSPredicate(format: "label CONTAINS 'refresh \(index + 1)'")
+      expectation(for: refreshed, evaluatedWith: state); waitForExpectations(timeout: 5)
+      Thread.sleep(forTimeInterval: 1.5)
+      print("ALG-INFO pull-\(title) resting \(resting.minY) after \(state.frame.minY)")
+      XCTAssertEqual(state.frame.minY, resting.minY, accuracy: 1, "\(title): after the refresh the list returns to the top")
+    }
+  }
+
+  /// Owner requirement (Oct 21): the hard band is lighter than UIKit's nearly opaque hard edge
+  /// (like Phone's Calls header) and its colour, opacity, blur and separator are adjustable.
+  /// Samples an empty band area between the title and the buttons per preset (iOS 26: the
+  /// package's band; older iOS: the bar's appearance).
+  func testHeaderBandStyles() throws {
+    continueAfterFailure = false
+    let app = XCUIApplication(); app.launchArguments += ["-ALGAppearance", "dark"]
+    app.launch(); defer { app.terminate() }
+    XCTAssertTrue(app.buttons["open-search-demo"].waitForExistence(timeout: launchTimeout))
+    app.buttons["open-search-demo"].tap(); app.buttons["open-scroll-header"].tap(); app.buttons["nav-review"].tap()
+    XCTAssertTrue(app.buttons["review-options"].waitForExistence(timeout: 5)); Thread.sleep(forTimeInterval: 1.0)
+    func option(_ label: String) {
+      app.buttons["review-options"].tap()
+      // The options menu is taller than a smaller iPhone's screen: scroll it to the item.
+      let item = app.buttons[label]
+      for _ in 0..<3 where !(item.waitForExistence(timeout: 1) && item.isHittable) { app.collectionViews.firstMatch.swipeUp() }
+      item.tap(); Thread.sleep(forTimeInterval: 0.8)
+    }
+    option("Native title transition")
+    app.buttons["review-top"].tap(); Thread.sleep(forTimeInterval: 0.8)
+    let list = app.otherElements["review-list"].scrollViews.firstMatch
+    let start = list.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.7))
+    start.press(forDuration: 0.05, thenDragTo: start.withOffset(CGVector(dx: 0, dy: -300)), withVelocity: .slow, thenHoldForDuration: 0.2)
+    Thread.sleep(forTimeInterval: 1.0)
+    let search = app.buttons["review-search"].frame
+    let area = CGRect(x: search.minX - 34, y: search.minY + 4, width: 20, height: search.height - 8)
+    // Rows' avatars pass under the band's top-left corner, where nothing else is drawn: the
+    // sharpest vertical step there shows whether the content beneath is blurred.
+    let corner = CGRect(x: 8, y: 6, width: 36, height: max(8, search.minY - 14))  // left of the status-bar clock
+    var edges: [String: Double] = [:]
+    func pixels(_ image: CGImage, _ rect: CGRect, _ scale: CGFloat) throws -> (data: [UInt8], width: Int, height: Int) {
+      let cg = try XCTUnwrap(image.cropping(to: CGRect(x: rect.minX * scale, y: rect.minY * scale, width: rect.width * scale, height: rect.height * scale)))
+      var data = [UInt8](repeating: 0, count: cg.width * cg.height * 4)
+      data.withUnsafeMutableBytes { buffer in
+        CGContext(data: buffer.baseAddress, width: cg.width, height: cg.height, bitsPerComponent: 8, bytesPerRow: cg.width * 4,
+          space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)?.draw(cg, in: CGRect(x: 0, y: 0, width: cg.width, height: cg.height))
+      }
+      return (data, cg.width, cg.height)
+    }
+    func sample(_ name: String) throws -> [Double] {
+      let shot = app.screenshot(); let image = try XCTUnwrap(shot.image.cgImage)
+      let attachment = XCTAttachment(screenshot: shot); attachment.name = "band-\(name)"; attachment.lifetime = .keepAlways; add(attachment)
+      let scale = CGFloat(image.width) / app.frame.width
+      let (data, width, height) = try pixels(image, area, scale)
+      let rgb = (0..<3).map { c in stride(from: c, to: data.count, by: 4).reduce(0.0) { $0 + Double(data[$1]) } / Double(width * height) }
+      let top = try pixels(image, corner, scale)
+      let luma = { (i: Int) in 0.2126 * Double(top.data[i]) + 0.7152 * Double(top.data[i + 1]) + 0.0722 * Double(top.data[i + 2]) }
+      var edge = 0.0
+      for y in 0..<(top.height - 1) { for x in 0..<top.width { edge = max(edge, abs(luma((y * top.width + x) * 4) - luma(((y + 1) * top.width + x) * 4))) } }
+      edges[name] = edge
+      print("ALG-INFO band-\(name) \(rgb.map { String(format: "%.1f", $0) }.joined(separator: " ")) edge \(String(format: "%.1f", edge))")
+      return rgb
+    }
+    mark("band-default"); let standard = try sample("default")
+    option("Hard band: lighter"); mark("band-lighter"); let lighter = try sample("lighter")
+    option("Hard band: tinted"); mark("band-tinted"); let tinted = try sample("tinted")
+    option("Hard band: system"); mark("band-system"); let system = try sample("system")
+    let luma = { (c: [Double]) in 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2] }
+    if #available(iOS 26.0, *) {
+      // Owner report (Oct 21): text under the band was sharp — the band dimmed but did not blur.
+      for name in ["default", "lighter", "tinted"] { XCTAssertLessThan(edges[name] ?? 99, 6, "\(name): content beneath the band is blurred") }
+      XCTAssertLessThan(luma(system), 8, "UIKit's own hard edge is nearly opaque over a black screen")
+      XCTAssertGreaterThan(luma(standard), luma(system) + 6, "The default band is lighter than UIKit's hard edge")
+    }
+    XCTAssertGreaterThan(luma(lighter), luma(standard) + 4, "A lighter colour and lower opacity lighten the band")
+    XCTAssertGreaterThan(tinted[2], tinted[0] + 10, "The band takes the app's colour")
+  }
+
+  /// Owner reference (Oct 21, Phone's Calls header): a hard top edge still blurs and dims the
+  /// content beneath the header progressively, and ends in a hard line. Recorded with the list
+  /// scrolled under the header per edge and title transition (marks `edge-<edge>-<title>`).
+  func testHeaderEdgeStyles() throws {
+    continueAfterFailure = false
+    let app = XCUIApplication(); app.launchArguments += ["-ALGAppearance", "dark"]
+    app.launch(); defer { app.terminate() }
+    XCTAssertTrue(app.buttons["open-search-demo"].waitForExistence(timeout: launchTimeout))
+    app.buttons["open-search-demo"].tap(); app.buttons["open-scroll-header"].tap(); app.buttons["nav-review"].tap()
+    XCTAssertTrue(app.buttons["review-options"].waitForExistence(timeout: 5)); Thread.sleep(forTimeInterval: 1.0)
+    func option(_ label: String) { app.buttons["review-options"].tap(); app.buttons[label].tap(); Thread.sleep(forTimeInterval: 0.5) }
+    let list = app.otherElements["review-list"].scrollViews.firstMatch
+    rect("edge-header", CGRect(x: 0, y: 0, width: app.windows.firstMatch.frame.width, height: app.buttons["review-search"].frame.maxY + 40))
+    for title in ["morph", "native"] {
+      if title == "native" { option("Native title transition") }
+      for edge in ["soft", "hard"] {
+        option(edge == "hard" ? "Hard edge" : "Soft edge")
+        app.buttons["review-top"].tap(); Thread.sleep(forTimeInterval: 0.8)
+        // A short slow drag leaves rows partly under the header.
+        let start = list.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.7))
+        start.press(forDuration: 0.05, thenDragTo: start.withOffset(CGVector(dx: 0, dy: -260)), withVelocity: .slow, thenHoldForDuration: 0.2)
+        Thread.sleep(forTimeInterval: 1.0); mark("edge-\(edge)-\(title)")
+        let shot = XCTAttachment(screenshot: app.screenshot()); shot.name = "edge-\(edge)-\(title)"; shot.lifetime = .keepAlways; add(shot)
+        Thread.sleep(forTimeInterval: 0.5)
+      }
+    }
+  }
+
+  /// Owner device report (Oct 21, review screen): the search icon adds `search` with `active: true`
+  /// and the app removes it after Close. Opening drew the morph title over the field; closing
+  /// faded a second title in over the field. Recorded per title transition (marks
+  /// `icon-open-<t>` / `icon-close-<t>`); frames are inspected and the layout is asserted.
+  func testIconSearchOpenClose() throws {
+    continueAfterFailure = false
+    let app = XCUIApplication(); app.launchArguments += ["-ALGAppearance", "dark"]
+    app.launch(); defer { app.terminate() }
+    XCTAssertTrue(app.buttons["open-search-demo"].waitForExistence(timeout: launchTimeout))
+    app.buttons["open-search-demo"].tap(); app.buttons["open-scroll-header"].tap(); app.buttons["nav-review"].tap()
+    XCTAssertTrue(app.buttons["review-options"].waitForExistence(timeout: 5)); Thread.sleep(forTimeInterval: 1.0)
+    let state = app.staticTexts["review-state"], field = app.searchFields["review-search-field"]
+    let close = app.buttons.matching(NSPredicate(format: "label == 'Close' OR label == 'Cancel'")).firstMatch
+    for transition in ["morph", "native"] {
+      if transition == "native" { app.buttons["review-options"].tap(); app.buttons["Native title transition"].tap() }
+      app.buttons["review-top"].tap(); Thread.sleep(forTimeInterval: 1.0)
+      let top = state.frame
+      rect("icon-title-\(transition)", CGRect(x: 0, y: app.buttons["review-search"].frame.maxY, width: app.windows.firstMatch.frame.width, height: top.minY - app.buttons["review-search"].frame.maxY))
+      mark("icon-open-\(transition)"); app.buttons["review-search"].tap()
+      XCTAssertTrue(field.waitForExistence(timeout: 5)); XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 3))
+      Thread.sleep(forTimeInterval: 1.0)
+      XCTAssertGreaterThanOrEqual(state.frame.minY, field.frame.maxY - 1, "\(transition): search must not cover the list")
+      mark("icon-close-\(transition)"); close.tap(); Thread.sleep(forTimeInterval: 1.5)
+      XCTAssertFalse(field.exists, "\(transition): the app removed search after Close")
+      XCTAssertEqual(state.frame.minY, top.minY, accuracy: 1, "\(transition): the header returns exactly")
+    }
+  }
+
+  /// Search shown below the bar, list scrolled up and back, search activated from the field and
+  /// closed: the native large title must be back at once (owner device report: 2–3 s late).
+  func testSearchCloseRestoresLargeTitle() throws {
+    continueAfterFailure = false
+    let app = XCUIApplication(); app.launchArguments += ["-ALGAppearance", "dark"]
+    app.launch(); defer { app.terminate() }
+    XCTAssertTrue(app.buttons["open-search-demo"].waitForExistence(timeout: launchTimeout))
+    app.buttons["open-search-demo"].tap(); app.buttons["open-scroll-header"].tap()
+    XCTAssertTrue(app.buttons["nav-search-toggle"].waitForExistence(timeout: 5)); Thread.sleep(forTimeInterval: 0.8)
+    app.buttons["nav-search-toggle"].tap()
+    let field = app.searchFields.firstMatch
+    XCTAssertTrue(field.waitForExistence(timeout: 5)); Thread.sleep(forTimeInterval: 0.6)
+    let list = app.otherElements["navigation-contacts"].scrollViews.firstMatch
+    // Collapsed title: the search field stays pinned just below the bar's icons.
+    list.swipeUp(); Thread.sleep(forTimeInterval: 0.8)
+    let small = list.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+    small.press(forDuration: 0.05, thenDragTo: small.withOffset(CGVector(dx: 0, dy: 120)), withVelocity: .slow, thenHoldForDuration: 0.2)
+    Thread.sleep(forTimeInterval: 0.8)
+    func visibleTitle() -> XCUIElement {
+      app.navigationBars.firstMatch.staticTexts.matching(identifier: "Contacts").allElementsBoundByIndex.first(where: { $0.isHittable })
+        ?? app.navigationBars.firstMatch.staticTexts["Contacts"].firstMatch
+    }
+    for cycle in 0..<3 {
+      let suffix = cycle == 0 ? "" : "-\(cycle + 1)"
+      rect("search-title" + suffix, visibleTitle().frame)
+      mark("activate" + suffix); field.tap()
+      let close = app.buttons.matching(NSPredicate(format: "label == 'Close' OR label == 'Cancel'")).firstMatch
+      XCTAssertTrue(close.waitForExistence(timeout: 3)); Thread.sleep(forTimeInterval: 0.8)
+      mark("close" + suffix); close.tap()
+      // tap waits for XCTest idle; verify-search-title-video.py checks the real
+      // transition frames, including any disappear/reappear before idle.
+      Thread.sleep(forTimeInterval: 3)
+      XCTAssertTrue(visibleTitle().isHittable)
+      XCTAssertLessThan(visibleTitle().frame.height, 30)
+      if cycle == 1 {
+        // A new gesture restores ordinary large-title behavior, then Top must
+        // also restore it for programmatic scrolling. Re-enter search afterwards.
+        list.swipeDown()
+        app.buttons["nav-top"].tap()
+        XCTAssertGreaterThan(visibleTitle().frame.height, 30)
+        list.swipeUp()
+      }
+    }
+    app.buttons["nav-top"].tap()
+    XCTAssertGreaterThan(visibleTitle().frame.height, 30)
   }
 
   func testHeaderReviewFeatures() throws {

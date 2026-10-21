@@ -20,7 +20,13 @@ private struct ControlItem: Decodable, Equatable {
   /// Header slot identity (`leading:back`). The same slot on two routes is one native
   /// button, so it morphs; `id` stays route-qualified so presses reach the right screen.
   var slot: String?
+  /// The app named the slot (rather than its position): it keeps its glass across screens.
+  var slotNamed: Bool?
   var key: String { slot ?? id }
+  /// The same control on two screens: same side and visible content (badge and tint may change).
+  func sameContent(as other: ControlItem) -> Bool {
+    side == other.side && title == other.title && symbol == other.symbol && imageSource == other.imageSource
+  }
   var icon: ALGIcon { ALGIcon(symbol: symbol, imageSource: imageSource, contentTransition: contentTransition,
     pressEffect: pressEffect, badge: badge, badgeColor: badgeColor, badgeTextColor: badgeTextColor,
     badgeAccessibility: badgeAccessibility) }
@@ -46,6 +52,9 @@ private struct ControlsConfig: Decodable, Equatable {
   var labelSize: Double?
   var iconCapsuleWidth: Double?
   var scrollSelectedIntoView: Bool?
+  var anchor: String?
+  /// GlassMorphButton / GlassHeaderHost only: draw slots with SwiftUI's glass morph on iOS 26.
+  var swiftUIMorph: Bool?
   /// Header mode: every registered screen's items, keyed by route key (react-native-screens `screenId`).
   var routes: [HeaderRoute]?
   var active: String?
@@ -96,6 +105,19 @@ private struct ControlsGeometry {
     x += config.mode == "group" ? 14 : config.mode == "pills" ? pillInset : 0
     geometry.contentWidth = max(1, x)
     return geometry
+  }
+  /// A selected pill keeps its (regular-label) width: the semibold label takes the difference
+  /// from its padding, centred, so it never wraps or moves the row.
+  static func pillPadding(_ config: ControlsConfig, title: String, selected: Bool, category: UIContentSizeCategory) -> CGFloat {
+    let padding = CGFloat(config.horizontalPadding ?? 15)
+    guard selected else { return padding }
+    let traits = UITraitCollection(preferredContentSizeCategory: category)
+    let size = CGFloat(config.labelSize ?? 17)
+    func width(_ weight: UIFont.Weight) -> CGFloat {
+      let font = UIFontMetrics(forTextStyle: .body).scaledFont(for: .systemFont(ofSize: size, weight: weight), maximumPointSize: size * 2, compatibleWith: traits)
+      return (title as NSString).size(withAttributes: [.font: font]).width
+    }
+    return max(4, padding - ceil(max(0, width(.semibold) - width(.regular))) / 2 - 0.5)
   }
   /// A loaded image is drawn in its declared point-size box, so layout never depends on the download.
   static func imageWidth(_ item: ControlItem) -> CGFloat? {
@@ -152,6 +174,8 @@ public final class ALGControlsView: UIView {
   private weak var navigation: UINavigationController?
   private var observedGestures: [ObjectIdentifier] = []
   private var displayedRoute: String?
+  /// Header: the displayed route's slot keys → the glass they took over (see `pair`).
+  private var slotAliases: [String: String] = [:]
   private var trackedTransition: ObjectIdentifier?
   private var inTransition = false
   private var exiting: [(key: String, button: ControlButton)] = []
@@ -163,7 +187,79 @@ public final class ALGControlsView: UIView {
   @objc public var layoutAnimationDuration: TimeInterval { 0.25 }
   @objc public var layoutAnimationDamping: CGFloat { 1 }
   private var morphsContent: Bool { config.mode == "morph" || config.mode == "header" }
-  @objc public var animatesLayout: Bool { config.mode != "pills" && window != nil && !UIAccessibility.isReduceMotionEnabled }
+  // SwiftUI animates the glass itself; the Fabric wrapper then takes its final frame at once.
+  @objc public var animatesLayout: Bool { config.mode != "pills" && !usesSwiftUIMorph && window != nil && !UIAccessibility.isReduceMotionEnabled }
+  // iOS 26 morph and header slots: SwiftUI's glass morph (glassEffectID + blur replace).
+  private var morphHostStorage: AnyObject?
+  private var pendingMorph: (() -> Void)?
+  private var slotMenus: [String: (items: [ControlMenuItem], id: String, menu: UIMenu)] = [:]
+  private var usesSwiftUIMorph: Bool {
+    if #available(iOS 26.0, *) { return morphsContent && glass && config.swiftUIMorph == true }
+    return false
+  }
+  @available(iOS 26.0, *)
+  private var morphHost: ALGMorphHost {
+    if let host = morphHostStorage as? ALGMorphHost { return host }
+    let host = ALGMorphHost()
+    host.model.activate = { [weak self] id in
+      guard let self, self.window != nil, self.config.disabled != true,
+        let current = self.config.items.first(where: { $0.id == id }), current.disabled != true else { return }
+      self.onAction?(id, "")
+    }
+    morphHostStorage = host
+    return host
+  }
+  @available(iOS 26.0, *)
+  private func applySwiftUIMorph() {
+    // The UIKit button path is not used while SwiftUI draws the slots.
+    for (_, button) in buttons { button.removeFromSuperview(); button.badgeLabel.removeFromSuperview() }
+    buttons = [:]; lastItems = [:]
+    let geometry = ControlsGeometry.make(config, scale: traitCollection.displayScale, category: traitCollection.preferredContentSizeCategory)
+    let slots = config.items.enumerated().map { index, item -> ALGMorphSlot in
+      var menu: UIMenu?
+      if let items = item.menu {
+        if let cached = slotMenus[item.key], cached.items == items, cached.id == item.id { menu = cached.menu }
+        else { let built = UIMenu(children: menuElements(items, controlID: item.id)); slotMenus[item.key] = (items, item.id, built); menu = built }
+      }
+      let tint = item.tint.map(ALGIcon.color)
+      return ALGMorphSlot(id: item.key, itemID: item.id, title: item.title,
+        symbol: item.title == nil ? item.symbol?.image(tint: tint ?? .label) : nil,
+        symbolKey: "\(item.symbol?.name ?? "")/\(item.symbol?.pointSize ?? 0)/\(item.symbol?.weight ?? "")/\(item.symbol?.scale ?? "")",
+        label: item.label, testID: item.testID, width: geometry.widths.indices.contains(index) ? geometry.widths[index] : geometry.height,
+        disabled: config.disabled == true || item.disabled == true, tint: tint, trailing: item.side == "trailing",
+        badge: item.badge, badgeColor: item.badgeColor.map(ALGIcon.color), badgeTextColor: item.badgeTextColor.map(ALGIcon.color),
+        badgeAccessibility: item.badgeAccessibility, menu: menu)
+    }
+    slotMenus = slotMenus.filter { key, _ in config.items.contains { $0.key == key } }
+    // Fabric sets the new frame after these props: the host takes that frame first (see
+    // layoutSubviews), so only SwiftUI's own animation moves the glass.
+    let inset = config.mode == "header" ? CGFloat(config.contentInset ?? 20) : 0, gap = CGFloat(config.gap ?? 10)
+    let header = config.mode == "header", anchor = config.anchor ?? "trailing", animated = window != nil
+    pendingMorph = { [weak self] in
+      self?.morphHost.update(slots, height: geometry.height, inset: inset, gap: gap, header: header, anchor: anchor, animated: animated)
+    }
+    setNeedsLayout()
+  }
+  /// Slot frames, for passing touches through the rest of a header row.
+  private func swiftUISlotFrames() -> [CGRect] {
+    let geometry = ControlsGeometry.make(config, scale: traitCollection.displayScale, category: traitCollection.preferredContentSizeCategory)
+    let y = (bounds.height - geometry.height) / 2
+    var frames: [CGRect] = []
+    if config.mode == "header" {
+      let inset = CGFloat(config.contentInset ?? 20)
+      var leading = inset, trailing = bounds.width - inset
+      for (index, item) in config.items.enumerated() where geometry.widths.indices.contains(index) {
+        let width = geometry.widths[index]
+        if item.side == "trailing" { trailing -= width; frames.append(CGRect(x: trailing, y: y, width: width, height: geometry.height)); trailing -= 12 }
+        else { frames.append(CGRect(x: leading, y: y, width: width, height: geometry.height)); leading += width + CGFloat(config.gap ?? 10) }
+      }
+    } else { frames.append(bounds) }
+    // The SwiftUI row mirrors in right-to-left layouts.
+    if effectiveUserInterfaceLayoutDirection == .rightToLeft {
+      frames = frames.map { CGRect(x: bounds.width - $0.maxX, y: $0.minY, width: $0.width, height: $0.height) }
+    }
+    return frames
+  }
   public override init(frame: CGRect) {
     super.init(frame: frame)
     addSubview(scroll); scroll.addSubview(effect)
@@ -179,13 +275,14 @@ public final class ALGControlsView: UIView {
   @objc public func configure(_ json: String) {
     guard json != lastJSON, let next = try? JSONDecoder().decode(ControlsConfig.self, from: Data(json.utf8)) else { return }
     lastJSON = json
+    let shown = config.items
     config = next
     if next.mode == "header" {
       // The displayed route follows the stack's top screen; a transition retargets it natively.
       if !inTransition {
         let key = Self.screenKey(attachNavigation()?.topViewController) ?? next.active
-        if let items = Self.items(next, key) { displayedRoute = key; config.items = items }
-      } else if let items = Self.items(next, displayedRoute) { config.items = items }
+        if let items = Self.items(next, key) { show(key, items, after: shown) } else { config.items = keyed(next.items) }
+      } else { config.items = keyed(Self.items(next, displayedRoute) ?? next.items) }
       // react-native-screens starts the push/pop after this commit (sometimes frames later):
       // watch briefly for its transition instead of switching early.
       if !inTransition, let active = next.active, active != displayedRoute { watchForTransition() }
@@ -196,6 +293,40 @@ public final class ALGControlsView: UIView {
   private static func items(_ config: ControlsConfig, _ key: String?) -> [ControlItem]? {
     guard let key, let routes = config.routes else { return nil }
     return routes.first { $0.key == key }?.items
+  }
+  /// Shows a route's header controls, paired with the controls already on screen (see `pair`).
+  private func show(_ route: String?, _ items: [ControlItem], after shown: [ControlItem]) {
+    if route != displayedRoute { slotAliases = Self.pair(items, after: shown) }
+    displayedRoute = route; config.items = keyed(items)
+  }
+  /// Header slot pairing across screens, as the system bar pairs its items: a named slot on both
+  /// screens keeps its glass and morphs its content; a control on both screens (same side and
+  /// content, at any position or slot name) keeps its glass and stays still, like a back button;
+  /// the rest pair by position on each side and morph. Returns incoming slot key → shown key.
+  private static func pair(_ items: [ControlItem], after shown: [ControlItem]) -> [String: String] {
+    var aliases: [String: String] = [:], taken = Set<String>()
+    let claim = { (item: ControlItem, key: String) in aliases[item.key] = key; taken.insert(key) }
+    for item in items where item.slotNamed == true && shown.contains(where: { $0.key == item.key }) { claim(item, item.key) }
+    for item in items where aliases[item.key] == nil {
+      if let match = shown.first(where: { !taken.contains($0.key) && $0.sameContent(as: item) }) { claim(item, match.key) }
+    }
+    for item in items where aliases[item.key] == nil {
+      if let match = shown.first(where: { !taken.contains($0.key) && $0.side == item.side }) { claim(item, match.key) }
+    }
+    return aliases
+  }
+  /// The displayed route's items under their paired keys. Within a route the pairing holds, so a
+  /// carried control still morphs when its own content changes; new slots get unused keys.
+  private func keyed(_ items: [ControlItem]) -> [ControlItem] {
+    var used = Set(items.compactMap { slotAliases[$0.key] })
+    return items.map { item in
+      var next = item
+      if let alias = slotAliases[item.key] { next.slot = alias; return next }
+      var key = item.key
+      while used.contains(key) { key += "\u{2}" }
+      used.insert(key); slotAliases[item.key] = key; next.slot = key
+      return next
+    }
   }
   /// react-native-screens' screen view publishes the navigator route key as `screenId`.
   private static func screenKey(_ controller: UIViewController?) -> String? {
@@ -236,16 +367,45 @@ public final class ALGControlsView: UIView {
     if inTransition || window == nil { stopWatching(); return }
     if let top, top != displayedRoute, let items = Self.items(config, top) {
       // The stack changed without an animated transition.
-      displayedRoute = top; config.items = items; apply(); stopWatching(); return
+      show(top, items, after: config.items); apply(); stopWatching(); return
     }
     if CACurrentMediaTime() > watchDeadline {
       // No navigation transition: the focus change is the whole update.
-      if let active = config.active, active != displayedRoute, let items = Self.items(config, active) { displayedRoute = active; config.items = items; apply() }
+      if let active = config.active, active != displayedRoute, let items = Self.items(config, active) { show(active, items, after: config.items); apply() }
       stopWatching()
     }
   }
   private func stopWatching() { watch?.invalidate(); watch = nil }
-  public override func willMove(toWindow newWindow: UIWindow?) { super.willMove(toWindow: newWindow); if newWindow == nil { stopWatching() } }
+  /// Interactive swipe back with the SwiftUI morph: the outgoing screen keeps its controls while
+  /// the finger is down (a SwiftUI morph cannot be scrubbed). When the finger lifts and the pop
+  /// is going to complete, they morph to the incoming screen's while the screen slides away; a
+  /// cancelled swipe changes nothing.
+  @available(iOS 26.0, *)
+  private func followSwipe(_ coordinator: UIViewControllerTransitionCoordinator, from: (key: String?, items: [ControlItem]),
+    to: (key: String, items: [ControlItem])) {
+    var switched = false
+    let morph = { [weak self] in
+      guard let self, !switched else { return }
+      switched = true
+      self.show(to.key, to.items, after: self.config.items); self.apply()
+    }
+    coordinator.notifyWhenInteractionChanges { context in if !context.isCancelled { morph() } }
+    let finish = { [weak self] (cancelled: Bool) in
+      guard let self else { return }
+      self.inTransition = false; self.trackedTransition = nil
+      guard !cancelled else { return }
+      morph()
+      if UIAccessibility.isVoiceOverRunning { UIAccessibility.post(notification: .layoutChanged, argument: self) }
+    }
+    if !coordinator.animate(alongsideTransition: nil, completion: { finish($0.isCancelled) }) { finish(false) }
+  }
+  public override func willMove(toWindow newWindow: UIWindow?) {
+    super.willMove(toWindow: newWindow)
+    if newWindow == nil {
+      stopWatching()
+      if #available(iOS 26.0, *), let host = morphHostStorage as? ALGMorphHost { host.detach() }
+    }
+  }
   @objc private func stackGesture(_ gesture: UIGestureRecognizer) {
     guard gesture.state == .began || gesture.state == .changed else { return }
     DispatchQueue.main.async { [weak self] in self?.followTransition() }
@@ -258,11 +418,14 @@ public final class ALGControlsView: UIView {
     guard trackedTransition != identity, let toKey = Self.screenKey(coordinator.viewController(forKey: .to)),
       toKey != displayedRoute, let toItems = Self.items(config, toKey) else { return }
     trackedTransition = identity
-    let fromKey = displayedRoute, fromItems = config.items
+    let fromKey = displayedRoute, fromItems = config.items, fromAliases = slotAliases
     inTransition = true
+    if #available(iOS 26.0, *), usesSwiftUIMorph, coordinator.isInteractive {
+      followSwipe(coordinator, from: (fromKey, fromItems), to: (toKey, toItems)); return
+    }
     let queued = coordinator.animate(alongsideTransition: { [weak self] _ in
       guard let self else { return }
-      self.displayedRoute = toKey; self.config.items = toItems; self.apply()
+      self.show(toKey, toItems, after: self.config.items); self.apply()
       self.setNeedsLayout(); self.layoutIfNeeded()
     }, completion: { [weak self] context in
       guard let self else { return }
@@ -271,7 +434,7 @@ public final class ALGControlsView: UIView {
       if context.isCancelled {
         // UIKit has reversed the animated geometry; restore the outgoing screen's controls.
         for entry in leaving where self.buttons[entry.key] == nil { entry.button.transform = .identity; entry.button.isUserInteractionEnabled = true; entry.button.accessibilityElementsHidden = false; entry.button.badgeLabel.alpha = 1; self.buttons[entry.key] = entry.button }
-        self.displayedRoute = fromKey; self.config.items = fromItems; self.lastItems = [:]; self.apply()
+        self.displayedRoute = fromKey; self.config.items = fromItems; self.slotAliases = fromAliases; self.lastItems = [:]; self.apply()
       } else {
         for entry in leaving { entry.button.removeFromSuperview(); entry.button.badgeLabel.removeFromSuperview() }
         if UIAccessibility.isVoiceOverRunning, let first = self.config.items.first, let button = self.buttons[first.key] {
@@ -279,9 +442,16 @@ public final class ALGControlsView: UIView {
         }
       }
     })
-    if !queued { inTransition = false; trackedTransition = nil; displayedRoute = toKey; config.items = toItems; apply() }
+    if !queued { inTransition = false; trackedTransition = nil; show(toKey, toItems, after: config.items); apply() }
   }
   public override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
+    if #available(iOS 26.0, *), usesSwiftUIMorph, let host = morphHostStorage as? ALGMorphHost {
+      // Touches outside the slots fall through to the screen (header overlay).
+      guard swiftUISlotFrames().contains(where: { $0.insetBy(dx: -max(0, (44 - $0.width) / 2), dy: -max(0, (44 - $0.height) / 2)).contains(point) }) else {
+        return config.mode == "header" ? nil : super.hitTest(point, with: event)
+      }
+      return host.view.hitTest(host.view.convert(point, from: self), with: event) ?? host.view
+    }
     if bounds.contains(point) {
       for button in buttons.values { let local = button.convert(point, from: self); if let hit = button.hitTest(local, with: event) { return hit } }
       if config.mode == "header" { return nil }
@@ -298,6 +468,7 @@ public final class ALGControlsView: UIView {
     return false
   }
   private func apply() {
+    if #available(iOS 26.0, *), usesSwiftUIMorph { applySwiftUIMorph(); return }
     let keys = Set(config.items.map(\.key))
     for (key, button) in buttons where !keys.contains(key) {
       buttons.removeValue(forKey: key); lastItems.removeValue(forKey: key); button.badgeHost = nil
@@ -388,7 +559,11 @@ public final class ALGControlsView: UIView {
         out.foregroundColor = selected ? selectedForeground : tint
         return out
       }
-      appearance.contentInsets = NSDirectionalEdgeInsets(top: 0, leading: item.title == nil ? 0 : CGFloat(config.horizontalPadding ?? 15), bottom: 0, trailing: item.title == nil ? 0 : CGFloat(config.horizontalPadding ?? 15))
+      let titlePadding = config.mode == "pills" && item.title != nil
+        ? ControlsGeometry.pillPadding(config, title: item.title ?? "", selected: selected, category: traitCollection.preferredContentSizeCategory)
+        : CGFloat(config.horizontalPadding ?? 15)
+      appearance.contentInsets = NSDirectionalEdgeInsets(top: 0, leading: item.title == nil ? 0 : titlePadding, bottom: 0, trailing: item.title == nil ? 0 : titlePadding)
+      if config.mode == "pills" { appearance.titleLineBreakMode = .byClipping }
       appearance.baseForegroundColor = selected && config.selectedStyle != "tinted" ? .systemBackground : tint
       if selected { appearance.baseBackgroundColor = config.selectedStyle == "tinted" ? tint : .label; button.tintColor = appearance.baseBackgroundColor }
       else { button.tintColor = tint }
@@ -415,6 +590,7 @@ public final class ALGControlsView: UIView {
           button.layoutIfNeeded()
         }
       } }
+      if config.mode == "pills" { button.titleLabel?.numberOfLines = 1 }
       if lastItems[item.key]?.symbol != item.symbol { item.icon.transitionImage(on: button, image: appearance.image) }
       button.isEnabled = config.disabled != true && item.disabled != true
       button.accessibilityLabel = item.label; button.accessibilityIdentifier = item.testID
@@ -453,6 +629,17 @@ public final class ALGControlsView: UIView {
   }
   public override func layoutSubviews() {
     super.layoutSubviews()
+    if #available(iOS 26.0, *), usesSwiftUIMorph {
+      scroll.isHidden = true
+      morphHost.attach(to: self)
+      let hostFrame = bounds.insetBy(dx: -morphHost.model.outset, dy: -morphHost.model.outset)
+      if morphHost.view.frame != hostFrame { morphHost.view.frame = hostFrame; morphHost.view.layoutIfNeeded() }
+      if let pending = pendingMorph { pendingMorph = nil; pending() }
+      let rightToLeft = effectiveUserInterfaceLayoutDirection == .rightToLeft
+      if morphHost.model.rightToLeft != rightToLeft { morphHost.model.rightToLeft = rightToLeft }
+      return
+    }
+    if #available(iOS 26.0, *), let host = morphHostStorage as? ALGMorphHost { host.detach(); scroll.isHidden = false }
     scroll.frame = bounds; scroll.isScrollEnabled = config.mode == "pills"
     let geometry = ControlsGeometry.make(config, scale: traitCollection.displayScale, category: traitCollection.preferredContentSizeCategory)
     let height = geometry.height

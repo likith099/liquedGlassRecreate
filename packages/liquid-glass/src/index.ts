@@ -27,7 +27,7 @@ export {GlassToastProvider, useGlassToast} from './GlassToast';
 export {default as GlassScrollEdge} from './GlassScrollEdge';
 export {default as GlassProgressiveBlur} from './GlassProgressiveBlur';
 export {default as GlassNavigationView} from './GlassNavigationView';
-export type {GlassProgressiveBlurProps, GlassNavigationViewProps, GlassNavigationAction, GlassNavigationSearch, GlassNavigationHandle, GlassNavigationSpacer, GlassEdgeEffect} from './types';
+export type {GlassProgressiveBlurProps, GlassNavigationViewProps, GlassNavigationAction, GlassNavigationSearch, GlassNavigationHandle, GlassNavigationSpacer, GlassEdgeEffect, GlassHeaderBand} from './types';
 export {default as GlassSearchField} from './GlassSearchField';
 export {default as GlassExpandingTabs} from './GlassExpandingTabs';
 export type {GlassExpandingTab, GlassExpandingTabsProps} from './types';
@@ -56,3 +56,4 @@ export type {GlassHeaderOptions, GlassHeaderItem, GlassHeaderHostProps} from './
 export {default as GlassBackgroundExtension} from './GlassBackgroundExtension';
 
 export {default as GlassScrollHeader} from './GlassScrollHeader';
+export {glassHeaderOptions, type GlassNativeHeaderOptions} from './nativeHeaderOptions';
