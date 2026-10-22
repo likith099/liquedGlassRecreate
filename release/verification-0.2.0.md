@@ -1,6 +1,9 @@
 # 0.2.0 release verification
 
-October 22, 2026. Local candidate verification is complete. Publication status is recorded below.
+October 22, 2026. **Published 0.2.0**, tagged `v0.2.0` at commit `d92495a`.
+The [release workflow](https://github.com/likith099/liquedGlassRecreate/actions/runs/39793774837)
+completed successfully. [npm](https://www.npmjs.com/package/@likith99/react-native-adaptive-liquid-glass/v/0.2.0)
+reports `latest: 0.2.0`; the registry archive is byte-identical to the locally tested archive.
 The owner authorized completing the 0.2.0 handoff, regression checks and publication.
 
 ## Scope
@@ -89,4 +92,9 @@ The standalone consumer tested archive SHA-256 is recorded above. The final revi
 is identified by `release/acceptance.json`. No production source change followed native verification;
 subsequent edits corrected test helpers and documentation.
 
-Publication pending the verified tag workflow.
+Reviewed source digest: `e5872404fb5e1a1142838a19e0b29efaf46b86996558567d2382e7c8c488d6d1`.
+The npm SLSA provenance statement names `.github/workflows/release.yml`, `refs/tags/v0.2.0`
+and source commit `d92495a6d1fb2724588fb05c6c74c5d1f97f4bed`. Its SHA-512 subject matches the
+downloaded registry archive; the SHA-256 is the tested archive hash above.
+Local registry evidence: `npm-0.2.0-metadata.json`, `npm-0.2.0-attestations.json`,
+`npm-published-0.2.0.tgz`.
