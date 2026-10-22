@@ -22,7 +22,7 @@ def launch():
     adb('shell', 'am', 'start', '-S', '-n', 'com.liquidglasslab/.MainActivity')
     for _ in range(30):
         try:
-            find(tree(), 'open-tabs-demo')
+            find(tree(), 'demo-categories')
             return
         except AssertionError:
             time.sleep(1)
@@ -77,13 +77,14 @@ def reveal(value, down=True):
             position = bounds(node(root, value))
         except AssertionError:
             position = None
-        if position and position[1] > height * .12 and position[3] < height * .85:
+        # UIAutomator can report an inverted clipped box for content behind the gallery header.
+        if position and position[3] > position[1] and position[1] > height * .12 and position[3] < height * .85:
             return
         if position:
             direction = 1 if position[3] >= height * .85 else -1
         screen = [(n.get('text'), n.get('bounds')) for n in root.iter('node') if n.get('text')]
         if screen == previous:
-            if position and position[1] >= 0 and position[3] <= height:
+            if position and position[3] > position[1] and position[1] >= 0 and position[3] <= height:
                 return  # at the page end, wholly visible
             if position or reversed_once:
                 break
@@ -165,7 +166,7 @@ print('Expanding pills passed.', flush=True)
 
 # Search field, submit, toast and focus from code.
 launch()
-reveal('open-search-demo', down=False); tap('open-search-demo')
+tap('Navigation & headers'); reveal('open-search-demo'); tap('open-search-demo')
 wait('20 results')
 tap('item-search')
 adb('shell', 'input', 'text', 'ec'); wait('2 results')
@@ -202,7 +203,7 @@ print('Search field, toast and focus passed.', flush=True)
 
 # Tab image sources, per-tab colours and the Android bar and indicator colours.
 launch()
-tap('open-tabs-demo'); wait('Home screen')
+tap('Navigation & headers'); reveal('open-tabs-demo'); tap('open-tabs-demo'); wait('Home screen')
 reveal('tabs-brand-toggle'); tap('tabs-brand-toggle', settle=1)
 tap('Library tab', settle=1); wait('Library screen')
 night = 'yes' in adb('shell', 'cmd', 'uimode', 'night').decode()

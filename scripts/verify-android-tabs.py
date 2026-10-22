@@ -41,7 +41,7 @@ def selected(name):
 
 def toggle(id): visible(id);tap(id)
 
-h['reveal']('open-tabs-demo');tap('open-tabs-demo');screen('Home');selected('Home')
+tap('Navigation & headers'); h['reveal']('open-tabs-demo');tap('open-tabs-demo');screen('Home');selected('Home')
 tap('screen-increment')
 tap('Library tab');screen('Library');selected('Library')
 tap('Home tab');screen('Home')

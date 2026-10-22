@@ -146,6 +146,8 @@ indicator). Group and pill widths were checked against Calendar, Wallet and Fitn
 
 ## Repository
 
+The demo has two galleries: **Components** groups materials, controls and badges, motion, accessibility and context menus into selectable sections. **Navigation & headers** opens each header, blur, shared-stack and tab example directly. Back returns to that gallery.
+
 - `packages/liquid-glass` is the published package; `example` is a bare React Native demo that
   exercises every component. Run it with the steps in [developing the package](docs/development.md).
 - [Documentation index](docs/README.md), [native architecture](docs/architecture.md), and

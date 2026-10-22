@@ -81,6 +81,7 @@ class ALGNavigationView(private val reactContext: ThemedReactContext) : FrameLay
   private var dark = false
   private var bandScroll: java.lang.ref.WeakReference<View>? = null
   private var bandShown: Boolean? = null
+  private var appBarOffset = 0
   private val bandListener = android.view.ViewTreeObserver.OnScrollChangedListener { updateBand(false) }
   private fun dp(value: Double) = (value * resources.displayMetrics.density).toInt()
   private fun px(value: Int) = value / resources.displayMetrics.density.toDouble()
@@ -116,9 +117,9 @@ class ALGNavigationView(private val reactContext: ThemedReactContext) : FrameLay
     searchBar.setOnClickListener { focusSearch() }
     searchView.addTransitionListener { _, _, state ->
       if (state == SearchView.TransitionState.SHOWING) {
-        searchOpen = true; moveBody(true); search("focus")
+        searchOpen = true; updateBand(false); moveBody(true); search("focus")
       } else if (state == SearchView.TransitionState.HIDDEN && searchOpen) {
-        searchOpen = false; moveBody(false)
+        searchOpen = false; updateBand(false); moveBody(false)
         if (!programmaticDismiss) { searchView.editText.setText(""); search("cancel", "") }
         programmaticDismiss = false; search("blur"); requestLayout()
       }
@@ -139,7 +140,9 @@ class ALGNavigationView(private val reactContext: ThemedReactContext) : FrameLay
     ViewCompat.setOnApplyWindowInsetsListener(this) { _, insets ->
       systemInsets = insets.getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout()); requestLayout(); insets
     }
-    appBar.addOnOffsetChangedListener(AppBarLayout.OnOffsetChangedListener { _, _ -> reportInsets() })
+    appBar.addOnOffsetChangedListener(AppBarLayout.OnOffsetChangedListener { _, offset ->
+      appBarOffset = offset; updateBand(false); reportInsets()
+    })
   }
   override fun onAttachedToWindow() { super.onAttachedToWindow(); ViewCompat.requestApplyInsets(this); viewTreeObserver.addOnScrollChangedListener(bandListener) }
   override fun onDetachedFromWindow() { viewTreeObserver.removeOnScrollChangedListener(bandListener); super.onDetachedFromWindow() }
@@ -162,7 +165,8 @@ class ALGNavigationView(private val reactContext: ThemedReactContext) : FrameLay
   private fun updateBand(force: Boolean) {
     val hard = config.optString("topEdge") == "hard"
     val band = config.optJSONObject("topBand") ?: JSONObject()
-    val shown = hard && scrollingChild()?.canScrollVertically(-1) == true
+    val settled = kotlin.math.abs(appBarOffset) >= appBar.totalScrollRange
+    val shown = hard && settled && !searchOpen && scrollingChild()?.canScrollVertically(-1) == true
     if (!force && shown == bandShown) return
     bandShown = shown
     val tone = color(band, "color", if (dark) Color.rgb(44, 46, 54) else Color.rgb(232, 234, 240))

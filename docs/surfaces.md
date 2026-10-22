@@ -117,6 +117,6 @@ return <View style={{flex: 1}}>
 - Reduce Transparency uses an opaque fill on iOS. Unsupported platforms use a solid fallback. Android capture is for ordinary React Native scrolling views; separate video/`SurfaceView` content is not supported.
 - The underlying `GlassScrollEdge` also accepts `fallbackMode="gradient" | "blur" | "solid"`. Its existing defaults (`edge="bottom"`, `effectStyle="automatic"`, gradient fallback) remain unchanged. For the same native full-region edge at the bottom, use `edge="bottom" effectStyle="progressive"`. The existing `soft`/`hard`/`automatic` options retain UIKit scroll-edge ownership on iOS 26+.
 
-Demo: **Open search, toasts and scroll edge → Open progressive header blur**. Includes scrolling, header actions, Android fallback switching and remounting.
+Demo: **Navigation & headers → Standalone blur**. Includes scrolling, header actions, Android fallback switching and remounting.
 
 References: [Apple scroll-edge containers](https://developer.apple.com/documentation/uikit/uiscrolledgeelementcontainerinteraction), [Apple soft/hard edge styles](https://developer.apple.com/documentation/swiftui/scrolledgeeffectstyle), [React Native integration reference](https://github.com/bluesky-social/expo-scroll-edge-effect/blob/main/ios/ExpoScrollEdgeEffectView.swift), [Android RenderEffect](https://developer.android.com/reference/android/graphics/RenderEffect).

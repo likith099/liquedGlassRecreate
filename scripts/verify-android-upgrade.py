@@ -10,6 +10,9 @@ def tap(value):
     try: node = find(tree(), value)
     except AssertionError: node = h['reveal'](value)
     x1, y1, x2, y2 = bounds(node)
+    if y2 <= y1:
+        node = h['reveal'](value)
+        x1, y1, x2, y2 = bounds(node)
     adb('shell', 'input', 'tap', (x1+x2)//2, (y1+y2)//2)
     time.sleep(.6)
 def badge_box(node, match, margin=60):

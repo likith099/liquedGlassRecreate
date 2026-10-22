@@ -42,13 +42,19 @@ def tap(value, up=True):
 def text(value): return find(tree(), value).get('text')
 def launch():
     adb('shell', 'am', 'start', '-S', '-n', 'com.liquidglasslab/.MainActivity')
+    compact_picker = False
     for _ in range(30):
         try:
-            find(tree(), 'open-accessibility-demo')
+            root = tree()
+            compact_picker = any(n.get('resource-id') == 'demo-sections' for n in root.iter('node'))
+            find(root, 'demo-sections' if compact_picker else 'open-accessibility-demo')
             break
         except AssertionError: time.sleep(1)
     else: raise AssertionError('Demo did not finish loading')
-    tap('open-accessibility-demo')
+    if compact_picker:
+        tap('demo-sections'); tap('Accessibility')
+    else:
+        tap('open-accessibility-demo')
 
 def capture(name):
     (ROOT / f'artifacts/b3-android-{name}.png').write_bytes(adb('exec-out', 'screencap', '-p'))

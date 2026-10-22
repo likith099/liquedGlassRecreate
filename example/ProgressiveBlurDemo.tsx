@@ -11,7 +11,7 @@ export default function ProgressiveBlurDemo({onClose}: {onClose: () => void}) {
   const [added, setAdded] = useState(0);
   const action = (id: string, title: string, onPress: () => void) => <Pressable testID={id} accessibilityRole="button" onPress={onPress} style={{padding: 12}}><Text style={{color: ink}}>{title}</Text></Pressable>;
   return <SafeAreaView style={{flex: 1, backgroundColor: background}}>
-    {action('close-scroll-header', '‹ Back to navigation demo', onClose)}
+    {action('close-scroll-header', '‹ Navigation & headers', onClose)}
     <View style={{flex: 1}}>
       <FlatList ref={list} testID="header-contacts" data={people} keyExtractor={name => name}
         contentContainerStyle={{paddingTop: 112, paddingBottom: 24}}

@@ -30,7 +30,7 @@ function Bubble({dark}: {dark: boolean}) {
   </View>;
 }
 
-export default function ContextMenuDemo({onClose}: {onClose: () => void}) {
+export default function ContextMenuDemo({onClose, embedded = false}: {onClose: () => void; embedded?: boolean}) {
   const dark = useColorScheme() === 'dark';
   const color = dark ? '#F5F5F9' : '#222737';
   const [status, setStatus] = useState('No context action');
@@ -60,7 +60,7 @@ export default function ContextMenuDemo({onClose}: {onClose: () => void}) {
     {id: 'delete', title: 'Delete message', systemImage: 'trash', androidIcon: 'demo_delete', destructive: true},
   ];
   if (conversation) return <MessageMenuDemo onClose={() => setConversation(false)} />;
-  return <SafeAreaView style={{flex: 1, backgroundColor: dark ? '#11141B' : '#F7F8FC'}}>
+  return <SafeAreaView edges={embedded ? ['left', 'right', 'bottom'] : undefined} style={{flex: 1, backgroundColor: dark ? '#11141B' : '#F7F8FC'}}>
     {/* Room below the last message so it can be scrolled to the top of the screen. */}
     <ScrollView contentContainerStyle={{padding: 24, paddingBottom: screenHeight * 0.85, gap: 20}}>
       <Pressable testID="close-context-demo" accessibilityRole="button" onPress={onClose}><Text style={{color}}>← Back</Text></Pressable>

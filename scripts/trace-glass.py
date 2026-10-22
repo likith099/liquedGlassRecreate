@@ -20,6 +20,7 @@ import re
 import shutil
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 root = Path(__file__).resolve().parent.parent / 'artifacts'
@@ -32,6 +33,7 @@ p.add_argument('--pad', type=float, default=60, help='points added left and righ
 p.add_argument('--scale', type=float, default=3)
 p.add_argument('--threshold', type=int, default=9, help='luma above the black page')
 p.add_argument('--anchor', choices=['trailing', 'leading', 'center'], default='trailing')
+p.add_argument('--require-continuity', action='store_true', help='fail on a missing shape or >2 pt anchored-edge drift')
 args = p.parse_args()
 ffmpeg = shutil.which('ffmpeg') or '/opt/homebrew/bin/ffmpeg'
 ffprobe = shutil.which('ffprobe') or '/opt/homebrew/bin/ffprobe'
@@ -53,13 +55,16 @@ t0 = marks[args.mark] - start
 
 times = [float(v.strip(',')) for v in subprocess.run([ffprobe, '-v', 'error', '-select_streams', 'v', '-show_entries', 'frame=pts_time',
   '-of', 'csv=p=0', str(root / f'{args.name}.mp4')], capture_output=True, text=True, check=True).stdout.split() if v.strip(',')]
-proc = subprocess.Popen([ffmpeg, '-v', 'error', '-i', str(root / f'{args.name}.mp4'), '-fps_mode', 'passthrough',
-  '-vf', f'crop={crop_w}:{crop_h}:{crop_x}:{crop_y},format=gray', '-f', 'rawvideo', '-'], stdout=subprocess.PIPE)
+if any(b < a for a, b in zip(times, times[1:])):
+  sys.exit('Recording has backwards timestamps; recapture before judging animation')
+decode_log = tempfile.TemporaryFile(mode='w+t')
+proc = subprocess.Popen([ffmpeg, '-v', 'error', '-threads', '1', '-i', str(root / f'{args.name}.mp4'), '-fps_mode', 'passthrough',
+  '-vf', f'crop={crop_w}:{crop_h}:{crop_x}:{crop_y},format=gray', '-enc_time_base', '1:60000', '-f', 'rawvideo', '-'], stdout=subprocess.PIPE, stderr=decode_log)
 size = crop_w * crop_h
 trace = []
 for t in times:
   frame = proc.stdout.read(size)
-  if len(frame) < size: break
+  if len(frame) < size: sys.exit('Recording ended before all timestamped frames were decoded')
   if t < t0 - 0.05 or t > t0 + args.window: continue
   columns = []
   for cx in range(crop_w):
@@ -67,13 +72,28 @@ for t in times:
     columns.append(lit * 2 > crop_h)
   if True in columns:
     left = columns.index(True); right = crop_w - 1 - columns[::-1].index(True)
+    if args.require_continuity:
+      # A header crop can include the rim of a neighbour as the primary slot shrinks.
+      # Follow the contiguous shape at the anchored edge, not the union of both slots.
+      if args.anchor == 'trailing':
+        left = right
+        while left > 0 and columns[left - 1]: left -= 1
+      elif args.anchor == 'leading':
+        right = left
+        while right + 1 < crop_w and columns[right + 1]: right += 1
     trace.append({'t': round(t - t0, 4), 'left': round((crop_x + left) / s, 2), 'right': round((crop_x + right + 1) / s, 2),
       'width': round((right - left + 1) / s, 2)})
   else:
     trace.append({'t': round(t - t0, 4), 'left': None, 'right': None, 'width': 0})
-proc.stdout.close(); proc.wait()
+proc.stdout.close()
+if proc.wait() != 0: sys.exit('Video decode failed')
+decode_log.seek(0)
+diagnostics = decode_log.read().strip()
+decode_log.close()
+if diagnostics: sys.exit('Unreliable video decode; recapture before judging animation: ' + diagnostics.splitlines()[0])
 if not trace: sys.exit('no frames in window')
 present = [f for f in trace if f['width'] > 0]
+if not present: sys.exit('Glass missing from every frame')
 tail = present[-5:] if len(present) >= 5 else present
 final = sorted(f['width'] for f in tail)[len(tail) // 2]
 edge = 'right' if args.anchor == 'trailing' else 'left'
@@ -93,3 +113,5 @@ summary = {
   'emptyFrames': sum(1 for f in after if f['width'] == 0),
 }
 print(json.dumps({'summary': summary, 'trace': trace}))
+if args.require_continuity and (len(after) < 10 or not summary['glassEveryFrame'] or summary['trailingDrift'] > 2):
+  sys.exit('Glass continuity failed: insufficient frames, missing shape or anchored-edge drift')

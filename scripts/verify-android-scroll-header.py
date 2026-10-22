@@ -15,7 +15,7 @@ def color_pixels():
     x1,y1,x2,y2 = bounds(find(tree(),'contacts-header'))
     image = Image.open(io.BytesIO(adb('exec-out','screencap','-p'))).convert('RGB')
     return sum(r > g + 18 and r > b + 12 for r,g,b in image.crop((x1,y1,x2,y2)).getdata())
-tap('open-search-demo'); tap('open-scroll-header'); tap('nav-blur-only'); tap('header-scroll')
+tap('Navigation & headers'); tap('nav-blur-only'); tap('header-scroll')
 time.sleep(.8)
 blur = color_pixels()
 tap('header-add'); assert '21' in find(tree(),'header-added').get('text','')

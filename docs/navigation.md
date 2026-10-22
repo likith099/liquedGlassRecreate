@@ -133,6 +133,9 @@ Navigation `edgeEffect="hard"` controls the top, and the bottom only when this c
 
 ### Hard band
 
+The hard band's tint and hairline stay hidden at the top and while a large title is still collapsing. They appear together once content is beneath the compact title, and disappear on return to the top or during search. This also applies to morph titles and pinned filters; the hairline stays below the filter. Android waits for the collapsing app bar as well as the list. `band: 'system'` keeps the platform band, with the same timing for our hairline.
+
+
 A hard top edge on `GlassNavigationView` draws a band behind the header: content scrolled beneath it is blurred (strongest at the top) and covered by a colour, and the band ends at the header's bottom line, with content below it sharp — as system list headers such as Phone's Calls do. It appears only while content is beneath the header. Style it with `band`:
 
 ```tsx

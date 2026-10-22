@@ -11,9 +11,8 @@ def tap(value, result=False):
     x1,y1,x2,y2 = bounds(node); adb('shell','input','tap',(x1+x2)//2,(y1+y2)//2); time.sleep(.6)
 def option(value):
     tap('review-options'); tap(value)
-tap('open-search-demo'); tap('open-scroll-header'); tap('nav-review')
+tap('Navigation & headers'); tap('nav-review')
 find(tree(), 'review-close')
-adb('shell','input','swipe',650,1800,650,600,450); time.sleep(.6)
 # Hard band (edgeEffect.band): once the list has scrolled, the app bar takes the band colour.
 def bar_rgb():
     png = subprocess.check_output([h['ADB'], '-s', h['SERIAL'], 'exec-out', 'screencap', '-p'])
@@ -21,7 +20,16 @@ def bar_rgb():
     x1, y1, x2, y2 = bounds(find(tree(), 'review-options'))
     pixels = list(image.crop((x1 - 140, y1 + 8, x1 - 60, y2 - 8)).getdata())
     return [sum(p[i] for p in pixels) / len(pixels) for i in range(3)]
+at_top = bar_rgb()
+# A short drag leaves the title expanded; the band must still use the screen colour.
+adb('shell','input','swipe',650,1500,650,1470,500); time.sleep(.6)
+assert max(abs(a-b) for a,b in zip(at_top, bar_rgb())) <= 2, 'No band while the title is expanded'
+adb('shell','input','swipe',650,1800,650,600,450); time.sleep(.6)
 bands = {'default': bar_rgb()}
+assert max(abs(a-b) for a,b in zip(at_top, bands['default'])) > 3, 'The band appears after collapse'
+tap('review-top'); time.sleep(.6)
+assert max(abs(a-b) for a,b in zip(at_top, bar_rgb())) <= 2, 'Top removes the band'
+adb('shell','input','swipe',650,1800,650,600,450); time.sleep(.6)
 for name in ('lighter', 'tinted', 'system', 'default'):
     option(f'Hard band: {name}'); time.sleep(.6); bands[name + ('-again' if name == 'default' else '')] = bar_rgb()
 print('band colours', {k: [round(c) for c in v] for k, v in bands.items()})
@@ -42,6 +50,5 @@ tap('Contact 1', result=True); find(tree(),'Newest message')
 tap('review-detail-back'); find(tree(),'review-search-field')
 tap('Close search')
 assert not any(n.get('resource-id') == 'review-search-field' for n in tree().iter('node')), 'Dismissed search reopened'
-tap('review-close'); find(tree(),'nav-add')
-adb('shell','input','keyevent','4'); time.sleep(.5); find(tree(),'open-scroll-header')
+tap('review-close'); find(tree(),'open-scroll-header')
 print('Header review passed: Material collapse/actions, custom slots, search, nested back and system Back')

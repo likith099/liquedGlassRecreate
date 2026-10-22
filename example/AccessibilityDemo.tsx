@@ -4,7 +4,7 @@ import {SafeAreaView} from 'react-native-safe-area-context';
 import {GlassActionCluster, GlassButton, GlassSegmentedControl, GlassSlider, GlassTabBar, GlassMenuButton, GlassToolbar} from '@likith99/react-native-adaptive-liquid-glass';
 
 const options = [{value: 'all', label: 'All'}, {value: 'saved', label: 'Saved'}, {value: 'shared', label: 'Shared', disabled: true}];
-export default function AccessibilityDemo({onClose}: {onClose: () => void}) {
+export default function AccessibilityDemo({onClose, embedded = false}: {onClose: () => void; embedded?: boolean}) {
   const dark = useColorScheme() === 'dark';
   const {fontScale} = useWindowDimensions();
   const color = dark ? '#F5F5F9' : '#222737';
@@ -22,7 +22,7 @@ export default function AccessibilityDemo({onClose}: {onClose: () => void}) {
       <Text style={{color, flex: 1}}>{title}</Text>
       <Switch testID={id} accessibilityLabel={title} value={value} onValueChange={onValueChange} />
     </View>;
-  return <SafeAreaView style={{flex: 1, backgroundColor: dark ? '#11141B' : '#F7F8FC'}}>
+  return <SafeAreaView edges={embedded ? ['left', 'right', 'bottom'] : undefined} style={{flex: 1, backgroundColor: dark ? '#11141B' : '#F7F8FC'}}>
     <ScrollView contentContainerStyle={{padding: 20, gap: 16}}>
       <Pressable testID="close-accessibility-demo" accessibilityRole="button" onPress={onClose} style={{minHeight: 48, justifyContent: 'center'}}>
         <Text style={{color}}>Back to component lab</Text>

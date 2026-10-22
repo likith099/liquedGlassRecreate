@@ -59,7 +59,9 @@ def reveal(value):
             x1, y1, x2, y2 = bounds(node)
             if y2 > y1 and y1 > height * .06 and y2 < height * .94:
                 return node
-            direction = 1 if y2 >= height * .94 else -1
+            # Clipped RN descendants can have inverted bounds. Their vertical position still
+            # tells us whether to reveal content above or below the visible scroll area.
+            direction = (1 if y1 > height / 2 else -1) if y2 <= y1 else (1 if y2 >= height * .94 else -1)
         except AssertionError:
             node = None
         screen = [(n.get('text'), n.get('bounds')) for n in root.iter('node') if n.get('text')]

@@ -49,7 +49,7 @@ final class GlassInteractionTests: XCTestCase {
     continueAfterFailure = false
     let app = XCUIApplication(); app.launch(); defer { app.terminate() }
     let open = app.buttons["open-upgrade-demo"]
-    XCTAssertTrue(open.waitForExistence(timeout: launchTimeout)); open.tap()
+    XCTAssertTrue(open.waitForExistence(timeout: launchTimeout)); if !open.isHittable { XCTAssertTrue(app.scrollIntoView(open)) }; open.tap()
     let toggle = app.buttons["upgrade-toggle-surfaces"]
     XCTAssertTrue(app.scrollIntoView(toggle, band: 0.1...0.5))
     let surfaces = app.otherElements["upgrade-surfaces"]
@@ -123,7 +123,7 @@ final class GlassInteractionTests: XCTestCase {
   func testAcceptanceSurfaceProfile() throws {
     let app = XCUIApplication(); app.launch(); defer { app.terminate() }
     let open = app.buttons["open-upgrade-demo"]
-    XCTAssertTrue(open.waitForExistence(timeout: launchTimeout)); open.tap()
+    XCTAssertTrue(open.waitForExistence(timeout: launchTimeout)); if !open.isHittable { XCTAssertTrue(app.scrollIntoView(open)) }; open.tap()
     let toggle = app.buttons["upgrade-toggle-surfaces"]
     XCTAssertTrue(app.scrollIntoView(toggle, band: 0.1...0.5))
     print("ALG-MARK profile-ready \(String(format: "%.4f", Date().timeIntervalSince1970))")
@@ -141,7 +141,7 @@ final class GlassInteractionTests: XCTestCase {
     app.launchArguments += ["-ALGAppearance", "dark"]
     app.launch(); defer { app.terminate() }
     let open = app.buttons["open-upgrade-demo"]
-    XCTAssertTrue(open.waitForExistence(timeout: launchTimeout)); open.tap()
+    XCTAssertTrue(open.waitForExistence(timeout: launchTimeout)); if !open.isHittable { XCTAssertTrue(app.scrollIntoView(open)) }; open.tap()
     // Press-drag-hold the badge-bearing favourite button and the Saved pill in every direction,
     // including up and down. The badge rides the glass swell (following the proxy scale, which
     // stays enlarged through a drag even though the button's press flags drop), leans toward the
@@ -172,7 +172,7 @@ final class GlassInteractionTests: XCTestCase {
     app.launchArguments += ["-ALGAppearance", "dark"]
     app.launch(); defer { app.terminate() }
     let open = app.buttons["open-upgrade-demo"]
-    XCTAssertTrue(open.waitForExistence(timeout: launchTimeout)); open.tap()
+    XCTAssertTrue(open.waitForExistence(timeout: launchTimeout)); if !open.isHittable { XCTAssertTrue(app.scrollIntoView(open)) }; open.tap()
     let morph = app.buttons["upgrade-morph"]
     XCTAssertTrue(morph.waitForExistence(timeout: 5))
     let initial = morph.frame
@@ -280,10 +280,9 @@ final class GlassInteractionTests: XCTestCase {
     continueAfterFailure = false
     let app = XCUIApplication(); app.launchArguments += ["-ALGAppearance", "dark"]
     app.launch(); defer { app.terminate() }
-    let open = app.buttons["open-search-demo"]
-    XCTAssertTrue(open.waitForExistence(timeout: launchTimeout)); open.tap()
-    app.buttons["open-scroll-header"].tap()
-    app.buttons["nav-blur-only"].tap()
+    openNavigation(app)
+    let open = app.buttons["nav-blur-only"]
+    XCTAssertTrue(open.waitForExistence(timeout: launchTimeout)); if !open.isHittable { XCTAssertTrue(app.scrollIntoView(open)) }; open.tap()
     let title = app.staticTexts["contacts-title"]
     XCTAssertTrue(title.waitForExistence(timeout: 5)); let frame = title.frame
     app.buttons["header-scroll"].tap(); Thread.sleep(forTimeInterval: 0.8)
@@ -331,8 +330,8 @@ final class GlassInteractionTests: XCTestCase {
     continueAfterFailure = false
     let app = XCUIApplication(); app.launchArguments += ["-ALGAppearance", "dark"]
     app.launch(); defer { app.terminate() }
-    XCTAssertTrue(app.buttons["open-search-demo"].waitForExistence(timeout: launchTimeout))
-    app.buttons["open-search-demo"].tap(); app.buttons["open-scroll-header"].tap()
+    openNavigation(app)
+    app.buttons["open-scroll-header"].tap()
     let bar = app.navigationBars.firstMatch
     XCTAssertTrue(bar.waitForExistence(timeout: 5))
     func title() -> XCUIElement { bar.staticTexts.matching(identifier: "Contacts").allElementsBoundByIndex.first(where: { $0.isHittable }) ?? bar.staticTexts["Contacts"].firstMatch }
@@ -366,8 +365,8 @@ final class GlassInteractionTests: XCTestCase {
     continueAfterFailure = false
     let app = XCUIApplication(); app.launchArguments += ["-ALGAppearance", "dark"]
     app.launch(); defer { app.terminate() }
-    XCTAssertTrue(app.buttons["open-search-demo"].waitForExistence(timeout: launchTimeout))
-    app.buttons["open-search-demo"].tap(); app.buttons["open-scroll-header"].tap(); app.buttons["nav-review"].tap()
+    openNavigation(app)
+    app.buttons["nav-review"].tap()
     func option(_ label: String) {
       app.buttons["review-options"].tap(); app.buttons[label].tap()
     }
@@ -421,8 +420,8 @@ final class GlassInteractionTests: XCTestCase {
     continueAfterFailure = false
     let app = XCUIApplication(); app.launchArguments += ["-ALGAppearance", "dark"]
     app.launch(); defer { app.terminate() }
-    XCTAssertTrue(app.buttons["open-search-demo"].waitForExistence(timeout: launchTimeout))
-    app.buttons["open-search-demo"].tap(); app.buttons["open-scroll-header"].tap()
+    openNavigation(app)
+    app.buttons["open-scroll-header"].tap()
     let close = app.buttons.matching(NSPredicate(format: "label == 'Close' OR label == 'Cancel'")).firstMatch
     func settle() { Thread.sleep(forTimeInterval: 0.7) }
 
@@ -443,7 +442,7 @@ final class GlassInteractionTests: XCTestCase {
     XCTAssertEqual(status.frame.minY, resting.minY, accuracy: 1, "Search toggled while scrolled must not leave a stale header height")
 
     // Icon-activated search (`active: true`) in both title transitions.
-    app.buttons["nav-review"].tap()
+    app.buttons["navigation-back"].tap(); app.buttons["nav-review"].tap()
     XCTAssertTrue(app.buttons["review-options"].waitForExistence(timeout: 5))
     let state = app.staticTexts["review-state"], list = app.otherElements["review-list"].scrollViews.firstMatch
     for transition in ["morph", "native"] {
@@ -474,6 +473,13 @@ final class GlassInteractionTests: XCTestCase {
 
   // MARK: 0.2.0 acceptance (PACKAGE_REQUESTS_0_2_0). Frames and marks are printed for the
   // recording analysis in scripts/trace-glass.py; geometry asserts the request's numbers.
+  private func openNavigation(_ app: XCUIApplication) {
+    let category = app.descendants(matching: .any).matching(NSPredicate(format:
+      "identifier == %@ OR label == %@", "demo-categories-navigation", "Navigation & headers")).firstMatch
+    XCTAssertTrue(category.waitForExistence(timeout: launchTimeout))
+    category.tap()
+  }
+
   private func openAcceptance(_ app: XCUIApplication) {
     XCTAssertTrue(app.buttons["open-acceptance-demo"].waitForExistence(timeout: launchTimeout))
     app.buttons["open-acceptance-demo"].tap()
@@ -484,8 +490,9 @@ final class GlassInteractionTests: XCTestCase {
     print("ALG-RECT \(name) \(frame.minX) \(frame.minY) \(frame.width) \(frame.height)")
   }
   private func reveal(_ app: XCUIApplication, _ element: XCUIElement) {
-    let root = app.scrollViews["acc-root"].exists ? app.scrollViews["acc-root"] : app.otherElements["acc-root"]
-    for _ in 0..<8 where !element.isHittable { root.swipeUp(velocity: .slow) }
+    // Sections share a persistent gallery header. Reveal in either direction and
+    // keep the target below it, including when returning to an earlier control.
+    XCTAssertTrue(app.scrollIntoView(element, band: 0.35...0.85))
   }
 
   func testAcceptanceGeometry() throws {
@@ -667,6 +674,7 @@ final class GlassInteractionTests: XCTestCase {
     XCTAssertTrue(back.isHittable); XCTAssertTrue(share.isHittable)
     let backFrame = back.frame, shareFrame = share.frame
     rect("shared-back-all", backFrame); rect("shared-share-all", shareFrame)
+    rect("shared-primary-all", app.buttons["acc-header-primary"].frame)
     XCTAssertEqual(shareFrame.maxX, app.buttons["acc-header-primary"].frame.minX - 12, accuracy: 1, "Share sits inside Select")
     for (index, how) in ["tap", "swipe"].enumerated() {
       mark("push-item\(index == 0 ? "" : "-2")"); app.buttons["acc-row-Item\(index + 1)"].tap()
@@ -677,12 +685,15 @@ final class GlassInteractionTests: XCTestCase {
       XCTAssertEqual(itemBack.frame, backFrame, "The back button does not move")
       XCTAssertEqual(itemShare.frame.maxX, edit.frame.minX - 12, accuracy: 1, "Share follows Edit's width")
       rect("shared-share-item", itemShare.frame)
+      rect("shared-primary-item", edit.frame)
       itemShare.tap(); XCTAssertEqual(app.staticTexts["acc-item-state"].label, "Shared", "Carried Share reaches Item")
       if how == "tap" {
         mark("pop-item"); itemBack.tap()
       } else {
-        let edge = app.coordinate(withNormalizedOffset: CGVector(dx: 0.005, dy: 0.5))
-        mark("swipe-item"); edge.press(forDuration: 0.01, thenDragTo: edge.withOffset(CGVector(dx: 330, dy: 0)), withVelocity: .default, thenHoldForDuration: 0)
+        let edge = app.coordinate(withNormalizedOffset: CGVector(dx: 0, dy: 0.5)).withOffset(CGVector(dx: 8, dy: 0))
+        // Settle past the completion threshold before lifting. A zero-hold synthesized swipe
+        // can reverse its release velocity on a physical phone and cancel an otherwise full drag.
+        mark("swipe-item"); edge.press(forDuration: 0.05, thenDragTo: edge.withOffset(CGVector(dx: app.frame.width * 0.8, dy: 0)), withVelocity: .slow, thenHoldForDuration: 0.2)
       }
       XCTAssertTrue(app.staticTexts["acc-all-title"].waitForExistence(timeout: 5)); Thread.sleep(forTimeInterval: 1.0)
       XCTAssertEqual(app.buttons["acc-header-primary"].label, "Select")
@@ -802,8 +813,8 @@ final class GlassInteractionTests: XCTestCase {
     continueAfterFailure = false
     let app = XCUIApplication(); app.launchArguments += ["-ALGAppearance", "dark"]
     app.launch(); defer { app.terminate() }
-    XCTAssertTrue(app.buttons["open-search-demo"].waitForExistence(timeout: launchTimeout))
-    app.buttons["open-search-demo"].tap(); app.buttons["open-scroll-header"].tap(); app.buttons["nav-review"].tap()
+    openNavigation(app)
+    app.buttons["nav-review"].tap()
     func option(_ label: String) {
       app.buttons["review-options"].tap(); app.buttons[label].tap()
     }
@@ -876,8 +887,8 @@ final class GlassInteractionTests: XCTestCase {
     continueAfterFailure = false
     let app = XCUIApplication(); app.launchArguments += ["-ALGAppearance", "dark"]
     app.launch(); defer { app.terminate() }
-    XCTAssertTrue(app.buttons["open-search-demo"].waitForExistence(timeout: launchTimeout))
-    app.buttons["open-search-demo"].tap(); app.buttons["open-scroll-header"].tap()
+    openNavigation(app)
+    app.buttons["open-scroll-header"].tap()
     XCTAssertTrue(app.buttons["nav-add"].waitForExistence(timeout: 5)); Thread.sleep(forTimeInterval: 1.0)
     let list = app.otherElements["navigation-contacts"].exists ? app.otherElements["navigation-contacts"] : app.scrollViews.firstMatch
     let start = list.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.45))
@@ -901,8 +912,8 @@ final class GlassInteractionTests: XCTestCase {
     continueAfterFailure = false
     let app = XCUIApplication(); app.launchArguments += ["-ALGAppearance", "dark"]
     app.launch(); defer { app.terminate() }
-    XCTAssertTrue(app.buttons["open-search-demo"].waitForExistence(timeout: launchTimeout))
-    app.buttons["open-search-demo"].tap(); app.buttons["open-scroll-header"].tap()
+    openNavigation(app)
+    app.buttons["open-scroll-header"].tap()
     let toggle = app.buttons["nav-search-toggle"], status = app.staticTexts["nav-status"]
     XCTAssertTrue(toggle.waitForExistence(timeout: 5)); Thread.sleep(forTimeInterval: 1.0)
     let titles = app.navigationBars.firstMatch.staticTexts.matching(identifier: "Contacts").allElementsBoundByIndex
@@ -935,8 +946,8 @@ final class GlassInteractionTests: XCTestCase {
     continueAfterFailure = false
     let app = XCUIApplication(); app.launchArguments += ["-ALGAppearance", "dark"]
     app.launch(); defer { app.terminate() }
-    XCTAssertTrue(app.buttons["open-search-demo"].waitForExistence(timeout: launchTimeout))
-    app.buttons["open-search-demo"].tap(); app.buttons["open-scroll-header"].tap(); app.buttons["nav-review"].tap()
+    openNavigation(app)
+    app.buttons["nav-review"].tap()
     XCTAssertTrue(app.buttons["review-options"].waitForExistence(timeout: 5)); Thread.sleep(forTimeInterval: 1.0)
     let state = app.staticTexts["review-state"], list = app.otherElements["review-list"].scrollViews.firstMatch
     rect("pull-header", CGRect(x: 0, y: 0, width: app.windows.firstMatch.frame.width, height: state.frame.maxY + 40))
@@ -959,12 +970,68 @@ final class GlassInteractionTests: XCTestCase {
   /// (like Phone's Calls header) and its colour, opacity, blur and separator are adjustable.
   /// Samples an empty band area between the title and the buttons per preset (iOS 26: the
   /// package's band; older iOS: the bar's appearance).
+  func testHardEdgeWaitsForTitle() throws {
+    continueAfterFailure = false
+    let app = XCUIApplication(); app.launchArguments += ["-ALGAppearance", "dark"]
+    app.launch(); defer { app.terminate() }
+    openNavigation(app); app.buttons["nav-review"].tap()
+    XCTAssertTrue(app.buttons["review-options"].waitForExistence(timeout: 5))
+    func option(_ label: String) {
+      app.buttons["review-options"].tap()
+      let item = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", label)).firstMatch
+      for _ in 0..<3 where !(item.waitForExistence(timeout: 1) && item.isHittable) { app.collectionViews.firstMatch.swipeUp() }
+      item.tap(); Thread.sleep(forTimeInterval: 0.5)
+    }
+    // A pinned filter gives the boundary an unambiguous public frame in every title mode.
+    option("Show pinned filter")
+    let accessory = app.otherElements["review-accessory"]
+    let list = app.otherElements["review-list"].scrollViews.firstMatch
+    func lineBrightness() throws -> Double {
+      let shot = app.screenshot(), image = try XCTUnwrap(shot.image.cgImage)
+      let scale = CGFloat(image.width) / app.frame.width
+      let crop = try XCTUnwrap(image.cropping(to: CGRect(x: 2 * scale, y: (accessory.frame.maxY - 1) * scale, width: 12 * scale, height: scale)))
+      var bytes = [UInt8](repeating: 0, count: crop.width * crop.height * 4)
+      bytes.withUnsafeMutableBytes { buffer in
+        CGContext(data: buffer.baseAddress, width: crop.width, height: crop.height, bitsPerComponent: 8,
+          bytesPerRow: crop.width * 4, space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)?.draw(crop, in: CGRect(x: 0, y: 0, width: crop.width, height: crop.height))
+      }
+      // The hairline is one physical pixel; use the brightest row, not an average over points.
+      return (0..<crop.height).map { y in
+        (0..<crop.width).reduce(0.0) { $0 + Double(bytes[(y * crop.width + $1) * 4]) } / Double(crop.width)
+      }.max() ?? 0
+    }
+    for native in [false, true] {
+      if native { option("Native title transition") }
+      for mode in ["Large below bar", "Large in bar", "Compact only"] {
+        option(mode); app.buttons["review-top"].tap(); Thread.sleep(forTimeInterval: 0.6)
+        mark("hard-top-\(native)-\(mode)")
+        let top = try lineBrightness()
+        XCTAssertLessThan(top, 5, "No hairline or band at the top: \(native), \(mode)")
+        if mode != "Compact only" {
+          let start = list.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.55))
+          mark("hard-small-\(native)-\(mode)")
+          start.press(forDuration: 0.05, thenDragTo: start.withOffset(CGVector(dx: 0, dy: -16)), withVelocity: .slow, thenHoldForDuration: 0.2)
+          // The native/morph snap can return this small drag to the expanded position.
+          if app.staticTexts["review-state"].exists && app.staticTexts["review-state"].isHittable {
+            XCTAssertLessThan(try lineBrightness(), 5, "A small drag must not reveal the hard boundary")
+          }
+        }
+        mark("hard-collapse-\(native)-\(mode)"); list.swipeUp(); Thread.sleep(forTimeInterval: 0.6)
+        let compact = try lineBrightness()
+        print("ALG-INFO hard-boundary native=\(native) mode=\(mode) top=\(top) compact=\(compact)")
+        XCTAssertGreaterThan(compact, top + 5, "The boundary appears below the filter after collapse")
+        app.buttons["review-top"].tap(); Thread.sleep(forTimeInterval: 0.6)
+        XCTAssertLessThan(try lineBrightness(), 5, "Returning to the top removes the boundary")
+      }
+    }
+  }
+
   func testHeaderBandStyles() throws {
     continueAfterFailure = false
     let app = XCUIApplication(); app.launchArguments += ["-ALGAppearance", "dark"]
     app.launch(); defer { app.terminate() }
-    XCTAssertTrue(app.buttons["open-search-demo"].waitForExistence(timeout: launchTimeout))
-    app.buttons["open-search-demo"].tap(); app.buttons["open-scroll-header"].tap(); app.buttons["nav-review"].tap()
+    openNavigation(app)
+    app.buttons["nav-review"].tap()
     XCTAssertTrue(app.buttons["review-options"].waitForExistence(timeout: 5)); Thread.sleep(forTimeInterval: 1.0)
     func option(_ label: String) {
       app.buttons["review-options"].tap()
@@ -1030,8 +1097,8 @@ final class GlassInteractionTests: XCTestCase {
     continueAfterFailure = false
     let app = XCUIApplication(); app.launchArguments += ["-ALGAppearance", "dark"]
     app.launch(); defer { app.terminate() }
-    XCTAssertTrue(app.buttons["open-search-demo"].waitForExistence(timeout: launchTimeout))
-    app.buttons["open-search-demo"].tap(); app.buttons["open-scroll-header"].tap(); app.buttons["nav-review"].tap()
+    openNavigation(app)
+    app.buttons["nav-review"].tap()
     XCTAssertTrue(app.buttons["review-options"].waitForExistence(timeout: 5)); Thread.sleep(forTimeInterval: 1.0)
     func option(_ label: String) { app.buttons["review-options"].tap(); app.buttons[label].tap(); Thread.sleep(forTimeInterval: 0.5) }
     let list = app.otherElements["review-list"].scrollViews.firstMatch
@@ -1059,8 +1126,8 @@ final class GlassInteractionTests: XCTestCase {
     continueAfterFailure = false
     let app = XCUIApplication(); app.launchArguments += ["-ALGAppearance", "dark"]
     app.launch(); defer { app.terminate() }
-    XCTAssertTrue(app.buttons["open-search-demo"].waitForExistence(timeout: launchTimeout))
-    app.buttons["open-search-demo"].tap(); app.buttons["open-scroll-header"].tap(); app.buttons["nav-review"].tap()
+    openNavigation(app)
+    app.buttons["nav-review"].tap()
     XCTAssertTrue(app.buttons["review-options"].waitForExistence(timeout: 5)); Thread.sleep(forTimeInterval: 1.0)
     let state = app.staticTexts["review-state"], field = app.searchFields["review-search-field"]
     let close = app.buttons.matching(NSPredicate(format: "label == 'Close' OR label == 'Cancel'")).firstMatch
@@ -1085,8 +1152,8 @@ final class GlassInteractionTests: XCTestCase {
     continueAfterFailure = false
     let app = XCUIApplication(); app.launchArguments += ["-ALGAppearance", "dark"]
     app.launch(); defer { app.terminate() }
-    XCTAssertTrue(app.buttons["open-search-demo"].waitForExistence(timeout: launchTimeout))
-    app.buttons["open-search-demo"].tap(); app.buttons["open-scroll-header"].tap()
+    openNavigation(app)
+    app.buttons["open-scroll-header"].tap()
     XCTAssertTrue(app.buttons["nav-search-toggle"].waitForExistence(timeout: 5)); Thread.sleep(forTimeInterval: 0.8)
     app.buttons["nav-search-toggle"].tap()
     let field = app.searchFields.firstMatch
@@ -1130,8 +1197,8 @@ final class GlassInteractionTests: XCTestCase {
     continueAfterFailure = false
     let app = XCUIApplication(); app.launchArguments += ["-ALGAppearance", "dark", "-ALGNavigationAudit"]
     app.launch(); defer { app.terminate() }
-    XCTAssertTrue(app.buttons["open-search-demo"].waitForExistence(timeout: launchTimeout))
-    app.buttons["open-search-demo"].tap(); app.buttons["open-scroll-header"].tap(); app.buttons["nav-review"].tap()
+    openNavigation(app)
+    app.buttons["nav-review"].tap()
     XCTAssertTrue(app.buttons["review-options"].waitForExistence(timeout: 5))
     Thread.sleep(forTimeInterval: 4) // DEBUG-only native 121-state audit writes one small JSON file.
     app.buttons["review-top"].tap()
@@ -1170,7 +1237,7 @@ final class GlassInteractionTests: XCTestCase {
     expectation(for: refreshed, evaluatedWith: app.staticTexts["review-state"])
     waitForExpectations(timeout: 5)
     app.buttons["review-close"].tap()
-    XCTAssertTrue(app.buttons["nav-add"].waitForExistence(timeout: 5))
+    XCTAssertTrue(app.buttons["nav-review"].waitForExistence(timeout: 5))
   }
 
   func testUpgradeMenuBadgeAndDot() throws {
@@ -1185,7 +1252,7 @@ final class GlassInteractionTests: XCTestCase {
     for cycle in 0..<2 {
       more.tap()
       XCTAssertTrue(app.buttons["Pin item"].waitForExistence(timeout: 3))
-      app.coordinate(withNormalizedOffset: CGVector(dx: 0.8, dy: 0.2)).tap()
+      app.coordinate(withNormalizedOffset: CGVector(dx: 0.01, dy: 0.55)).tap()
       XCTAssertTrue(app.buttons["Pin item"].waitForNonExistence(timeout: 3))
       Thread.sleep(forTimeInterval: 0.6)
       let badge = try XCTUnwrap(badgeBox(app, share, name: "group-dismiss-\(cycle)", margin: 5, match: red))
@@ -1212,7 +1279,7 @@ final class GlassInteractionTests: XCTestCase {
     XCTAssertTrue(app.scrollIntoView(save)); XCTAssertEqual(save.value as? String, "4 new")
     app.terminate(); app.launch()
     let open = app.buttons["open-upgrade-demo"]
-    XCTAssertTrue(open.waitForExistence(timeout: launchTimeout)); open.tap()
+    XCTAssertTrue(open.waitForExistence(timeout: launchTimeout)); if !open.isHittable { XCTAssertTrue(app.scrollIntoView(open)) }; open.tap()
     let dot = app.buttons["upgrade-badge-dot"], text = app.buttons["upgrade-badge-text"], cap = app.buttons["upgrade-badge-cap"]
     XCTAssertTrue(dot.waitForExistence(timeout: 5)); XCTAssertTrue(app.scrollIntoView(cap))
     Thread.sleep(forTimeInterval: 0.6)
@@ -1248,7 +1315,7 @@ final class GlassInteractionTests: XCTestCase {
     app.launchArguments += ["-ALGAppearance", "dark"]
     app.launch(); defer { app.terminate() }
     let open = app.buttons["open-upgrade-demo"]
-    XCTAssertTrue(open.waitForExistence(timeout: launchTimeout)); open.tap()
+    XCTAssertTrue(open.waitForExistence(timeout: launchTimeout)); if !open.isHittable { XCTAssertTrue(app.scrollIntoView(open)) }; open.tap()
     let saved = app.buttons["upgrade-pill-saved"]
     XCTAssertTrue(saved.waitForExistence(timeout: 5))
     let savedRestingFrame = saved.frame
@@ -1280,7 +1347,7 @@ final class GlassInteractionTests: XCTestCase {
     continueAfterFailure = false
     let app = XCUIApplication(); app.launch(); defer { app.terminate() }
     let open = app.buttons["open-upgrade-demo"]
-    XCTAssertTrue(open.waitForExistence(timeout: launchTimeout)); open.tap()
+    XCTAssertTrue(open.waitForExistence(timeout: launchTimeout)); if !open.isHittable { XCTAssertTrue(app.scrollIntoView(open)) }; open.tap()
     let badge = app.buttons["upgrade-badge"]
     XCTAssertTrue(badge.waitForExistence(timeout: 10))
     XCTAssertEqual(badge.value as? String, "77 new")
@@ -1300,7 +1367,7 @@ final class GlassInteractionTests: XCTestCase {
     app.launchArguments += ["-ALGAppearance", "dark"]
     app.launch(); defer { app.terminate() }
     let open = app.buttons["open-upgrade-demo"]
-    XCTAssertTrue(open.waitForExistence(timeout: launchTimeout)); open.tap()
+    XCTAssertTrue(open.waitForExistence(timeout: launchTimeout)); if !open.isHittable { XCTAssertTrue(app.scrollIntoView(open)) }; open.tap()
     let primary = app.buttons["upgrade-header-primary"]
     XCTAssertTrue(app.scrollIntoView(primary, band: 0.2...0.6))
     let resting = primary.frame
@@ -1339,7 +1406,7 @@ final class GlassInteractionTests: XCTestCase {
     app.launchArguments += ["-ALGAppearance", "dark"]
     app.launch(); defer { app.terminate() }
     let open = app.buttons["open-upgrade-demo"]
-    XCTAssertTrue(open.waitForExistence(timeout: launchTimeout)); open.tap()
+    XCTAssertTrue(open.waitForExistence(timeout: launchTimeout)); if !open.isHittable { XCTAssertTrue(app.scrollIntoView(open)) }; open.tap()
     for id in ["upgrade-badge", "upgrade-clear", "upgrade-share", "upgrade-search", "upgrade-pill-saved", "upgrade-pill-all"] {
       let button = app.buttons[id]
       XCTAssertTrue(app.scrollIntoView(button))
@@ -1361,7 +1428,7 @@ final class GlassInteractionTests: XCTestCase {
     app.launchArguments += ["-ALGAppearance", "dark"]
     app.launch(); defer { app.terminate() }
     let open = app.buttons["open-upgrade-demo"]
-    XCTAssertTrue(open.waitForExistence(timeout: launchTimeout)); open.tap()
+    XCTAssertTrue(open.waitForExistence(timeout: launchTimeout)); if !open.isHittable { XCTAssertTrue(app.scrollIntoView(open)) }; open.tap()
     let search = app.buttons["upgrade-search"]
     XCTAssertTrue(app.scrollIntoView(search))
     let resting = search.frame
@@ -1380,8 +1447,9 @@ final class GlassInteractionTests: XCTestCase {
     let app = XCUIApplication()
     app.launchArguments += ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"]
     app.launch(); defer { app.terminate() }
-    let open = app.buttons["open-upgrade-demo"]
-    XCTAssertTrue(open.waitForExistence(timeout: launchTimeout)); open.tap()
+    let sections = app.buttons["demo-sections"]
+    XCTAssertTrue(sections.waitForExistence(timeout: launchTimeout)); sections.tap()
+    app.buttons["Controls & badges"].tap()
     let saved = app.buttons["upgrade-pill-saved"]
     XCTAssertTrue(app.scrollIntoView(saved)); XCTAssertGreaterThanOrEqual(saved.frame.height, 44)
     saved.tap(); XCTAssertTrue(app.staticTexts["upgrade-status"].label.contains("saved"))
@@ -1404,7 +1472,7 @@ final class GlassInteractionTests: XCTestCase {
     continueAfterFailure = false
     let app = XCUIApplication(); app.launch(); defer { app.terminate() }
     let open = app.buttons["open-upgrade-demo"]
-    XCTAssertTrue(open.waitForExistence(timeout: launchTimeout)); open.tap()
+    XCTAssertTrue(open.waitForExistence(timeout: launchTimeout)); if !open.isHittable { XCTAssertTrue(app.scrollIntoView(open)) }; open.tap()
     let back = app.buttons["upgrade-back-symbol"]
     XCTAssertTrue(back.waitForExistence(timeout: 20))
     XCTAssertEqual(back.frame.width, 44, accuracy: 0.5)
@@ -1436,7 +1504,7 @@ final class GlassInteractionTests: XCTestCase {
     let app = XCUIApplication(); app.launch()
     defer { app.terminate() }
     let open = app.buttons["open-context-demo"]
-    XCTAssertTrue(open.waitForExistence(timeout: launchTimeout)); open.tap()
+    XCTAssertTrue(open.waitForExistence(timeout: launchTimeout)); if !open.isHittable { XCTAssertTrue(app.scrollIntoView(open)) }; open.tap()
     let chat = app.buttons["open-chat-menu-demo"]
     XCTAssertTrue(app.scrollIntoView(chat)); chat.tap()
     app.buttons["chat-latest"].tap()
@@ -1462,7 +1530,7 @@ final class GlassInteractionTests: XCTestCase {
     let app = XCUIApplication(); app.launch()
     defer { app.terminate() }
     let open = app.buttons["open-context-demo"]
-    XCTAssertTrue(open.waitForExistence(timeout: launchTimeout)); open.tap()
+    XCTAssertTrue(open.waitForExistence(timeout: launchTimeout)); if !open.isHittable { XCTAssertTrue(app.scrollIntoView(open)) }; open.tap()
     let chat = app.buttons["open-chat-menu-demo"]
     XCTAssertTrue(app.scrollIntoView(chat)); chat.tap()
     let message = app.descendants(matching: .any)["chat-message-29"].firstMatch
@@ -1515,7 +1583,7 @@ final class GlassInteractionTests: XCTestCase {
     let app = XCUIApplication(); app.launch()
     defer { app.terminate() }
     let open = app.buttons["open-context-demo"]
-    XCTAssertTrue(open.waitForExistence(timeout: launchTimeout)); open.tap()
+    XCTAssertTrue(open.waitForExistence(timeout: launchTimeout)); if !open.isHittable { XCTAssertTrue(app.scrollIntoView(open)) }; open.tap()
     if fallback { app.switches["context-fallback"].tap() }
     func action(_ title: String) -> XCUIElement {
       if fallback { return app.descendants(matching: .any).matching(NSPredicate(format: "label == %@", title)).firstMatch }
@@ -1668,8 +1736,9 @@ final class GlassInteractionTests: XCTestCase {
     let app = XCUIApplication(); app.launch()
     let originalOrientation = XCUIDevice.shared.orientation
     defer { XCUIDevice.shared.orientation = originalOrientation }
+    openNavigation(app)
     let open = app.buttons["open-tabs-demo"]
-    XCTAssertTrue(open.waitForExistence(timeout: launchTimeout)); open.tap()
+    XCTAssertTrue(open.waitForExistence(timeout: launchTimeout)); if !open.isHittable { XCTAssertTrue(app.scrollIntoView(open)) }; open.tap()
     for orientation in [UIDeviceOrientation.portrait, .landscapeLeft] {
       XCUIDevice.shared.orientation = orientation
       let home = app.buttons["Home tab"]
@@ -1922,7 +1991,7 @@ final class GlassInteractionTests: XCTestCase {
         print("ALG-FRAME \(mode)-\(id) \(probeX) \(frame.midY) \(min(frame.width, 48))")
         control.tap()
         XCTAssertTrue(app.buttons[title].waitForExistence(timeout: 5))
-        app.coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.15)).tap()
+        app.coordinate(withNormalizedOffset: CGVector(dx: 0.01, dy: 0.55)).tap()
         XCTAssertTrue(app.buttons[title].waitForNonExistence(timeout: 5))
         Thread.sleep(forTimeInterval: 3)
         capture("\(mode)-\(id)-settled")
@@ -1955,7 +2024,7 @@ final class GlassInteractionTests: XCTestCase {
     // Tap opens the menu; an outside tap closes it without an action.
     more.tap()
     XCTAssertTrue(app.buttons["Share"].waitForExistence(timeout: 5)); events(1, 0)
-    app.coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.15)).tap()
+    app.coordinate(withNormalizedOffset: CGVector(dx: 0.01, dy: 0.55)).tap()
     XCTAssertTrue(app.buttons["Share"].waitForNonExistence(timeout: 5)); events(1, 1)
     status("Icon pressed: close")
     Thread.sleep(forTimeInterval: 2)
@@ -2014,8 +2083,9 @@ final class GlassInteractionTests: XCTestCase {
       let attachment = XCTAttachment(screenshot: app.screenshot())
       attachment.name = name; attachment.lifetime = .keepAlways; add(attachment)
     }
+    openNavigation(app)
     let open = app.buttons["open-search-demo"]
-    XCTAssertTrue(open.waitForExistence(timeout: launchTimeout)); open.tap()
+    XCTAssertTrue(open.waitForExistence(timeout: launchTimeout)); if !open.isHittable { XCTAssertTrue(app.scrollIntoView(open)) }; open.tap()
     let field = app.descendants(matching: .any)["item-search"].firstMatch
     XCTAssertTrue(field.waitForExistence(timeout: 10))
     XCTAssertTrue(app.staticTexts["20 results"].exists)
@@ -2162,8 +2232,9 @@ final class GlassInteractionTests: XCTestCase {
     // First tap on a freshly built controller after each cold launch must reach JavaScript.
     for launch in 0..<3 {
       app.launch()
-      let open = app.buttons["open-tabs-demo"]
-      XCTAssertTrue(open.waitForExistence(timeout: launchTimeout)); open.tap()
+      openNavigation(app)
+    let open = app.buttons["open-tabs-demo"]
+      XCTAssertTrue(open.waitForExistence(timeout: launchTimeout)); if !open.isHittable { XCTAssertTrue(app.scrollIntoView(open)) }; open.tap()
       screen("Home")
       XCTAssertTrue(tab("Library").waitForExistence(timeout: 5))
       tab("Library").tap()
@@ -2207,8 +2278,9 @@ final class GlassInteractionTests: XCTestCase {
       let attachment = XCTAttachment(screenshot: app.screenshot())
       attachment.name = name; attachment.lifetime = .keepAlways; add(attachment)
     }
+    openNavigation(app)
     let open = app.buttons["open-tabs-demo"]
-    XCTAssertTrue(open.waitForExistence(timeout: launchTimeout)); open.tap()
+    XCTAssertTrue(open.waitForExistence(timeout: launchTimeout)); if !open.isHittable { XCTAssertTrue(app.scrollIntoView(open)) }; open.tap()
     screen("Home")
     let brand = app.switches["tabs-brand-toggle"]
     app.scrollIntoView(brand)
@@ -2284,8 +2356,9 @@ final class GlassInteractionTests: XCTestCase {
       start.press(forDuration: 0.6, thenDragTo: end, withVelocity: .slow, thenHoldForDuration: 3)
       print("ALG-LENS \(from)->\(to) released")
     }
+    openNavigation(app)
     let open = app.buttons["open-tabs-demo"]
-    XCTAssertTrue(open.waitForExistence(timeout: launchTimeout)); open.tap()
+    XCTAssertTrue(open.waitForExistence(timeout: launchTimeout)); if !open.isHittable { XCTAssertTrue(app.scrollIntoView(open)) }; open.tap()
     screen("Home")
     // Default colours: UIKit swaps in the selected image (house.circle.fill) by itself.
     capture("Default tabs, Home selected")
@@ -2309,8 +2382,9 @@ final class GlassInteractionTests: XCTestCase {
   func testTabBarBottomPlacement() throws {
     continueAfterFailure = false
     let app = XCUIApplication(); app.launch()
+    openNavigation(app)
     let open = app.buttons["open-tabs-demo"]
-    XCTAssertTrue(open.waitForExistence(timeout: launchTimeout)); open.tap()
+    XCTAssertTrue(open.waitForExistence(timeout: launchTimeout)); if !open.isHittable { XCTAssertTrue(app.scrollIntoView(open)) }; open.tap()
     XCTAssertTrue(app.staticTexts["Home screen"].waitForExistence(timeout: 8))
     func capture(_ name: String) {
       let attachment = XCTAttachment(screenshot: app.screenshot())
@@ -2332,8 +2406,9 @@ final class GlassInteractionTests: XCTestCase {
   func testNativeTabNavigationBatch() throws {
     continueAfterFailure = false
     let app = XCUIApplication(); app.launch()
+    openNavigation(app)
     let open = app.buttons["open-tabs-demo"]
-    XCTAssertTrue(open.waitForExistence(timeout: launchTimeout)); open.tap()
+    XCTAssertTrue(open.waitForExistence(timeout: launchTimeout)); if !open.isHittable { XCTAssertTrue(app.scrollIntoView(open)) }; open.tap()
     func tab(_ name: String) -> XCUIElement { app.buttons["\(name) tab"] }
     func screen(_ name: String) { XCTAssertTrue(app.staticTexts["\(name) screen"].waitForExistence(timeout: 8)) }
     func toggle(_ id: String) {
@@ -2398,7 +2473,7 @@ final class GlassInteractionTests: XCTestCase {
     continueAfterFailure = false
     let app = XCUIApplication(); app.launch()
     let open = app.buttons["open-accessibility-demo"]
-    XCTAssertTrue(open.waitForExistence(timeout: launchTimeout)); open.tap()
+    XCTAssertTrue(open.waitForExistence(timeout: launchTimeout)); if !open.isHittable { XCTAssertTrue(app.scrollIntoView(open)) }; open.tap()
     // The demo screen must finish mounting before scrolling; an early probe followed by
     // one-directional swipes scrolls past controls near the top of the scroll view.
     XCTAssertTrue(app.staticTexts["Added: 0"].waitForExistence(timeout: 30))
@@ -2476,8 +2551,9 @@ final class GlassInteractionTests: XCTestCase {
     let app = XCUIApplication()
     app.launchArguments += ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"]
     app.launch()
-    let open = app.buttons["open-accessibility-demo"]
-    XCTAssertTrue(open.waitForExistence(timeout: launchTimeout)); open.tap()
+    let sections = app.buttons["demo-sections"]
+    XCTAssertTrue(sections.waitForExistence(timeout: launchTimeout)); sections.tap()
+    app.buttons["Accessibility"].tap()
     let all = app.descendants(matching: .any)["adaptive-segments-all"].firstMatch
     let saved = app.descendants(matching: .any)["adaptive-segments-saved"].firstMatch
     XCTAssertTrue(app.staticTexts["Selected: all"].waitForExistence(timeout: 30))
@@ -2497,8 +2573,9 @@ final class GlassInteractionTests: XCTestCase {
   func testNativeTabsBadgeRemovalSnapshot() throws {
     continueAfterFailure = false
     let app = XCUIApplication(); app.launch()
+    openNavigation(app)
     let open = app.buttons["open-tabs-demo"]
-    XCTAssertTrue(open.waitForExistence(timeout: launchTimeout)); open.tap()
+    XCTAssertTrue(open.waitForExistence(timeout: launchTimeout)); if !open.isHittable { XCTAssertTrue(app.scrollIntoView(open)) }; open.tap()
     let badges = app.switches["tabs-badges-toggle"]
     XCTAssertTrue(badges.waitForExistence(timeout: 8)); badges.tap()
     XCTAssertEqual(badges.value as? String, "0")
@@ -2515,7 +2592,7 @@ final class GlassInteractionTests: XCTestCase {
     continueAfterFailure = false
     let app = XCUIApplication(); app.launch()
     let open = app.buttons["open-context-demo"]
-    XCTAssertTrue(open.waitForExistence(timeout: launchTimeout)); open.tap()
+    XCTAssertTrue(open.waitForExistence(timeout: launchTimeout)); if !open.isHittable { XCTAssertTrue(app.scrollIntoView(open)) }; open.tap()
     func element(_ id: String) -> XCUIElement { app.descendants(matching: .any)[id].firstMatch }
     let longPress = app.switches["panel-longpress"]
     XCTAssertTrue(app.scrollIntoView(longPress)); longPress.tap()
@@ -2528,7 +2605,8 @@ final class GlassInteractionTests: XCTestCase {
     for (label, value) in [("Received", "received"), ("Sent", "sent")] {
       let control = side(label, value)
       XCTAssertTrue(app.scrollIntoView(control)); control.tap()
-      for band in [0.12...0.22, 0.45...0.55, 0.8...0.9] as [ClosedRange<CGFloat>] {
+      // The component gallery owns the top of the screen; keep the upper placement below it.
+      for band in [0.35...0.45, 0.55...0.65, 0.8...0.9] as [ClosedRange<CGFloat>] {
         XCTAssertTrue(app.scrollIntoView(message, band: band))
         let original = message.frame
         message.press(forDuration: 1.0)

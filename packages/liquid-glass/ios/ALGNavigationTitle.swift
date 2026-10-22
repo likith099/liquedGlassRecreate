@@ -34,6 +34,7 @@ final class ALGNavigationTitle {
   private var largeSize: CGFloat = 34, smallSize: CGFloat = 17
   private var fit = CGSize.zero
   private(set) var row: CGFloat = 0
+  private(set) var progress: CGFloat = 0
   private var installedInset: CGFloat = 0
   private var changingInset = false
   private(set) var searching = false
@@ -101,6 +102,7 @@ final class ALGNavigationTitle {
       band: below ? max(1, start.y - dock.y) : 44, rtl: rtl)
   }
   func layout() {
+    progress = 0
     guard !searching, let g = geometry(), let navigation, let scroll, navigation.topViewController?.presentedViewController == nil else { label.isHidden = true; return }
     label.isHidden = false
     #if DEBUG
@@ -113,6 +115,7 @@ final class ALGNavigationTitle {
     let offset = scroll.contentOffset.y + scroll.adjustedContentInset.top
     var p = compactHeight || display == "inline" ? CGFloat(1) : max(0, min(1, offset / g.band))
     if UIAccessibility.isReduceMotionEnabled { p = p >= 0.5 ? 1 : 0 }
+    progress = p
     let end = smallSize / largeSize, width = min(ceil(fit.width), g.width / end)
     let bounds = CGRect(x: 0, y: 0, width: width, height: ceil(fit.height))
     if label.bounds != bounds { label.bounds = bounds }

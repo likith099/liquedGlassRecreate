@@ -49,6 +49,8 @@ Morphing glass, grouped and scoped controls, full icon control and lower cost. E
   `kind: 'back'` uses UIKit's back-indicator symbol (17 pt semibold, large scale).
 
 ### Fixed
+- iOS 26 morph and header controls retain their glass when their content changes, preventing Edit → Select from disappearing into the adjacent Share control.
+- Hard-edge bands and hairlines wait for the header title to finish collapsing, including morph titles, pinned filters and Android collapsing app bars.
 - Android: dot badges, toolbar badges, morph/header capsules animate as one shape, centred
   icon-only glyphs, long-press cancellation, tab tint; search keeps its input connection.
 - iOS navigation: native large titles stay sharp under soft and hard edges; search opens,

@@ -1,25 +1,25 @@
-# Next-release acceptance
+# Release acceptance
 
-The public 0.1.0, 0.1.1 and 0.1.2 releases exist. This matrix defined acceptance for
-0.1.2, without claiming that earlier releases passed it.
 The source of truth for publish eligibility is the tracked
 [`release/acceptance.json`](../release/acceptance.json), not local agent notes.
 
 ## Release integration
 
-For 0.1.7 the owner explicitly requested **local testing of changed features only**, followed by
-publication. `validationScope: "local-changed-features"` records that narrower scope, with a required
-`scopeAuthorization` explanation. It requires source review, `menu-unit-tests`,
-`ios-context-menu-runtime` and `package-contents` evidence. Unchanged SwiftUI coverage, older-iOS
-regression and a fresh packed consumer may be documented as deferred; no historical pass is
-represented as execution of this candidate. Without this explicit scope the existing broad
-acceptance gates remain required. Schema 2 retains `scope: "iphone-first"`.
+For 0.2.0 the owner requested broad local regression, a standalone packed consumer and publication.
+Source review, current SwiftUI runtime evidence, older-iOS fallback evidence and independent
+Release builds of the packed consumer are required. The example is exercised on iOS 26,
+iOS 18.6, a physical current iPhone and Android. Manual/device categories below remain explicit
+deferrals rather than implied passes. Schema 2 retains `scope: "iphone-first"`.
+
+The narrower `validationScope: "local-changed-features"` mode was authorized for 0.1.7 only;
+0.2.0 does not inherit that exception. See [0.1.7 verification](../release/verification-0.1.7.md)
+for its historical scope.
 
 The release workflow verifies version, tag, source digest and durable evidence, builds the npm
 package and publishes with provenance. Tests are local only; the tag does not run a hosted test
 suite. Ordinary branch/PR CI is unchanged. Branch workflow dispatch cannot publish. The trusted
 publisher identity and workflow filename remain unchanged. Manual/device categories stay deferred.
-See [0.1.7 verification](../release/verification-0.1.7.md) for this candidate's evidence.
+See [0.2.0 verification](../release/verification-0.2.0.md) for this candidate's evidence and gaps.
 
 Use `node scripts/check-release-acceptance.mjs --print-digest` after final source
 changes and update the acceptance record. This identifies reviewed source, not
@@ -30,7 +30,7 @@ result. The script checks record completeness, not the truth of a test result.
 
 ## Deferred verification plan
 
-| Record key | Future exercise and evidence (deferred for 0.1.2) |
+| Record key | Required exercise and evidence when this category is verified |
 | --- | --- |
 | `ios-current-profile` | Physical current iPhone, Release, 3 repeated interaction runs; CPU, memory, hitches/frame-time results and an Instruments rendering trace. Record model, OS, refresh rate, thermal state, workload and comparison against opaque surfaces. |
 | `ios-older-profile` | Same Release workload on representative older physical iPhone using blur. |
@@ -49,8 +49,8 @@ result. The script checks record completeness, not the truth of a test result.
 
 ## Repeatable commands
 
-These are available broad verification commands, not required execution for the focused 0.1.7
-release. Reuse caches and installed runtimes when a future scope calls for them.
+These are the broad verification commands. Reuse caches and installed runtimes; the release
+report records which checks executed and which remain deferred.
 
 ```sh
 npm run test:release-tools

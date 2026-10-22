@@ -2,7 +2,7 @@ import UpgradeDemo from './UpgradeDemo';
 import AcceptanceDemo from './AcceptanceDemo';
 import React, {useEffect, useRef, useState} from 'react';
 import {AccessibilityInfo, Animated, Platform, PlatformColor, Pressable, ScrollView, StatusBar,
-  StyleSheet, Switch, Text, View, useColorScheme} from 'react-native';
+  StyleSheet, Switch, Text, View, useColorScheme, useWindowDimensions} from 'react-native';
 import {SafeAreaProvider, SafeAreaView} from 'react-native-safe-area-context';
 import AccessibilityDemo from './AccessibilityDemo';
 import ContextMenuDemo from './ContextMenuDemo';
@@ -10,6 +10,10 @@ import ToolbarDemo from './ToolbarDemo';
 import BadgesDemo from './BadgesDemo';
 import SearchDemo from './SearchDemo';
 import TabNavigationDemo from './TabNavigationDemo';
+import HeaderReviewDemo from './HeaderReviewDemo';
+import ScrollHeaderDemo from './ScrollHeaderDemo';
+import ProgressiveBlurDemo from './ProgressiveBlurDemo';
+import {StackScene, TabsScene} from './AcceptanceDemo';
 import {GlassActionCluster, GlassButton, GlassContainer, GlassView, GlassSegmentedControl, GlassSlider, GlassMenuButton, isLiquidGlassSupported} from '@likith99/react-native-adaptive-liquid-glass';
 
 const actions = [
@@ -22,8 +26,7 @@ const segments = [{value: 'all', label: 'All'}, {value: 'saved', label: 'Saved'}
 const countedSegments = [{value: 'all', label: 'All', count: 12, tintColor: '#6159B7'},
   {value: 'saved', label: 'Saved', count: 3, tintColor: '#2E7D32'}, {value: 'shared', label: 'Shared', count: 0, disabled: true}];
 
-function Lab({onOpenAcceptance, onOpenUpgrade, onOpenTabs, onOpenAccessibility, onOpenContext, onOpenSearch}: {onOpenAcceptance: () => void; onOpenUpgrade: () => void; onOpenTabs: () => void; onOpenAccessibility: () => void;
-  onOpenContext: () => void; onOpenSearch: () => void}) {
+function Lab() {
   const [expanded, setExpanded] = useState(false);
   const [interactive, setInteractive] = useState(true);
   const [clear, setClear] = useState(false);
@@ -69,20 +72,8 @@ function Lab({onOpenAcceptance, onOpenUpgrade, onOpenTabs, onOpenAccessibility, 
   }, [merged, movement, reduceMotion]);
   const material = clear ? 'clear' : 'regular';
   const tintColor = tinted ? '#A5A2FF60' : undefined;
-  return <SafeAreaView style={[styles.safe, {backgroundColor: dark ? '#11141B' : '#F7F8FC'}]}>
+  return <SafeAreaView edges={['left', 'right', 'bottom']} style={[styles.safe, {backgroundColor: dark ? '#11141B' : '#F7F8FC'}]}>
     <ScrollView contentContainerStyle={styles.page}>
-      <Pressable testID="open-upgrade-demo" accessibilityRole="button" onPress={onOpenUpgrade} style={{paddingVertical: 12}}><Text style={{color: foreground, fontWeight: '600'}}>Open 0.2.0 controls →</Text></Pressable>
-      <Pressable testID="open-acceptance-demo" accessibilityRole="button" onPress={onOpenAcceptance} style={{paddingVertical: 12}}><Text style={{color: foreground, fontWeight: '600'}}>Open 0.2.0 acceptance →</Text></Pressable>
-      <Pressable testID="open-tabs-demo" accessibilityRole="button" onPress={onOpenTabs} style={{paddingVertical: 12}}>
-        <Text style={{color: foreground, fontWeight: '600'}}>Open tab navigation →</Text>
-      </Pressable>
-      <Pressable testID="open-accessibility-demo" accessibilityRole="button" onPress={onOpenAccessibility} style={{paddingVertical: 12}}>
-        <Text style={{color: foreground, fontWeight: '600'}}>Open adaptive controls →</Text>
-      </Pressable>
-      <Pressable testID="open-context-demo" accessibilityRole="button" onPress={onOpenContext} style={{paddingVertical: 12}}><Text style={{color: foreground, fontWeight: '600'}}>Open message context menu →</Text></Pressable>
-      <Pressable testID="open-search-demo" accessibilityRole="button" onPress={onOpenSearch} style={{paddingVertical: 12}}>
-        <Text style={{color: foreground, fontWeight: '600'}}>Open search, toasts and scroll edge →</Text>
-      </Pressable>
       <View style={styles.topline}><View style={styles.dot} /><Text style={[styles.eyebrow, {color: secondary}]}>NATIVE MATERIALS / 01</Text></View>
       <Text style={[styles.title, {color: foreground}]}>Liquid, by nature.</Text>
       <Text style={[styles.subtitle, {color: secondary}]}>Real glass. Native motion. One React API.</Text>
@@ -206,15 +197,75 @@ function Setting({title, detail, value, onChange, color, muted, id}: {title: str
     <Switch testID={id} accessibilityLabel={title} value={value} onValueChange={onChange} trackColor={{true: '#7770D8'}} />
   </View>;
 }
+type ComponentSection = 'materials' | 'controls' | 'motion' | 'accessibility' | 'menus';
+type NavigationScene = 'review' | 'header' | 'blur' | 'search' | 'tabs' | 'stack' | 'minimize';
+const componentSections: {id: ComponentSection; label: string; testID: string}[] = [
+  {id: 'materials', label: 'Materials', testID: 'demo-materials'},
+  {id: 'controls', label: 'Controls & badges', testID: 'open-upgrade-demo'},
+  {id: 'motion', label: 'Motion & sizing', testID: 'open-acceptance-demo'},
+  {id: 'accessibility', label: 'Accessibility', testID: 'open-accessibility-demo'},
+  {id: 'menus', label: 'Context menus', testID: 'open-context-demo'},
+];
+const navigationScenes: {id: NavigationScene; title: string; detail: string; testID: string}[] = [
+  {id: 'review', title: 'Header playground', detail: 'Title transitions, hard and soft edges, pinned filters and refresh.', testID: 'nav-review'},
+  {id: 'header', title: 'Searchable header', detail: 'Large titles, a search toggle, menus and toolbar actions.', testID: 'open-scroll-header'},
+  {id: 'blur', title: 'Standalone blur', detail: 'Use the progressive edge independently of a navigation header.', testID: 'nav-blur-only'},
+  {id: 'stack', title: 'Shared header controls', detail: 'Push, swipe back, edit and pair controls across screens.', testID: 'acc-open-stack'},
+  {id: 'tabs', title: 'Tab navigation', detail: 'Native tabs, badges and nested navigation.', testID: 'open-tabs-demo'},
+  {id: 'minimize', title: 'Collapsing tab bar', detail: 'Scroll-driven minimization and a bottom accessory.', testID: 'acc-open-tabs'},
+  {id: 'search', title: 'Search & notifications', detail: 'Search fields, toasts and standalone scroll edges.', testID: 'open-search-demo'},
+];
 export default function App() {
-  const [contextOpen, setContextOpen] = useState(false);
-  const [tabsOpen, setTabsOpen] = useState(false);
-  const [accessibilityOpen, setAccessibilityOpen] = useState(false);
-  const [searchOpen, setSearchOpen] = useState(false);
-  const dark = useColorScheme() === 'dark';
-  const [upgradeOpen, setUpgradeOpen] = useState(false);
-  const [acceptanceOpen, setAcceptanceOpen] = useState(false);
-  return <SafeAreaProvider><StatusBar barStyle={dark ? 'light-content' : 'dark-content'} />{acceptanceOpen ? <AcceptanceDemo onClose={() => setAcceptanceOpen(false)} /> : upgradeOpen ? <UpgradeDemo onClose={() => setUpgradeOpen(false)} /> : searchOpen ? <SearchDemo onClose={() => setSearchOpen(false)} /> : contextOpen ? <ContextMenuDemo onClose={() => setContextOpen(false)} /> : accessibilityOpen ? <AccessibilityDemo onClose={() => setAccessibilityOpen(false)} /> : tabsOpen ? <TabNavigationDemo onClose={() => setTabsOpen(false)} /> : <Lab onOpenAcceptance={() => setAcceptanceOpen(true)} onOpenUpgrade={() => setUpgradeOpen(true)} onOpenSearch={() => setSearchOpen(true)} onOpenContext={() => setContextOpen(true)} onOpenTabs={() => setTabsOpen(true)} onOpenAccessibility={() => setAccessibilityOpen(true)} />}</SafeAreaProvider>;
+  const compactPicker = useWindowDimensions().fontScale > 1.4;
+  const [category, setCategory] = useState<'components' | 'navigation'>('components');
+  const [section, setSection] = useState<ComponentSection>('materials');
+  const [scene, setScene] = useState<NavigationScene | null>(null);
+  const dark = useColorScheme() === 'dark', color = dark ? '#F5F5F9' : '#222737';
+  const close = () => setScene(null);
+  const materials = () => setSection('materials');
+  const launch = (next: NavigationScene) => {setCategory('navigation'); setScene(next);};
+  const preview = scene === 'review' ? <HeaderReviewDemo onClose={close} />
+    : scene === 'header' ? <ScrollHeaderDemo onClose={close} />
+    : scene === 'blur' ? <ProgressiveBlurDemo onClose={close} />
+    : scene === 'search' ? <SearchDemo onClose={close} />
+    : scene === 'tabs' ? <TabNavigationDemo onClose={close} />
+    : scene === 'stack' ? <StackScene onClose={close} />
+    : scene === 'minimize' ? <TabsScene onClose={close} /> : null;
+  return <SafeAreaProvider><StatusBar barStyle={dark ? 'light-content' : 'dark-content'} />
+    {preview ?? <View style={{flex: 1, backgroundColor: dark ? '#11141B' : '#F7F8FC'}}>
+      <SafeAreaView edges={['top', 'left', 'right']}>
+        <View style={{paddingHorizontal: 20, paddingTop: 12, paddingBottom: 8}}>
+          {!compactPicker && <Text accessibilityRole="header" style={{color, fontSize: 26, fontWeight: '700', marginBottom: 12}}>Liquid Glass</Text>}
+          <GlassSegmentedControl testID="demo-categories" accessibilityLabel="Demo category"
+            options={[{value: 'components', label: 'Components'}, {value: 'navigation', label: 'Navigation & headers'}]}
+            value={category} onValueChange={value => setCategory(value === 'navigation' ? 'navigation' : 'components')} />
+        </View>
+      </SafeAreaView>
+      {category === 'components' ? <>
+        {compactPicker ? <View style={{paddingHorizontal: 20, paddingVertical: 8, alignItems: 'flex-start'}}>
+          <GlassMenuButton testID="demo-sections" title={componentSections.find(item => item.id === section)?.label ?? 'Sections'}
+            items={componentSections.map(item => ({id: item.id, title: item.label, checked: item.id === section}))}
+            onAction={id => { const next = componentSections.find(item => item.id === id); if (next) setSection(next.id); }} />
+        </View> : <View style={{paddingHorizontal: 16, flexDirection: 'row', flexWrap: 'wrap', paddingBottom: 8}}>
+          {componentSections.map(item => <Pressable key={item.id} testID={item.testID} accessibilityRole="button"
+            accessibilityState={{selected: section === item.id}} onPress={() => setSection(item.id)}
+            style={{paddingHorizontal: 10, minHeight: 44, justifyContent: 'center', borderRadius: 12, backgroundColor: section === item.id ? (dark ? '#34394A' : '#E0E4EF') : undefined}}>
+            <Text style={{color, fontWeight: section === item.id ? '600' : '400'}}>{item.label}</Text>
+          </Pressable>)}
+        </View>}
+        {section === 'materials' ? <Lab /> : section === 'controls' ? <UpgradeDemo embedded onClose={materials} />
+          : section === 'motion' ? <AcceptanceDemo embedded onClose={materials} onOpenNavigation={launch} />
+          : section === 'accessibility' ? <AccessibilityDemo embedded onClose={materials} /> : <ContextMenuDemo embedded onClose={materials} />}
+      </> : <ScrollView testID="demo-navigation" contentContainerStyle={{padding: 20, gap: 12, paddingBottom: 40}}>
+        <Text style={{color, marginBottom: 4}}>Choose a live example. Back returns here.</Text>
+        {navigationScenes.map(item => <Pressable key={item.id} testID={item.testID} accessibilityRole="button" onPress={() => launch(item.id)}
+          style={{padding: 16, borderRadius: 16, backgroundColor: dark ? '#242936' : '#E8ECF4'}}>
+          <Text style={{color, fontSize: 18, fontWeight: '600'}}>{item.title}</Text>
+          <Text style={{color, marginTop: 6, lineHeight: 20}}>{item.detail}</Text>
+        </Pressable>)}
+      </ScrollView>}
+    </View>}
+  </SafeAreaProvider>;
 }
 const styles = StyleSheet.create({
   safe: {flex: 1}, page: {padding: 24, paddingBottom: 40, maxWidth: 620, width: '100%', alignSelf: 'center'},

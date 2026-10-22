@@ -1,234 +1,67 @@
 {
   "schemaVersion": 2,
-  "version": "0.1.7",
-  "sourceDigest": "852a673d6d4492190ac5597c78d2d09d5631486544bd799543922868c6582cf0",
+  "version": "0.2.0",
+  "sourceDigest": "e5872404fb5e1a1142838a19e0b29efaf46b86996558567d2382e7c8c488d6d1",
+  "scope": "iphone-first",
   "checks": {
-    "ios-current-profile": {
-      "status": "deferred",
-      "reviewer": "Codex, recording owner verification scope",
-      "device": "Not rerun for 0.1.7",
-      "os": "Not rerun for 0.1.7",
-      "date": "2026-10-03",
-      "configuration": "Release",
-      "summary": "Omitted under explicit local changed-feature verification scope. Historical results are not final-candidate passes.",
-      "evidence": [
-        "release/verification-0.1.7.md"
-      ]
-    },
-    "ios-older-profile": {
-      "status": "deferred",
-      "reviewer": "Codex, recording owner verification scope",
-      "device": "Not rerun for 0.1.7",
-      "os": "Not rerun for 0.1.7",
-      "date": "2026-10-03",
-      "configuration": "Release",
-      "summary": "Omitted under explicit local changed-feature verification scope. Historical results are not final-candidate passes.",
-      "evidence": [
-        "release/verification-0.1.7.md"
-      ]
-    },
-    "android-profile": {
-      "status": "deferred",
-      "reviewer": "Codex, recording owner verification scope",
-      "device": "Not rerun for 0.1.7",
-      "os": "Not rerun for 0.1.7",
-      "date": "2026-10-03",
-      "configuration": "Release",
-      "summary": "Omitted under explicit local changed-feature verification scope. Historical results are not final-candidate passes.",
-      "evidence": [
-        "release/verification-0.1.7.md"
-      ]
-    },
-    "ios-15-17-runtime": {
-      "status": "deferred",
-      "reviewer": "Codex, recording owner verification scope",
-      "device": "Not rerun for 0.1.7",
-      "os": "Not rerun for 0.1.7",
-      "date": "2026-10-03",
-      "configuration": "Release",
-      "summary": "Omitted under explicit local changed-feature verification scope. Historical results are not final-candidate passes.",
-      "evidence": [
-        "release/verification-0.1.7.md"
-      ]
-    },
-    "android-minimum-runtime": {
-      "status": "deferred",
-      "reviewer": "Codex, recording owner verification scope",
-      "device": "Not rerun for 0.1.7",
-      "os": "Not rerun for 0.1.7",
-      "date": "2026-10-03",
-      "configuration": "Release",
-      "summary": "Omitted under explicit local changed-feature verification scope. Historical results are not final-candidate passes.",
-      "evidence": [
-        "release/verification-0.1.7.md"
-      ]
-    },
-    "voiceover": {
-      "status": "deferred",
-      "reviewer": "Codex, recording owner verification scope",
-      "device": "Not rerun for 0.1.7",
-      "os": "Not rerun for 0.1.7",
-      "date": "2026-10-03",
-      "configuration": "Release",
-      "summary": "Omitted under explicit local changed-feature verification scope. Historical results are not final-candidate passes.",
-      "evidence": [
-        "release/verification-0.1.7.md"
-      ]
-    },
-    "talkback": {
-      "status": "deferred",
-      "reviewer": "Codex, recording owner verification scope",
-      "device": "Not rerun for 0.1.7",
-      "os": "Not rerun for 0.1.7",
-      "date": "2026-10-03",
-      "configuration": "Release",
-      "summary": "Omitted under explicit local changed-feature verification scope. Historical results are not final-candidate passes.",
-      "evidence": [
-        "release/verification-0.1.7.md"
-      ]
-    },
-    "rtl-ios": {
-      "status": "deferred",
-      "reviewer": "Codex, recording owner verification scope",
-      "device": "Not rerun for 0.1.7",
-      "os": "Not rerun for 0.1.7",
-      "date": "2026-10-03",
-      "configuration": "Release",
-      "summary": "Omitted under explicit local changed-feature verification scope. Historical results are not final-candidate passes.",
-      "evidence": [
-        "release/verification-0.1.7.md"
-      ]
-    },
-    "rtl-android": {
-      "status": "deferred",
-      "reviewer": "Codex, recording owner verification scope",
-      "device": "Not rerun for 0.1.7",
-      "os": "Not rerun for 0.1.7",
-      "date": "2026-10-03",
-      "configuration": "Release",
-      "summary": "Omitted under explicit local changed-feature verification scope. Historical results are not final-candidate passes.",
-      "evidence": [
-        "release/verification-0.1.7.md"
-      ]
-    },
-    "ipad": {
-      "status": "deferred",
-      "reviewer": "Codex, recording owner verification scope",
-      "device": "Not rerun for 0.1.7",
-      "os": "Not rerun for 0.1.7",
-      "date": "2026-10-03",
-      "configuration": "Release",
-      "summary": "Omitted under explicit local changed-feature verification scope. Historical results are not final-candidate passes.",
-      "evidence": [
-        "release/verification-0.1.7.md"
-      ]
-    },
-    "ios-accessibility-settings": {
-      "status": "deferred",
-      "reviewer": "Codex, recording owner verification scope",
-      "device": "Not rerun for 0.1.7",
-      "os": "Not rerun for 0.1.7",
-      "date": "2026-10-03",
-      "configuration": "Release",
-      "summary": "Omitted under explicit local changed-feature verification scope. Historical results are not final-candidate passes.",
-      "evidence": [
-        "release/verification-0.1.7.md"
-      ]
-    },
-    "android-accessibility-settings": {
-      "status": "deferred",
-      "reviewer": "Codex, recording owner verification scope",
-      "device": "Not rerun for 0.1.7",
-      "os": "Not rerun for 0.1.7",
-      "date": "2026-10-03",
-      "configuration": "Release",
-      "summary": "Omitted under explicit local changed-feature verification scope. Historical results are not final-candidate passes.",
-      "evidence": [
-        "release/verification-0.1.7.md"
-      ]
-    },
-    "ios-distribution": {
-      "status": "deferred",
-      "reviewer": "Codex, recording owner verification scope",
-      "device": "Not rerun for 0.1.7",
-      "os": "Not rerun for 0.1.7",
-      "date": "2026-10-03",
-      "configuration": "Release",
-      "summary": "Omitted under explicit local changed-feature verification scope. Historical results are not final-candidate passes.",
-      "evidence": [
-        "release/verification-0.1.7.md"
-      ]
-    },
-    "android-distribution": {
-      "status": "deferred",
-      "reviewer": "Codex, recording owner verification scope",
-      "device": "Not rerun for 0.1.7",
-      "os": "Not rerun for 0.1.7",
-      "date": "2026-10-03",
-      "configuration": "Release",
-      "summary": "Omitted under explicit local changed-feature verification scope. Historical results are not final-candidate passes.",
-      "evidence": [
-        "release/verification-0.1.7.md"
-      ]
-    },
-    "packed-consumer": {
-      "status": "deferred",
-      "reviewer": "Codex, recording owner verification scope",
-      "device": "Not rerun for 0.1.7",
-      "os": "Not rerun for 0.1.7",
-      "date": "2026-10-03",
-      "configuration": "Release",
-      "summary": "Omitted under explicit local changed-feature verification scope. Historical results are not final-candidate passes.",
-      "evidence": [
-        "release/verification-0.1.7.md"
-      ]
-    },
     "ios-source-review": {
       "status": "passed",
       "reviewer": "Codex",
       "device": "Local macOS workspace",
       "os": "macOS",
-      "date": "2026-10-03",
+      "date": "2026-10-22",
       "configuration": "Local",
-      "summary": "Reviewed targeted shadow path, source/host/controller traits, shared API and existing native bridge. No private API, codegen schema additions or Android source change. Native gap/open-platter shadow limits recorded.",
+      "summary": "Reviewed hard-boundary title state, persistent SwiftUI glass identity, demo routes and platform fallbacks. Public APIs and availability guards retained; no new runtime dependency or license change.",
       "evidence": [
-        "release/verification-0.1.7.md"
+        "release/verification-0.2.0.md"
       ]
     },
     "ios-swiftui-runtime": {
-      "status": "deferred",
-      "reviewer": "Codex, recording owner verification scope",
-      "device": "Not rerun for 0.1.7",
-      "os": "Not rerun for 0.1.7",
-      "date": "2026-10-03",
-      "configuration": "Release",
-      "summary": "Omitted under explicit local changed-feature verification scope. Historical results are not final-candidate passes.",
+      "status": "passed",
+      "reviewer": "Codex",
+      "device": "iPhone 17 Pro Max simulator; physical iPhone 13 Pro",
+      "os": "iOS 26.5 / 26.7.1",
+      "date": "2026-10-21",
+      "configuration": "Debug and Release",
+      "summary": "iOS 26 broad local coverage: 67 distinct passes, four explicit platform/device skips. Six affected morph/demo checks pass after the fix. Physical Release shared-header, motion, hard-boundary and band checks pass; recorded push/pop have continuous glass and zero anchored-edge drift.",
       "evidence": [
-        "release/verification-0.1.7.md"
+        "release/verification-0.2.0.md"
       ]
     },
     "ios-fallback-runtime": {
-      "status": "deferred",
-      "reviewer": "Codex, recording owner verification scope",
-      "device": "Not rerun for 0.1.7",
-      "os": "Not rerun for 0.1.7",
-      "date": "2026-10-03",
-      "configuration": "Release",
-      "summary": "Omitted under explicit local changed-feature verification scope. Historical results are not final-candidate passes.",
+      "status": "passed",
+      "reviewer": "Codex",
+      "device": "iPhone 16 Pro Max simulator",
+      "os": "iOS 18.6",
+      "date": "2026-10-21",
+      "configuration": "Debug",
+      "summary": "Ten selected checks pass across the initial pairing/shared-control run and corrected eight-test continuation. Includes native blur reuse, interaction, progressive header, search/title transitions, band presets and hard-boundary timing. The interrupted run is not counted as a suite pass.",
       "evidence": [
-        "release/verification-0.1.7.md"
+        "release/verification-0.2.0.md"
       ]
     },
-    "menu-unit-tests": {
+    "packed-consumer": {
       "status": "passed",
       "reviewer": "Codex",
       "device": "Local macOS workspace",
       "os": "macOS",
-      "date": "2026-10-03",
-      "configuration": "Local",
-      "summary": "GlassContextMenu 5 and GlassMenuPanel 18 tests pass. Package declaration build and TypeScript check pass. Changed release validator: 11 tests pass.",
+      "date": "2026-10-22",
+      "configuration": "Release",
+      "summary": "Independent packed consumer: TypeScript, iOS/Android production bundles, native iOS and Android Release builds all pass. No Expo or navigation dependency installed. Archive SHA-256 df418035ebfd49ddcc7603bda2ef22acd784c7f3dd0b44553c472ca270497c0b; 499 files.",
       "evidence": [
-        "release/verification-0.1.7.md"
+        "release/verification-0.2.0.md"
+      ]
+    },
+    "shared-unit-checks": {
+      "status": "passed",
+      "reviewer": "Codex",
+      "device": "Local macOS workspace",
+      "os": "macOS",
+      "date": "2026-10-21",
+      "configuration": "Local",
+      "summary": "TypeScript passes. Jest 25 suites/147 tests covered across the base run and affected App rerun; release tools 11/11 pass.",
+      "evidence": [
+        "release/verification-0.2.0.md"
       ]
     },
     "package-contents": {
@@ -236,27 +69,192 @@
       "reviewer": "Codex",
       "device": "Local macOS workspace",
       "os": "macOS",
-      "date": "2026-10-03",
+      "date": "2026-10-22",
       "configuration": "Local",
-      "summary": "Package build and inspection pass: 346 files; lib module/types and native sources included, native build artifacts/dependencies excluded.",
+      "summary": "Package inspection passes: 499 files, 1,194,056 unpacked bytes. Expected source, modules, types and native files present; build caches and dependencies excluded.",
       "evidence": [
-        "release/verification-0.1.7.md"
+        "release/verification-0.2.0.md"
       ]
     },
-    "ios-context-menu-runtime": {
+    "ios-current-profile": {
+      "status": "deferred",
+      "reviewer": "Codex",
+      "device": "See documented partial coverage",
+      "os": "See release report",
+      "date": "2026-10-22",
+      "configuration": "Release",
+      "summary": "Physical Release interactions pass; full thermal/frame-time profiling and an Instruments rendering trace were not performed.",
+      "evidence": [
+        "release/verification-0.2.0.md"
+      ]
+    },
+    "ios-older-profile": {
+      "status": "deferred",
+      "reviewer": "Codex",
+      "device": "See documented partial coverage",
+      "os": "See release report",
+      "date": "2026-10-22",
+      "configuration": "Release",
+      "summary": "Older physical iPhone performance testing remains owner-deferred. iOS 18.6 simulator checks are not a device profile.",
+      "evidence": [
+        "release/verification-0.2.0.md"
+      ]
+    },
+    "android-profile": {
+      "status": "deferred",
+      "reviewer": "Codex",
+      "device": "See documented partial coverage",
+      "os": "See release report",
+      "date": "2026-10-22",
+      "configuration": "Release",
+      "summary": "No physical lower-end Android performance trace. Emulator functional checks and independent Release builds are separate evidence.",
+      "evidence": [
+        "release/verification-0.2.0.md"
+      ]
+    },
+    "ios-15-17-runtime": {
+      "status": "deferred",
+      "reviewer": "Codex",
+      "device": "See documented partial coverage",
+      "os": "See release report",
+      "date": "2026-10-22",
+      "configuration": "Release",
+      "summary": "iOS 18.6 fallback checks pass; an actual iOS 15\u201317 runtime was not exercised. Availability guards remain.",
+      "evidence": [
+        "release/verification-0.2.0.md"
+      ]
+    },
+    "android-minimum-runtime": {
+      "status": "deferred",
+      "reviewer": "Codex",
+      "device": "See documented partial coverage",
+      "os": "See release report",
+      "date": "2026-10-22",
+      "configuration": "Release",
+      "summary": "Current emulator is Android 17/API 37; minimum host API 24 was not exercised.",
+      "evidence": [
+        "release/verification-0.2.0.md"
+      ]
+    },
+    "voiceover": {
+      "status": "deferred",
+      "reviewer": "Codex",
+      "device": "See documented partial coverage",
+      "os": "See release report",
+      "date": "2026-10-22",
+      "configuration": "Release",
+      "summary": "Spoken VoiceOver testing remains explicitly deferred; automated labels and actions do not establish spoken compatibility.",
+      "evidence": [
+        "release/verification-0.2.0.md"
+      ]
+    },
+    "talkback": {
+      "status": "deferred",
+      "reviewer": "Codex",
+      "device": "See documented partial coverage",
+      "os": "See release report",
+      "date": "2026-10-22",
+      "configuration": "Release",
+      "summary": "Spoken TalkBack testing on a physical device was not performed.",
+      "evidence": [
+        "release/verification-0.2.0.md"
+      ]
+    },
+    "rtl-ios": {
+      "status": "deferred",
+      "reviewer": "Codex",
+      "device": "See documented partial coverage",
+      "os": "See release report",
+      "date": "2026-10-22",
+      "configuration": "Release",
+      "summary": "Automated semantic-layout checks pass; a complete genuine RTL system-locale acceptance pass was not performed.",
+      "evidence": [
+        "release/verification-0.2.0.md"
+      ]
+    },
+    "rtl-android": {
+      "status": "deferred",
+      "reviewer": "Codex",
+      "device": "See documented partial coverage",
+      "os": "See release report",
+      "date": "2026-10-22",
+      "configuration": "Release",
+      "summary": "RTL emulator check outcome is recorded with Android results; a complete physical RTL locale acceptance pass remains deferred.",
+      "evidence": [
+        "release/verification-0.2.0.md"
+      ]
+    },
+    "ipad": {
+      "status": "deferred",
+      "reviewer": "Codex",
+      "device": "See documented partial coverage",
+      "os": "See release report",
+      "date": "2026-10-22",
+      "configuration": "Release",
+      "summary": "No iPad runtime in this batch; its simulator-only test was explicitly skipped on iPhone.",
+      "evidence": [
+        "release/verification-0.2.0.md"
+      ]
+    },
+    "ios-accessibility-settings": {
+      "status": "deferred",
+      "reviewer": "Codex",
+      "device": "See documented partial coverage",
+      "os": "See release report",
+      "date": "2026-10-22",
+      "configuration": "Release",
+      "summary": "Largest text and light/dark material checks pass. Mounted Reduce Motion/Reduce Transparency switching was not exercised in this final batch.",
+      "evidence": [
+        "release/verification-0.2.0.md"
+      ]
+    },
+    "android-accessibility-settings": {
+      "status": "deferred",
+      "reviewer": "Codex",
+      "device": "See documented partial coverage",
+      "os": "See release report",
+      "date": "2026-10-22",
+      "configuration": "Release",
+      "summary": "Font/theme emulator checks are included in the runtime suite; full mounted display-scale and disabled-animation acceptance remains deferred.",
+      "evidence": [
+        "release/verification-0.2.0.md"
+      ]
+    },
+    "ios-distribution": {
+      "status": "deferred",
+      "reviewer": "Codex",
+      "device": "See documented partial coverage",
+      "os": "See release report",
+      "date": "2026-10-22",
+      "configuration": "Release",
+      "summary": "Development-signed Release install and launch pass on iPhone. App Store archive/export signing was not validated for a consuming app.",
+      "evidence": [
+        "release/verification-0.2.0.md"
+      ]
+    },
+    "android-distribution": {
+      "status": "deferred",
+      "reviewer": "Codex",
+      "device": "See documented partial coverage",
+      "os": "See release report",
+      "date": "2026-10-22",
+      "configuration": "Release",
+      "summary": "Independent Release APK build passes. Play Store signing, upload and distribution acceptance were not performed.",
+      "evidence": [
+        "release/verification-0.2.0.md"
+      ]
+    },
+    "android-runtime": {
       "status": "passed",
       "reviewer": "Codex",
-      "device": "iPhone 17 Pro Max simulator",
-      "os": "iOS 26.5",
-      "date": "2026-10-03",
-      "configuration": "Release",
-      "summary": "iOS 26.5 Release: conversation transitions pass (39.520 s); final app-window-aware appearance check passes (25.617 s), Xcode exit 0. Settled light/dark captures inspected. System light/app dark verified. All-frame luminance and reversed system/app combination remain unverified.",
+      "device": "Pixel 10 Pro XL emulator",
+      "os": "Android 17 / API 37",
+      "date": "2026-10-22",
+      "configuration": "Debug",
+      "summary": "All 15 local verification scripts have passing outcomes. Initial runner passed 13 and failed menu-panel/upgrade fixture assumptions. Corrected menu-panel, upgrade and features rerun passes all three, exit 0. Independent packed Release native build also passes.",
       "evidence": [
-        "release/verification-0.1.7.md"
+        "release/verification-0.2.0.md"
       ]
     }
-  },
-  "scope": "iphone-first",
-  "validationScope": "local-changed-features",
-  "scopeAuthorization": "October 3, 2026: owner explicitly requested reviewing PACKAGE_REQUESTS_0_1_7.md, updating and publishing the package as quickly as possible, with only local testing of changed features/files and no unnecessary testing."
+  }
 }

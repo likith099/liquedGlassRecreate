@@ -31,6 +31,8 @@ def screen_height():
 
 def to_band(value, low, high):
     """Scroll until the element's centre sits within [low, high] of the screen height."""
+    # With the persistent gallery header, choosing the side can leave the bubble below the fold.
+    menu.reveal(value)
     height = screen_height()
     for _ in range(20):
         x1, y1, x2, y2 = menu.bounds(menu.find(menu.tree(), value))
@@ -57,7 +59,8 @@ menu.reveal('panel-longpress'); menu.tap('panel-longpress')
 results = []
 for side in ['Received', 'Sent']:
     menu.reveal(side); menu.tap(side)
-    for low, high in [(.15, .25), (.45, .55), (.8, .88)]:
+    # The gallery occupies the top of the window; exercise upper/middle/lower content positions.
+    for low, high in [(.35, .45), (.55, .65), (.8, .88)]:
         x1, y1, x2, y2 = to_band('panel-message', low, high)
         menu.adb('shell', 'input', 'swipe', (x1 + x2) // 2, (y1 + y2) // 2, (x1 + x2) // 2, (y1 + y2) // 2, 900)
         time.sleep(.8)

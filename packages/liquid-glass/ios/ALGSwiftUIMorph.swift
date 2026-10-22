@@ -72,10 +72,10 @@ struct ALGMorphRow: View {
     model.header ? (slot.trailing ? .trailing : .leading) : alignment
   }
 
-  /// Each content owns its glass shape (`glassEffectID` per slot and content). On a change the
-  /// outgoing shape flows into the incoming one inside the container — the liquid blend system
-  /// apps show — while the outgoing content blurs out and the new content focuses in. Under
-  /// Reduce Motion one shape is kept and only the content cross-fades.
+  /// The slot owns one persistent glass shape; only its glyph is replaced. Giving each title
+  /// a different glass ID makes matchedGeometry remove one shape and insert another, which can
+  /// borrow a neighbouring slot's geometry (Edit disappears into Share on the way to Select).
+  /// Keeping the material outside the glyph transition also prevents fading/blurring the glass.
   @ViewBuilder private func glyph(_ slot: ALGMorphSlot) -> some View {
     if let title = slot.title {
       Text(title).font(.system(size: 17)).lineLimit(1).fixedSize()
@@ -97,13 +97,12 @@ struct ALGMorphRow: View {
         ZStack(alignment: edge(slot)) {
           glyph(slot)
             .frame(width: slot.width, height: model.height)
-            .glassEffect(.regular.interactive(), in: Capsule())
-            .glassEffectID(slot.id + "\u{1}" + key, in: glass)
-            .glassEffectTransition(.matchedGeometry)
             .transition(contentTransition)
             .id(key)
         }
         .frame(width: slot.width, height: model.height, alignment: edge(slot))
+        .glassEffect(.regular.interactive(), in: Capsule())
+        .glassEffectID(slot.id, in: glass)
       }
     }
     .contentShape(Capsule())

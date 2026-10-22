@@ -12,7 +12,7 @@ function HeaderPage({detail, setDetail}: {detail: boolean; setDetail: (next: boo
   useGlassHeader({routeKey: detail ? 'detail' : 'overview', active: true, leading, trailing});
   return <View style={{height: 60}} />;
 }
-export default function UpgradeDemo({onClose}: {onClose: () => void}) {
+export default function UpgradeDemo({onClose, embedded = false}: {onClose: () => void; embedded?: boolean}) {
   const dark = useColorScheme() === 'dark'; const ink = dark ? '#FFFFFF' : '#17181B';
   const [saved, setSaved] = useState(false); const [scope, setScope] = useState('all');
   const [editing, setEditing] = useState(false); const [visible, setVisible] = useState(true);
@@ -22,10 +22,10 @@ export default function UpgradeDemo({onClose}: {onClose: () => void}) {
   const scroll = useRef<React.ComponentRef<typeof ScrollView>>(null);
   const text = (value: string, testID?: string) => <Text testID={testID} style={{color: ink, fontSize: 16}}>{value}</Text>;
   const command = (label: string, id: string, action: () => void) => <Pressable testID={id} accessibilityRole="button" onPress={action} style={{padding: 10}}>{text(label)}</Pressable>;
-  return <SafeAreaView style={{flex: 1, backgroundColor: dark ? '#141820' : '#F7F8FC'}}>
-    {command('Back to lab', 'upgrade-close', onClose)}
+  return <SafeAreaView edges={embedded ? ['left', 'right', 'bottom'] : undefined} style={{flex: 1, backgroundColor: dark ? '#141820' : '#F7F8FC'}}>
+    {command('Materials', 'upgrade-close', onClose)}
     <ScrollView ref={scroll} contentContainerStyle={{padding: 20, gap: 16}}>
-      {text('0.2.0 controls')}{text(status, 'upgrade-status')}
+      {text('Controls & badges')}{text(status, 'upgrade-status')}
       <View style={{flexDirection: 'row', gap: 16}}>
         <GlassIconButton symbol={{name: 'chevron.left', pointSize: 16.5, weight: 'semibold'}} controlSize="regular"
           accessibilityLabel="Back symbol" testID="upgrade-back-symbol" androidIcon="alg_tab_home" onPress={() => setStatus('Back symbol')} />
@@ -62,7 +62,7 @@ export default function UpgradeDemo({onClose}: {onClose: () => void}) {
       <GlassContainer style={{height: 50, alignItems: 'flex-end'}}>
         {editing ? <GlassView key="title" glassID="shared" style={{width: 90, height: 44, alignItems: 'center', justifyContent: 'center'}}>{text('Done')}</GlassView> : <GlassIconButton key="icon" glassID="shared" symbol="ellipsis" androidIcon="demo_more" accessibilityLabel="Matched glass" onPress={() => setEditing(true)} />}
       </GlassContainer>
-      {text('Persistent header pilot')}
+      {text('Shared header controls')}
       <View style={{height: 65}}><GlassHeaderHost><HeaderPage detail={detail} setDetail={setDetail} /></GlassHeaderHost></View>
       <GlassBackgroundExtension style={{height: 60}}><View style={{height: 60, backgroundColor: '#5268A0'}}>{text('Background extension')}</View></GlassBackgroundExtension>
       {command('Toggle 20 surfaces', 'upgrade-toggle-surfaces', () => setSurfaces(!surfaces))}

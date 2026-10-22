@@ -51,7 +51,7 @@ writeFileSync(path.join(consumer, 'metro.config.js'), "const {getDefaultConfig} 
 writeFileSync(path.join(consumer, 'tsconfig.json'), JSON.stringify({extends: '@react-native/typescript-config', include: ['App.tsx']}));
 writeFileSync(path.join(consumer, 'App.tsx'), `import React, {useState} from 'react';
 import {Text, View, ScrollView} from 'react-native';
-import {GlassNavigationView, GlassProgressiveBlur, GlassView, GlassContainer, GlassButton, GlassPressable, GlassSegmentedControl, GlassSlider, GlassActionCluster, GlassMenuButton, GlassContextMenu, GlassToolbar, GlassTabBar, GlassIconButton, GlassFallbackThemeProvider, useGlassTier, type GlassMenuHandle} from '@likith99/react-native-adaptive-liquid-glass';
+import {GlassMorphButton, GlassIconGroup, GlassPillBar, GlassHeaderHost, GlassNavigationView, GlassProgressiveBlur, GlassView, GlassContainer, GlassButton, GlassPressable, GlassSegmentedControl, GlassSlider, GlassActionCluster, GlassMenuButton, GlassContextMenu, GlassToolbar, GlassTabBar, GlassIconButton, GlassFallbackThemeProvider, useGlassTier, type GlassMenuHandle} from '@likith99/react-native-adaptive-liquid-glass';
 export default function App() {
   const [value, setValue] = useState(0.4);
   const [selected, setSelected] = useState<string | null>('a');
@@ -61,7 +61,11 @@ export default function App() {
   const menu = React.useRef<GlassMenuHandle>(null);
   const scroll = React.useRef<React.ElementRef<typeof ScrollView>>(null);
   return <View style={{flex: 1, padding: 30, paddingTop: 100}}>
-    <GlassNavigationView title="Packed navigation" scrollViewRef={scroll} style={{height: 200, flex: 0}} trailingItems={[{id: 'add', symbol: 'plus', accessibilityLabel: 'Add'}]}><ScrollView ref={scroll} contentInsetAdjustmentBehavior="automatic"><Text>Native content</Text></ScrollView></GlassNavigationView>
+    <GlassNavigationView title="Packed navigation" titleTransition="morph" edgeEffect={{top: 'hard', band: {opacity: 0.6}}} scrollViewRef={scroll} style={{height: 200, flex: 0}} trailingItems={[{id: 'add', symbol: 'plus', accessibilityLabel: 'Add'}]}><ScrollView ref={scroll} contentInsetAdjustmentBehavior="automatic"><Text>Native content</Text></ScrollView></GlassNavigationView>
+    <GlassHeaderHost><Text>Standalone header host without a navigation dependency</Text></GlassHeaderHost>
+    <GlassMorphButton content={{kind: 'symbol', symbol: 'ellipsis', accessibilityLabel: 'More', badge: {count: 5}}} onPress={() => {}} />
+    <GlassIconGroup items={[{id: 'save', symbol: 'bookmark', accessibilityLabel: 'Save'}]} onPress={() => {}} />
+    <GlassPillBar items={[{id: 'a', label: 'All'}, {id: 'b', label: 'Saved', badge: {indicator: true}}]} value={selected ?? 'a'} onValueChange={setSelected} />
     <GlassProgressiveBlur scrollViewRef={scroll} edge="bottom" style={{height: 40}} />
     <GlassContainer><GlassView style={{padding: 16}}><Text>Installed from tarball</Text></GlassView></GlassContainer>
     <GlassButton title="Native button" onPress={() => setValue(0.5)} />
@@ -103,7 +107,7 @@ const skipAndroidNative = process.env.ALG_SKIP_ANDROID_NATIVE === '1';
 if (skipAndroidNative) console.log('Skipping the Android native compile (ALG_SKIP_ANDROID_NATIVE=1).');
 else {
   console.log('Compiling the installed Android source (requires ANDROID_HOME and JAVA_HOME)…');
-  run('./gradlew', [`:app:assemble${configuration}`, '-PreactNativeArchitectures=arm64-v8a', '-PreactNativeDevServerPort=8093', '--console=plain'], path.join(consumer, 'android'));
+  run('./gradlew', [`:app:assemble${configuration}`, '-PreactNativeArchitectures=arm64-v8a', '-PreactNativeDevServerPort=8093', '-Pkotlin.incremental=false', '--console=plain'], path.join(consumer, 'android'));
 }
 writeFileSync(path.join(artifacts, 'package-smoke.json'), JSON.stringify({configuration, consumer, tarball: archive, installedTarball: tarball, sha256, fileCount: packed.files.length, typecheck: 'passed', iosBundle: 'passed', androidBundle: 'passed', iosNativeBuild: 'passed', androidNativeBuild: skipAndroidNative ? 'skipped' : 'passed', expoDependency: existsSync(path.join(consumer, 'node_modules/expo')), navigationDependency: existsSync(path.join(consumer, 'node_modules/@react-navigation/native'))}, null, 2));
 console.log('Standalone package verification passed. See artifacts/package-smoke.json');

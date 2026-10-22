@@ -25,7 +25,7 @@ function Label({children, testID}: {children: React.ReactNode; testID?: string})
   return <Text testID={testID} style={{color: dark ? '#FFFFFF' : '#17181B', fontSize: 15, marginVertical: 6}}>{children}</Text>;
 }
 
-function Lab({open, onClose}: {open: (scene: Scene) => void; onClose: () => void}) {
+function Lab({open, onClose, embedded}: {open: (scene: Scene) => void; onClose: () => void; embedded?: boolean}) {
   const dark = useColorScheme() === 'dark';
   const [select, setSelect] = useState(false), [stall, setStall] = useState(false), [morphs, setMorphs] = useState(0);
   const [visible, setVisible] = useState(true), [mounted, setMounted] = useState(true), [exits, setExits] = useState(0);
@@ -38,12 +38,12 @@ function Lab({open, onClose}: {open: (scene: Scene) => void; onClose: () => void
   const row = {flexDirection: 'row' as const, alignItems: 'center' as const, gap: 12, flexWrap: 'wrap' as const};
   const button = (label: string, testID: string, action: () => void) =>
     <Pressable testID={testID} accessibilityRole="button" onPress={action} style={{paddingVertical: 8, paddingRight: 16}}><Label>{label}</Label></Pressable>;
-  return <SafeAreaView style={{flex: 1, backgroundColor: dark ? '#000000' : '#FFFFFF'}}>
+  return <SafeAreaView edges={embedded ? ['left', 'right', 'bottom'] : undefined} style={{flex: 1, backgroundColor: dark ? '#000000' : '#FFFFFF'}}>
     <ScrollView testID="acc-root" contentContainerStyle={{paddingHorizontal: GlassMetrics.pageMargin(440), paddingBottom: 80}}>
       {button('Close', 'acc-close', onClose)}
       <Label testID="acc-status">{status}</Label>
 
-      <Label>G5 morph</Label>
+      <Label>Content morph</Label>
       <View style={[row, {justifyContent: 'flex-end'}]} testID="acc-morph-row">
         <GlassMorphButton testID="acc-morph" anchor="trailing"
           content={select ? {kind: 'title', title: 'Select', accessibilityLabel: 'Select'} : {kind: 'symbol', symbol: 'ellipsis', androidIcon: 'demo_more', accessibilityLabel: 'More'}}
@@ -53,7 +53,7 @@ function Lab({open, onClose}: {open: (scene: Scene) => void; onClose: () => void
       <View style={row}><Switch testID="acc-stall" value={stall} onValueChange={setStall} /><Label>Block JS 500 ms after each morph</Label></View>
       <Label testID="acc-morph-count">{`Morphs: ${morphs}`}</Label>
 
-      <Label>G6 presence</Label>
+      <Label>Appear and disappear</Label>
       <View style={[row, {minHeight: 56}]}>
         {mounted ? <GlassPresence visible={visible} onExited={() => setExits(n => n + 1)}>
           <GlassIconButton symbol="trash" androidIcon="alg_tab_library" accessibilityLabel="Remove" testID="acc-presence-item" onPress={() => setStatus('Remove')} />
@@ -66,11 +66,11 @@ function Lab({open, onClose}: {open: (scene: Scene) => void; onClose: () => void
       </View>
       <Label testID="acc-exits">{`Exits: ${exits}`}</Label>
 
-      <Label>G8 control sizes</Label>
+      <Label>Control sizes</Label>
       <View style={row}>{sizes.map(size => <GlassIconButton key={size} controlSize={size} symbol="plus" androidIcon="demo_add"
         accessibilityLabel={`Size ${size}`} testID={`acc-size-${size}`} onPress={() => setStatus(size)} />)}</View>
 
-      <Label>G2 symbols</Label>
+      <Label>Symbol transitions</Label>
       <View style={row}>
         <GlassIconButton testID="acc-chevron" accessibilityLabel="Back chevron" androidIcon="alg_back"
           symbol={{name: 'chevron.left', pointSize: 16.5, weight: 'semibold'}} onPress={() => setStatus('Chevron')} />
@@ -82,7 +82,7 @@ function Lab({open, onClose}: {open: (scene: Scene) => void; onClose: () => void
           symbol={favorite ? 'heart.fill' : 'heart'} contentTransition="replace" onPress={() => setFavorite(v => !v)} />
       </View>
 
-      <Label>G3 groups</Label>
+      <Label>Grouped controls</Label>
       <View style={row}>
         <GlassIconGroup testID="acc-group3" onPress={id => setStatus(`Group ${id}`)} items={[
           {id: 'list', symbol: 'calendar.day.timeline.left', androidIcon: 'alg_tab_library', accessibilityLabel: 'List', testID: 'acc-group3-list'},
@@ -94,7 +94,7 @@ function Lab({open, onClose}: {open: (scene: Scene) => void; onClose: () => void
             menu: {items: [{id: 'sort', title: 'Sort'}, {id: 'edit', title: 'Edit'}], onAction: id => setStatus(`Menu ${id}`)}}]} />
       </View>
 
-      <Label>G4 pills</Label>
+      <Label>Filter pills</Label>
       <View style={{marginHorizontal: -GlassMetrics.pageMargin(440)}}>
         <GlassPillBar testID="acc-pills" value={scope} onValueChange={setScope}
           items={[{id: 'forYou', label: 'For You', testID: 'acc-pill-forYou'}, {id: 'explore', label: 'Explore', testID: 'acc-pill-explore'},
@@ -104,13 +104,13 @@ function Lab({open, onClose}: {open: (scene: Scene) => void; onClose: () => void
       </View>
       <Label testID="acc-scope">{`Scope: ${scope}`}</Label>
 
-      <Label>G11 badge</Label>
+      <Label>Badge motion</Label>
       <View style={row}><GlassIconButton testID="acc-bell" symbol="bell" androidIcon="alg_tab_settings" accessibilityLabel="Notifications"
         badge={{count: 3}} badgeAccessibilityLabel="3 unread" onPress={() => setStatus('Bell')} /></View>
 
       <Label>Scenes</Label>
-      {button('G7 header stack →', 'acc-open-stack', () => open('stack'))}
-      {button('G9 tab minimize →', 'acc-open-tabs', () => open('tabs'))}
+      {button('Shared header controls →', 'acc-open-stack', () => open('stack'))}
+      {button('Collapsing tab bar →', 'acc-open-tabs', () => open('tabs'))}
     </ScrollView>
   </SafeAreaView>;
 }
@@ -204,7 +204,7 @@ function SystemScreen({route}: NativeStackScreenProps<Routes, 'System'>) {
   useGlassHeader({routeKey: route.key, active: focused});
   return <View testID="acc-system" style={{flex: 1, backgroundColor: dark ? '#000000' : '#FFFFFF'}} />;
 }
-function StackScene({onClose}: {onClose: () => void}) {
+export function StackScene({onClose}: {onClose: () => void}) {
   const dark = useColorScheme() === 'dark', insets = useSafeAreaInsets();
   return <View style={{flex: 1, backgroundColor: dark ? '#000' : '#FFF'}}>
     <NavigationIndependentTree><NavigationContainer theme={dark ? DarkTheme : DefaultTheme}>
@@ -225,7 +225,7 @@ function StackScene({onClose}: {onClose: () => void}) {
 }
 
 // G9: tab bar minimizes when its tab's list scrolls down.
-function TabsScene({onClose}: {onClose: () => void}) {
+export function TabsScene({onClose}: {onClose: () => void}) {
   const dark = useColorScheme() === 'dark';
   const list = useRef<FlatList<number>>(null);
   const [tab, setTab] = useState('home');
@@ -240,9 +240,9 @@ function TabsScene({onClose}: {onClose: () => void}) {
   </View>;
 }
 
-export default function AcceptanceDemo({onClose}: {onClose: () => void}) {
+export default function AcceptanceDemo({onClose, embedded = false, onOpenNavigation}: {onClose: () => void; embedded?: boolean; onOpenNavigation?: (scene: 'stack' | 'minimize') => void}) {
   const [scene, setScene] = useState<Scene>('menu');
   if (scene === 'stack') return <StackScene onClose={() => setScene('menu')} />;
   if (scene === 'tabs') return <TabsScene onClose={() => setScene('menu')} />;
-  return <Lab open={setScene} onClose={onClose} />;
+  return <Lab embedded={embedded} open={next => onOpenNavigation && next !== 'menu' ? onOpenNavigation(next === 'tabs' ? 'minimize' : 'stack') : setScene(next)} onClose={onClose} />;
 }

@@ -126,6 +126,7 @@ public final class ALGNavigationView: UIView, UISearchResultsUpdating, UISearchB
   private let edgeHost = UIView()
   private let edgeMarker = UIImageView()
   private let separator = UIView()
+  private var separatorShown = false
   private let band = NavigationBandView()
   private var baseAppearances: (standard: UINavigationBarAppearance, compact: UINavigationBarAppearance?)?
   private var accessoryInteraction: AnyObject?
@@ -166,7 +167,7 @@ public final class ALGNavigationView: UIView, UISearchResultsUpdating, UISearchB
     let image = UIGraphicsImageRenderer(size: CGSize(width: 1, height: 1)).image { _ in }
     edgeMarker.image = image; edgeMarker.isAccessibilityElement = false
     edgeHost.isUserInteractionEnabled = false; edgeHost.addSubview(edgeMarker)
-    separator.isUserInteractionEnabled = false; separator.backgroundColor = .separator
+    separator.isUserInteractionEnabled = false; separator.backgroundColor = .separator; separator.alpha = 0
     navigation.navigationBar.insertSubview(edgeHost, at: 0); navigation.view.addSubview(separator)
     screen.onLayout = { [weak self] in self?.layoutChrome() }
     NotificationCenter.default.addObserver(self, selector: #selector(accessibilityChanged), name: UIAccessibility.reduceTransparencyStatusDidChangeNotification, object: nil)
@@ -237,6 +238,8 @@ public final class ALGNavigationView: UIView, UISearchResultsUpdating, UISearchB
     // header, so no extension is needed until the title has collapsed. The morph
     // label is drawn above everything and is unaffected.
     let bottom = accessoryFrame.maxY
+    morph.headerBottom = chromeBottom
+    morph.layout()
     let largeTitleShowing = !morph.enabled && config.titleDisplayMode != "inline" && searchController?.isActive != true
       && !nativeTitleCollapsed(chromeBottom: chromeBottom, accessory: height)
     let extendsEdge = config.topEdge != "hidden" && !largeTitleShowing
@@ -245,15 +248,25 @@ public final class ALGNavigationView: UIView, UISearchResultsUpdating, UISearchB
     edgeHost.isHidden = !extendsEdge
     let pixel = 1 / max(1, window?.screen.scale ?? traitCollection.displayScale)
     separator.frame = CGRect(x: 0, y: (bottom / pixel).rounded() * pixel - pixel, width: bounds.width, height: pixel)
-    separator.isHidden = config.topEdge != "hard" || config.topBand?.hideSeparator == true
+    // Both decorations use the same settled-title state. A morph can still be
+    // travelling after content starts passing beneath the header.
+    let settled = morph.enabled ? morph.progress >= 1 : (config.titleDisplayMode == "inline" || config.slots[1].present || titleCollapsed)
+    let hardVisible = config.topEdge == "hard" && scrolledBy > 0.5 && settled
+      && searchController?.isActive != true && !searching
+    let showSeparator = hardVisible && config.topBand?.hideSeparator != true
+    if showSeparator != separatorShown {
+      separatorShown = showSeparator
+      let changes = { self.separator.alpha = showSeparator ? 1 : 0 }
+      if window != nil && !UIAccessibility.isReduceMotionEnabled {
+        UIView.animate(withDuration: 0.2, delay: 0, options: [.beginFromCurrentState, .allowUserInteraction], animations: changes)
+      } else { separator.layer.removeAllAnimations(); changes() }
+    }
     separator.backgroundColor = config.topBand?.separator.map(ALGIcon.color) ?? .separator
     if usesBand {
       if band.superview == nil { navigation.view.insertSubview(band, belowSubview: navigation.navigationBar) }
       let frame = CGRect(x: 0, y: 0, width: bounds.width, height: max(0, bottom))
       if band.frame != frame { band.frame = frame }
-      // Like an edge effect, the band shows only while content is beneath the header.
-      let scrolled = (scroll?.contentOffset.y ?? 0) + (scroll?.adjustedContentInset.top ?? 0)
-      band.show(extendsEdge && scrolled > 0.5, animated: window != nil && !UIAccessibility.isReduceMotionEnabled)
+      band.show(hardVisible, animated: window != nil && !UIAccessibility.isReduceMotionEnabled)
     } else if band.superview != nil { band.show(false, animated: false); band.removeFromSuperview() }
     // Extend the native bar's own edge region. A separate edge interaction can
     // sample UIKit's large title even when its marker is a sibling below the bar.
@@ -269,8 +282,7 @@ public final class ALGNavigationView: UIView, UISearchResultsUpdating, UISearchB
         bar.removeInteraction(interaction); accessoryInteraction = nil
       }
     }
-    morph.headerBottom = chromeBottom
-    morph.layout(); scheduleInsets()
+    scheduleInsets()
     if pendingActivation { activateSearchWhenReady() }
   }
   /// Whether UIKit's native large title has fully collapsed into the bar. Decided as a state
